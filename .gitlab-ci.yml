@@ -21,10 +21,11 @@ build:
 
   script:
   - npm install
-  - npm run packDev
+  - npm run compile
+  - cp "$DEV_SERVER_CONFIG" dist/serverConfig.json
   artifacts:
     paths:
-    - dist/PeBLServices.js
+    - dist/
     - node_modules/
     
 ### DEPLOYMENTS
@@ -49,6 +50,6 @@ devDeploy:
    - ssh-add "$DEV_PRIVATE_KEY" > /dev/null
 
    - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
-   - scp -P22 dist/PeBLServices.js $USERNAME@$SERVER_IP:/srv/devNode/PeBLServices.js
+   - scp -P22 -r dist $USERNAME@$SERVER_IP:/srv/devNode/
    - scp -P22 -r node_modules $USERNAME@$SERVER_IP:/srv/devNode/
    - ssh -p22 $USERNAME@$SERVER_IP "date > /srv/devNodeUpdated"

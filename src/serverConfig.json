@@ -1,0 +1,6 @@
+{
+    "serverName": "dev.services.peblproject.org",
+    "privateKeyPath": "./privkey.pem",
+    "certificatePath": "./cert.pem",
+    "port": 443
+}
