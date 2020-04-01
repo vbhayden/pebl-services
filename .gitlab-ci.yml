@@ -2,7 +2,7 @@ variables:
    USERNAME: deployment
    SERVER_IP: 10.1.100.46
 
-image: node:11
+image: node:12
 
 cache:
     paths:
@@ -51,4 +51,4 @@ devDeploy:
    - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
    - scp -P22 dist/PeBLServices.js $USERNAME@$SERVER_IP:/srv/devNode/PeBLServices.js
    - scp -P22 -r node_modules $USERNAME@$SERVER_IP:/srv/devNode/
-   - ssh -p22 $USERNAME@$SERVER_IP "date >> /srv/devNodeUpdated"
+   - ssh -p22 $USERNAME@$SERVER_IP "date > /srv/devNodeUpdated"
