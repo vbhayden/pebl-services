@@ -4,6 +4,7 @@ import * as https from 'https';
 export function postData(
     host: string,
     path: string,
+    headers: { [key: string]: any },
     rawData: string,
     successCallback?: (incomingData: string) => void,
     failCallback?: (e: Error) => void): void {
@@ -21,6 +22,8 @@ export function postData(
             'Content-Length': data.length
         }
     }
+
+    Object.assign(postOptions.headers, headers); // Merge headers arg into postOptions
 
     var dataArr: string[] = [];
     const req = https.request(postOptions, function(resp: IncomingMessage) {
@@ -59,6 +62,42 @@ export function getData(
             protocol: "https:",
             port: 443,
             method: "GET",
+            headers: headers
+        },
+        function(resp: IncomingMessage) {
+            resp.setEncoding("utf-8");
+            resp.on("data", function(data) {
+                dataArr.push(data);
+            });
+            resp.on("end", function() {
+                if (successCallback) {
+                    successCallback(dataArr.join(""));
+                }
+            });
+        });
+    req.on('error', function(e) {
+        if (failCallback) {
+            console.log(e);
+            failCallback(e);
+        }
+    });
+}
+
+export function deleteData(
+    host: string,
+    path: string,
+    headers: { [key: string]: any },
+    successCallback?: (incomingData: string) => void,
+    failCallback?: (e: Error) => void): void {
+
+    var dataArr: string[] = [];
+    const req = https.request(
+        <any> {
+            host: host,
+            path: path,
+            protocol: "https:",
+            port: 443,
+            method: "DELETE",
             headers: headers
         },
         function(resp: IncomingMessage) {
