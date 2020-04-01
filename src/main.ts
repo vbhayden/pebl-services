@@ -11,6 +11,9 @@ let express = require('express');
 let webserver = express();
 webserver = require('express-ws')(webserver).app;
 
+webserver.use(bodyParser.urlencoded({ extended: false }));
+webserver.use(bodyParser.json());
+
 webserver.use(function(req: Request, res: Response, next: Function) {
     console.log('middleware');
     console.log(res);
@@ -29,12 +32,10 @@ webserver.ws('/', function(ws: WebSocket, req: Request) {
     console.log('socket', req);
 });
 
-webserver.use(bodyParser.urlencoded({ extended: false }));
-webserver.use(bodyParser.json());
-
 if (process.argv.length < 3) {
-    console.log("command should include a path to the server configuration json")
-    console.log("node <script> <pathToConfigurationJson>")
+    console.log("command should include a path to the server configuration json");
+    console.log("node <pathToScript> <pathToConfigurationJson>");
+    process.exit();
 }
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
