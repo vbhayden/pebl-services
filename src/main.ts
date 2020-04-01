@@ -25,7 +25,7 @@ webserver.get('/', function(req: Request, res: Response) {
     res.end();
 });
 
-webserver.ws('/', function(ws: WebSocket, req: Request) {
+webserver.ws('/echo', function(ws: WebSocket, req: Request) {
     ws.on('message', function(msg: String) {
         console.log(msg);
     });
