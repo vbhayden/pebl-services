@@ -1,4 +1,4 @@
-import {ServiceMessage, UserProfile, Annotation, SharedAnnotation, XApiStatement, Competency, Message} from './models';
+import {ServiceMessage, UserProfile, Annotation, SharedAnnotation, XApiStatement, Competency, Message, Activity, XApiQuery, Profile} from './models';
 
 export interface Dispatch {
 	//TODO: define this ServiceMessage
@@ -54,4 +54,19 @@ export interface SessionDataCache {
 	getNotificationsForBook(userProfile: UserProfile, book: string): Notification[]; //Retrieves all notifications for the specified book for this user
 	saveNotifications(userProfile: UserProfile, notifications: Notification[]): void; //Stores the notifications for this user
 	removeNotification(userProfile: UserProfile, id: string): void; //Removes the notification with the specified id
+}
+
+export interface LRS {
+	storeStatements(stmts: XApiStatement[]): void; //Store the specified statements into an LRS
+	voidStatements(stmts: XApiStatement[]): void; //Void the specified statements in an LRS
+
+	getStatements(xApiQuery: XApiQuery): XApiStatement[];
+
+	storeActivity(activity: Activity, callback: ((success: boolean) => void)): void; //Store the specified activity into an LRS
+	getActivity(activityType: string, callback: ((activity?: Activity) => void), activityId?: string): void;  //Retrieves the specified activity from an LRS
+	removeActivity(activity: Activity, callback: ((success: boolean) => void)): void; //Removes the specified activity from an LRS
+
+	storeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Store the specified profile into an LRS
+	getProfile(profileId: string, callback: ((profile?: Profile) => void)): void; //Retrieves the specified profile from an LRS
+	removeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Removes the specified profile from an LRS
 }
