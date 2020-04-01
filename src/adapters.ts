@@ -60,7 +60,7 @@ export interface LRS {
 	storeStatements(stmts: XApiStatement[]): void; //Store the specified statements into an LRS
 	voidStatements(stmts: XApiStatement[]): void; //Void the specified statements in an LRS
 
-	getStatements(xApiQuery: XApiQuery): XApiStatement[];
+	getStatements(xApiQuery: XApiQuery, callback: ((stmts?: XApiStatement[]) => void)): void;
 
 	storeActivity(activity: Activity, callback: ((success: boolean) => void)): void; //Store the specified activity into an LRS
 	getActivity(activityType: string, callback: ((activity?: Activity) => void), activityId?: string): void;  //Retrieves the specified activity from an LRS
