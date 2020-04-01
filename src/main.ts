@@ -37,7 +37,7 @@ if (process.argv.length < 3) {
     console.log("node <script> <pathToConfigurationJson>")
 }
 
-const config: { [key: string]: any } = JSON.parse(fs.readFileSync('./serverConfig.json', "utf8"));
+const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const privKey = fs.readFileSync(config.privateKeyPath, "utf8");
 const cert = fs.readFileSync(config.certificatePath, "utf8");
 
