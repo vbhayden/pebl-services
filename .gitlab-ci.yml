@@ -21,11 +21,11 @@ build:
 
   script:
   - npm install
-  - npm run lint
-  - npm run build
+  - npm run packDev
   artifacts:
     paths:
-    - main.js
+    - dist/main.js
+    - node_modules/
     
 ### DEPLOYMENTS
 
@@ -48,4 +48,6 @@ devDeploy:
    - echo "$DEV_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
 
    - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
-   - scp -P22 -r main.js $USERNAME@$SERVER_IP:/srv/devNode/main.js
+   - scp -P22 dist/main.js $USERNAME@$SERVER_IP:/srv/devNode/main.js
+   - scp -P22 -r node_modules $USERNAME@$SERVER_IP:/srv/devNode/
+   - ssh -p22 $USERNAME@$SERVER_IP "date >> /srv/devNodeUpdated"
