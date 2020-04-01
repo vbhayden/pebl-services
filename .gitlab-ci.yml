@@ -1,6 +1,6 @@
 variables:
    USERNAME: deployment
-   SERVER_IP: 10.1.100.50
+   SERVER_IP: 10.1.100.46
 
 image: node:11
 
@@ -16,90 +16,36 @@ stages:
 
 build:
   stage: build
+  only:
+    - dev
 
   script:
   - npm install
   - npm run lint
-  - npm run test:unit
   - npm run build
   artifacts:
     paths:
     - main.js
-    - oauthConfig.json    
     
 ### DEPLOYMENTS
-
-prodDeploy:
-  stage: deploy
-  only:
-    - master
-  script:
-    ## Pull down apt-get install repos
-   - apt-get update -y
-   - apt-get install openssh-client -y
-
-   ##
-   ## Run ssh-agent (inside the build environment)
-   ##
-   - eval $(ssh-agent -s)
-
-   ##
-   ## Create the SSH directory and give it the right permissions
-   ##
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
-
-   ##
-   ## Assuming you created the SSH_KNOWN_HOSTS variable, uncomment the
-   ## following two lines. NOTE the $SSH_KNOWN_HOSTS variable should be added
-   ## in the gitlab interface and not here
-   ##
-   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
-
-   ## NOTE the $STAGINT_PRIVATE_KEY variable should be added
-   ## in the gitlab interface and not here
-   ##
-   - echo "$DEV_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
-
-   ## Build commands
-   - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /var/www/htmlExtensionDashboardProd/*"
-   - scp -P22 -r main.js $USERNAME@$SERVER_IP:/srv/oauth-project/main.js
-
 
 devDeploy:
   stage: deploy
   only:
     - dev
   script:
-    ## Pull down apt-get install repos
    - apt-get update -y
    - apt-get install openssh-client -y
 
-   ##
-   ## Run ssh-agent (inside the build environment)
-   ##
    - eval $(ssh-agent -s)
 
-   ##
-   ## Create the SSH directory and give it the right permissions
-   ##
    - mkdir -p ~/.ssh
    - chmod 700 ~/.ssh
 
-   ##
-   ## Assuming you created the SSH_KNOWN_HOSTS variable, uncomment the
-   ## following two lines. NOTE the $SSH_KNOWN_HOSTS variable should be added
-   ## in the gitlab interface and not here
-   ##
    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
    - chmod 644 ~/.ssh/known_hosts
 
-   ## NOTE the $STAGINT_PRIVATE_KEY variable should be added
-   ## in the gitlab interface and not here
-   ##
    - echo "$DEV_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
 
-   ## Build commands
-   - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /var/www/htmlExtensionDashboardProd/*"
-   - scp -P22 -r main.js $USERNAME@$SERVER_IP:/srv/oauth-project/main.js
+   - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
+   - scp -P22 -r main.js $USERNAME@$SERVER_IP:/srv/devNode/main.js
