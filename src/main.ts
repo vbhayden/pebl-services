@@ -16,12 +16,12 @@ webserver.use(bodyParser.json());
 
 webserver.use(function(req: Request, res: Response, next: Function) {
     console.log('middleware');
-    console.log(res);
+    console.log(res.charset);
     return next();
 });
 
 webserver.get('/', function(req: Request, res: Response) {
-    console.log('get route', req);
+    console.log('get route', req.originalUrl);
     res.end();
 });
 
