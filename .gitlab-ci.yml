@@ -45,7 +45,8 @@ devDeploy:
    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
    - chmod 644 ~/.ssh/known_hosts
 
-   - echo "$DEV_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+   - chmod 600 "$DEV_PRIVATE_KEY"
+   - ssh-add "$DEV_PRIVATE_KEY" > /dev/null
 
    - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
    - scp -P22 dist/PeBLServices.js $USERNAME@$SERVER_IP:/srv/devNode/PeBLServices.js
