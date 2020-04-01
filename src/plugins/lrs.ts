@@ -3,11 +3,11 @@ import {XApiStatement, Endpoint, Voided, Activity, XApiQuery, Profile} from '../
 import * as network from '../utils/network';
 
 //TODO: Move these consts somewhere else?
-const USER_PREFIX = "user-";
-const GROUP_PREFIX = "group-";
+// const USER_PREFIX = "user-";
+// const GROUP_PREFIX = "group-";
 const PEBL_THREAD_PREFIX = "peblThread://";
-const PEBL_THREAD_USER_PREFIX = "peblThread://" + USER_PREFIX;
-const PEBL_THREAD_GROUP_PREFIX = "peblThread://" + GROUP_PREFIX;
+// const PEBL_THREAD_USER_PREFIX = "peblThread://" + USER_PREFIX;
+// const PEBL_THREAD_GROUP_PREFIX = "peblThread://" + GROUP_PREFIX;
 
 export class LRSPlugin implements LRS {
     private endpoint: Endpoint;
@@ -69,8 +69,6 @@ export class LRSPlugin implements LRS {
 	}
 
 	storeActivity(activity: Activity, callback: ((success: boolean) => void)): void {
-        let self = this;
-
         let jsObj = JSON.stringify(activity.toTransportFormat());
 
         let headers = JSON.parse(JSON.stringify(this.endpoint.headers));
@@ -89,7 +87,6 @@ export class LRSPlugin implements LRS {
     }
 
     getActivity(activityType: string, callback: ((activity?: Activity) => void), activityId?: string): void {
-        let self = this;
         let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PEBL_THREAD_PREFIX + activityType + "s") + (activityId ? ("&profileId=" + encodeURIComponent(activityId)) : '') + "&t=" + Date.now();
 
         network.getData(this.endpoint.url, path, this.endpoint.headers, function(incomingData) {
@@ -101,8 +98,6 @@ export class LRSPlugin implements LRS {
     }
 
     removeActivity(activity: Activity, callback: ((success: boolean) => void)): void {
-        let self = this;
-
         let headers = JSON.parse(JSON.stringify(this.endpoint.headers));
         if (activity.etag) {
             Object.assign(headers, {"If-Match": activity.etag});
