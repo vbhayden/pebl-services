@@ -32,6 +32,11 @@ webserver.ws('/', function(ws: WebSocket, req: Request) {
 webserver.use(bodyParser.urlencoded({ extended: false }));
 webserver.use(bodyParser.json());
 
+if (process.argv.length < 3) {
+    console.log("command should include a path to the server configuration json")
+    console.log("node <script> <pathToConfigurationJson>")
+}
+
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync('./serverConfig.json', "utf8"));
 const privKey = fs.readFileSync(config.privateKeyPath, "utf8");
 const cert = fs.readFileSync(config.certificatePath, "utf8");
@@ -75,5 +80,5 @@ const credentials = {
 const httpsServer = https.createServer(credentials, webserver);
 
 httpsServer.listen(config.port, function() {
-    console.log("listening on port ${config.port}");
+    console.log(`listening on port ${config.port}`);
 });
