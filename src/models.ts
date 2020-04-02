@@ -485,3 +485,7 @@ export class Group {
 export class GroupRole {
     //TODO
 }
+
+export class Role {
+    //TODO
+}
