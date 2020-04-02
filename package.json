@@ -9,8 +9,8 @@
     },
     "scripts": {
         "compile": "tsc",
-        "dev": "ts-node-dev --respawn --transpileOnly main.ts",
-        "start": "node ./dist/PeBLServices.js"
+        "dev": "ts-node-dev --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
+        "start": "node ./dist/main.js ./src/serverConfig.json"
     },
     "devDependencies": {
         "@types/express": "^4.17.3",

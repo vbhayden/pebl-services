@@ -1,6 +1,7 @@
 {
-    "serverName": "dev.services.peblproject.org",
+    "serverName": "localhost",
     "privateKeyPath": "./privkey.pem",
     "certificatePath": "./cert.pem",
-    "port": 443
+    "port": 8080,
+    "localDev": true
 }
