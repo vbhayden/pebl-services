@@ -3,5 +3,5 @@
     "privateKeyPath": "./privkey.pem",
     "certificatePath": "./cert.pem",
     "port": 8080,
-    "localDev": true
+    "useSSL": false
 }

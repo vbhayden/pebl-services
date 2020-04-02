@@ -22,8 +22,9 @@ const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2
 let privKey
 let cert
 let credentials: { [key: string]: any } = {}
+let httpsServer
 
-if (!config.localDev) {
+if (config.useSSL) {
     privKey = fs.readFileSync(config.privateKeyPath, "utf8");
     cert = fs.readFileSync(config.certificatePath, "utf8");
 
@@ -32,10 +33,7 @@ if (!config.localDev) {
         key: privKey,
         cert: cert
     }
-}
 
-let httpsServer
-if (!config.localDev) {
     httpsServer = https.createServer(credentials, webserver);
 } else {
     httpsServer = http.createServer(webserver);
@@ -91,7 +89,7 @@ webserver.ws('/echo', function(ws: WebSocket, req: Request) {
     ws.on('message', function(msg: String) {
         console.log(msg);
     });
-    console.log('socket', req);
+    console.log('socket');
     ws.send("ping")
 });
 
