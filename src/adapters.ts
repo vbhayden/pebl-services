@@ -88,3 +88,12 @@ export interface Groups {
 
 	getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
 }
+
+export interface Users {
+	addUserProfile(id: string, userName: string, userEmail?: string): void; // Add a user with the specified metadata
+	deleteUserProfile(id: string): void; // Delete a user with the specified id
+	updateUserProfile(id: string, userName?: string, userEmail?: string): void; // Update user metadata
+	getUserProfile(id: string, callback: ((user: UserProfile) => void)): void; //Get the specified users profile
+
+	getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
+}
