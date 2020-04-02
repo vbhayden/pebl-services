@@ -2,6 +2,7 @@ import * as bodyParser from "body-parser";
 
 import * as fs from 'fs';
 import * as https from 'https';
+import * as http from 'http';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
@@ -9,28 +10,6 @@ import * as WebSocket from 'ws';
 let express = require('express');
 
 let webserver = express();
-webserver = require('express-ws')(webserver).app;
-
-webserver.use(bodyParser.urlencoded({ extended: false }));
-webserver.use(bodyParser.json());
-
-webserver.use(function(req: Request, res: Response, next: Function) {
-    console.log('middleware');
-    console.log(res.charset);
-    return next();
-});
-
-webserver.get('/', function(req: Request, res: Response) {
-    console.log('get route', req.originalUrl);
-    res.end();
-});
-
-webserver.ws('/echo', function(ws: WebSocket, req: Request) {
-    ws.on('message', function(msg: String) {
-        console.log(msg);
-    });
-    console.log('socket', req);
-});
 
 if (process.argv.length < 3) {
     console.log("command should include a path to the server configuration json");
@@ -39,14 +18,28 @@ if (process.argv.length < 3) {
 }
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const privKey = fs.readFileSync(config.privateKeyPath, "utf8");
-const cert = fs.readFileSync(config.certificatePath, "utf8");
 
-const credentials = {
-    serverName: config.serverName,
-    key: privKey,
-    cert: cert
+let privKey
+let cert
+let credentials: { [key: string]: any } = {}
+let httpsServer
+
+if (config.useSSL) {
+    privKey = fs.readFileSync(config.privateKeyPath, "utf8");
+    cert = fs.readFileSync(config.certificatePath, "utf8");
+
+    credentials = {
+        serverName: config.serverName,
+        key: privKey,
+        cert: cert
+    }
+
+    httpsServer = https.createServer(credentials, webserver);
+} else {
+    httpsServer = http.createServer(webserver);
 }
+
+webserver = require('express-ws')(webserver, httpsServer).app;
 
 // var allowCrossDomain = function(req: Request, res: Response, next: Function) {
 //     let slashIndex = req.path.indexOf("/", 1);
@@ -78,7 +71,27 @@ const credentials = {
 
 // webserver.use(allowCrossDomain);
 
-const httpsServer = https.createServer(credentials, webserver);
+webserver.use(bodyParser.urlencoded({ extended: false }));
+webserver.use(bodyParser.json());
+
+webserver.use(function(req: Request, res: Response, next: Function) {
+    console.log('middleware');
+    console.log(res.charset);
+    return next();
+});
+
+webserver.get('/', function(req: Request, res: Response) {
+    console.log('get route', req.originalUrl);
+    res.end();
+});
+
+webserver.ws('/echo', function(ws: WebSocket, req: Request) {
+    ws.on('message', function(msg: String) {
+        console.log(msg);
+    });
+    console.log('socket');
+    ws.send("ping")
+});
 
 httpsServer.listen(config.port, function() {
     console.log(`listening on port ${config.port}`);
