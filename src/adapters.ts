@@ -67,6 +67,6 @@ export interface LRS {
 	removeActivity(activity: Activity, callback: ((success: boolean) => void)): void; //Removes the specified activity from an LRS
 
 	storeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Store the specified profile into an LRS
-	getProfile(profileId: string, callback: ((profile?: Profile) => void)): void; //Retrieves the specified profile from an LRS
+	getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string): void; //Retrieves the specified profile from an LRS
 	removeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Removes the specified profile from an LRS
 }

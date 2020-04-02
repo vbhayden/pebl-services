@@ -65,7 +65,14 @@ export class LRSPlugin implements LRS {
 	}
 
 	getStatements(xApiQuery: XApiQuery, callback: ((stmts: XApiStatement[]) => void)): void {
-		// TODO
+	    let path = "data/xapi/statements?" + xApiQuery.toQueryString();
+
+        network.getData(this.endpoint.url, path, this.endpoint.headers, function(incomingData) {
+            //TODO: deal with "more" link in response
+            callback(JSON.parse(incomingData).statements);
+        }, function(e) {
+            callback([]);
+        });
 	}
 
 	storeActivity(activity: Activity, callback: ((success: boolean) => void)): void {
@@ -112,15 +119,46 @@ export class LRSPlugin implements LRS {
     }
 
     storeProfile(profile: Profile, callback: ((success: boolean) => void)): void {
-        //TODO
+        let jsObj = JSON.stringify(profile.toTransportFormat());
+
+        let headers = JSON.parse(JSON.stringify(this.endpoint.headers));
+
+        if (profile.etag) {
+            Object.assign(headers, {"If-Match": profile.etag});
+        }
+
+        let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profile.type + "s") + "&profileId=" + profile.id;
+
+        network.postData(this.endpoint.url, path, headers, jsObj, function() {
+            callback(true);
+        }, function() {
+            callback(false);
+        });
     }
 
-    getProfile(profileId: string, callback: ((profile?: Profile) => void)): void {
-        //TODO
+    getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string,): void {
+        let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profileType + "s") + (profileId ? ("&profileId=" + encodeURIComponent(profileId)) : '') + "&t=" + Date.now();
+
+        network.getData(this.endpoint.url, path, this.endpoint.headers, function(incomingData) {
+            let jsonObj = JSON.parse(incomingData);
+            callback(new Profile(jsonObj));
+        }, function(e) {
+            callback();
+        });
     }
 
     removeProfile(profile: Profile, callback: ((success: boolean) => void)): void {
-        //TODO
+        let headers = JSON.parse(JSON.stringify(this.endpoint.headers));
+        if (profile.etag) {
+            Object.assign(headers, {"If-Match": profile.etag});
+        }
+        let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profile.type + "s") + "&profileId=" + profile.id;
+
+        network.deleteData(this.endpoint.url, path, headers, function(incomingData) {
+            callback(true);
+        }, function(e) {
+            callback(false);
+        });
     }
 
 }
