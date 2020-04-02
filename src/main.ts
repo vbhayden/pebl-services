@@ -9,7 +9,7 @@ import * as WebSocket from 'ws';
 
 let express = require('express');
 
-let webserver = express();
+let expressApp = express();
 
 if (process.argv.length < 3) {
     console.log("command should include a path to the server configuration json");
@@ -34,12 +34,12 @@ if (config.useSSL) {
         cert: cert
     }
 
-    httpsServer = https.createServer(credentials, webserver);
+    httpsServer = https.createServer(credentials, expressApp);
 } else {
-    httpsServer = http.createServer(webserver);
+    httpsServer = http.createServer(expressApp);
 }
 
-webserver = require('express-ws')(webserver, httpsServer).app;
+expressApp = require('express-ws')(expressApp, httpsServer).app;
 
 // var allowCrossDomain = function(req: Request, res: Response, next: Function) {
 //     let slashIndex = req.path.indexOf("/", 1);
@@ -69,23 +69,23 @@ webserver = require('express-ws')(webserver, httpsServer).app;
 //     next();
 // }
 
-// webserver.use(allowCrossDomain);
+// expressApp.use(allowCrossDomain);
 
-webserver.use(bodyParser.urlencoded({ extended: false }));
-webserver.use(bodyParser.json());
+expressApp.use(bodyParser.urlencoded({ extended: false }));
+expressApp.use(bodyParser.json());
 
-webserver.use(function(req: Request, res: Response, next: Function) {
+expressApp.use(function(req: Request, res: Response, next: Function) {
     console.log('middleware');
     console.log(res.charset);
     return next();
 });
 
-webserver.get('/', function(req: Request, res: Response) {
+expressApp.get('/', function(req: Request, res: Response) {
     console.log('get route', req.originalUrl);
     res.end();
 });
 
-webserver.ws('/echo', function(ws: WebSocket, req: Request) {
+expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
     ws.on('message', function(msg: String) {
         console.log(msg);
     });
