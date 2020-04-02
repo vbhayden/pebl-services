@@ -1,4 +1,4 @@
-import {ServiceMessage, UserProfile, Annotation, SharedAnnotation, XApiStatement, Competency, Message, Activity, XApiQuery, Profile} from './models';
+import {ServiceMessage, UserProfile, Annotation, SharedAnnotation, XApiStatement, Competency, Message, Activity, XApiQuery, Profile, Group, GroupRole, Role} from './models';
 
 export interface Dispatch {
 	//TODO: define this ServiceMessage
@@ -69,4 +69,40 @@ export interface LRS {
 	storeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Store the specified profile into an LRS
 	getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string): void; //Retrieves the specified profile from an LRS
 	removeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Removes the specified profile from an LRS
+}
+
+export interface Groups {
+	addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
+	deleteGroup(id: string): void; //Delete the group with the specified Id
+	updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
+
+	addGroupMember(id: string, userId: string, role: string): void; //Add the specified userId as a member of the specified group with the specified metadata
+	deleteGroupMember(id: string, userId: string): void; //Remove the specified userId from the specified group
+	updateGroupMember(id: string, userId: string, role: string): void; //Update specified user metadata in specified group
+
+	getGroups(callback: ((groups: Group[]) => void)): void; //Get all existing groups
+
+	createGroupRole(id: string, roleName: string, permissions: Role[]): void; //Create a role within a group
+	updateGroupRole(id: string, roleName?: string, permissions?: Role[]): void; //Update a role within a group
+	deleteGroupRole(id: string, roleName: string): void; //Delete a role within a group
+
+	getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
+}
+
+export interface Users {
+	addUserProfile(id: string, userName: string, userEmail?: string, roles?: Role[]): void; // Add a user with the specified metadata
+	deleteUserProfile(id: string): void; // Delete a user with the specified id
+	updateUserProfile(id: string, userName?: string, userEmail?: string): void; // Update user metadata
+	getUserProfile(id: string, callback: ((user: UserProfile) => void)): void; //Get the specified users profile
+
+	getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
+}
+
+export interface Roles {
+	addRole(id: string, name: string, permissions: string[]): void; //Add a role based on a set of permissions
+	deleteRole(id: string): void; //Remove a role
+	updateRole(id: string, name?: string, permissions?: string[]): void; //Updates the permission set and/or name of a role
+	getRole(id: string, callback: ((role: Role) => void)): void; //Get a role with the specified id
+
+	getRoles(callback: ((roles: Role[]) => void)): void; //Get all the roles in the system
 }

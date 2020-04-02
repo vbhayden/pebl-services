@@ -477,3 +477,15 @@ export class Endpoint {
         };
     }
 }
+
+export class Group {
+    //TODO
+}
+
+export class GroupRole {
+    //TODO
+}
+
+export class Role {
+    //TODO
+}
