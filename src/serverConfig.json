@@ -2,6 +2,7 @@
     "serverName": "localhost",
     "privateKeyPath": "./privkey.pem",
     "certificatePath": "./cert.pem",
+    "redisAuth": "",
     "port": 8080,
     "useSSL": false
 }
