@@ -12,7 +12,7 @@
         "rsmq": "^0.12.0"
     },
     "scripts": {
-        "compile": "tsc",
+        "compile": "tsfmt -r && tsc",
         "dev": "ts-node-dev --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
         "start": "node ./dist/main.js ./src/serverConfig.json"
     },
@@ -27,6 +27,7 @@
         "node-typescript": "^0.1.3",
         "ts-loader": "^6.2.2",
         "ts-node-dev": "^1.0.0-pre.44",
-        "typescript": "^3.8.3"
+        "typescript": "^3.8.3",
+        "typescript-formatter": "^7.2.2"
     }
 }

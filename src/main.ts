@@ -13,9 +13,9 @@ let express = require('express');
 let expressApp = express();
 
 if (process.argv.length < 3) {
-    console.log("command should include a path to the server configuration json");
-    console.log("node <pathToScript> <pathToConfigurationJson>");
-    process.exit();
+  console.log("command should include a path to the server configuration json");
+  console.log("node <pathToScript> <pathToConfigurationJson>");
+  process.exit();
 }
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -29,22 +29,22 @@ let expressSession = require('express-session');
 let RedisSessionStore = require('connect-redis')(expressSession);
 
 const redisClient = redis.createClient({
-    password: config.redisAuth
+  password: config.redisAuth
 });
 
 if (config.useSSL) {
-    privKey = fs.readFileSync(config.privateKeyPath, "utf8");
-    cert = fs.readFileSync(config.certificatePath, "utf8");
+  privKey = fs.readFileSync(config.privateKeyPath, "utf8");
+  cert = fs.readFileSync(config.certificatePath, "utf8");
 
-    credentials = {
-        serverName: config.serverName,
-        key: privKey,
-        cert: cert
-    }
+  credentials = {
+    serverName: config.serverName,
+    key: privKey,
+    cert: cert
+  }
 
-    httpsServer = https.createServer(credentials, expressApp);
+  httpsServer = https.createServer(credentials, expressApp);
 } else {
-    httpsServer = http.createServer(expressApp);
+  httpsServer = http.createServer(expressApp);
 }
 
 expressApp = require('express-ws')(expressApp, httpsServer).app;
@@ -81,24 +81,24 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 // expressApp.use(allowCrossDomain);
 
 redisClient.on("error", function(error) {
-    console.error(error);
+  console.error(error);
 });
 
 
 expressApp.use(
-    expressSession({
-        store: new RedisSessionStore({ client: redisClient }),
-        secret: config.sessionSecret,
-        cookie: {
-            secure: true,
-            httpOnly: true,
-            maxAge: config.sessionTTL,
-            sameSite: "strict"
-        },
-        proxy: config.usesProxy,
-        saveUninitialized: false,
-        resave: false
-    })
+  expressSession({
+    store: new RedisSessionStore({ client: redisClient }),
+    secret: config.sessionSecret,
+    cookie: {
+      secure: config.useSSL,
+      httpOnly: true,
+      maxAge: config.sessionTTL,
+      sameSite: "strict"
+    },
+    proxy: config.usesProxy,
+    saveUninitialized: false,
+    resave: false
+  })
 );
 
 // Make sure session exists
@@ -111,32 +111,34 @@ expressApp.use(
 expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
-expressApp.use(function(req: Request, res: Response, next: Function) {
-    console.log('middleware');
-    console.log(res.charset);
-    return next();
-});
-
 expressApp.get('/', function(req: Request, res: Response) {
-    console.log('get route', req.originalUrl);
-    if (req.session) {
-        if (!req.session.test) {
-            req.session.test = 0
-        }
-        req.session.test = req.session.test + 1
+  console.log('get route', req.originalUrl);
+  if (req.session) {
+    if (!req.session.test) {
+      req.session.test = 0
     }
-    console.log('get route', req.originalUrl, req.session?.test);
-    res.end();
+    req.session.test = req.session.test + 1
+  }
+  console.log('get route', req.originalUrl, req.session?.test);
+  res.end();
 });
 
 expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
-    ws.on('message', function(msg: String) {
-        console.log(msg);
-    });
-    console.log('socket');
-    ws.send("ping")
+  ws.on('message', function(msg: String) {
+    console.log(msg, req.session?.test);
+    if (req.session) {
+      if (!req.session.test) {
+        req.session.test = 0
+      }
+      req.session.test = req.session.test + 1
+      req.session.save(function(err) {
+        console.log(err);
+      });
+    }
+  });
+  ws.send("ping")
 });
 
 httpsServer.listen(config.port, function() {
-    console.log(`listening on port ${config.port}`);
+  console.log(`listening on port ${config.port}`);
 });
