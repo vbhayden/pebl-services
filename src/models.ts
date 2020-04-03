@@ -1,10 +1,17 @@
-// const NAMESPACE_USER_MESSAGES = "user-";
+const NAMESPACE_USER_MESSAGES = "user-";
 const PREFIX_PEBL_THREAD = "peblThread://";
 const PREFIX_PEBL = "pebl://";
 const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.html#";
 
 export class ServiceMessage {
 	//TODO
+    readonly requestType: string;
+    readonly userProfile: UserProfile;
+
+    constructor(raw: { [key: string]: any }) {
+        this.requestType = raw.requestType;
+        this.userProfile = raw.UserProfile;
+    }
 }
 
 export class UserProfile {
@@ -345,8 +352,40 @@ export class Competency {
 	//TODO
 }
 
-export class Message {
-	//TODO
+export class Message extends XApiStatement {
+    readonly thread: string;
+    readonly text: string;
+    readonly prompt: string;
+    readonly name: string;
+    readonly direct: boolean;
+    readonly access?: "private" | "team" | "class" | "all";
+    readonly type?: "written" | "table" | "checkboxes" | "radioboxes" | "buttons";
+    readonly masterThread?: string;
+
+    constructor(raw: { [key: string]: any }) {
+        super(raw);
+
+        this.thread = this.object.id;
+        if (this.thread.indexOf(PREFIX_PEBL_THREAD) != -1)
+            this.thread = this.thread.substring(PREFIX_PEBL_THREAD.length);
+
+        this.prompt = this.object.definition.name["en-US"];
+        this.name = this.actor.name;
+        this.direct = this.thread == (NAMESPACE_USER_MESSAGES + this.getActorId());
+        this.text = this.object.definition.description["en-US"];
+
+        let extensions = this.object.definition.extensions;
+        if (extensions) {
+            this.access = extensions[PREFIX_PEBL_EXTENSION + "access"];
+            this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
+            this.masterThread = extensions[PREFIX_PEBL_EXTENSION + "masterThread"];
+        }
+    }
+
+    static is(x: XApiStatement): boolean {
+        let verb = x.verb.display["en-US"];
+        return (verb == "responded") || (verb == "noted");
+    }
 }
 
 export class Activity {
@@ -432,6 +471,36 @@ export class Activity {
     }
 }
 
+export class ProgramAction extends XApiStatement {
+    readonly thread: string;
+    readonly programId: string;
+    readonly action: string;
+    readonly previousValue?: any;
+    readonly newValue?: any;
+
+    constructor(raw: { [key: string]: any }) {
+        super(raw);
+
+        this.thread = this.object.id;
+
+        let extensions = this.object.definition.extensions;
+
+        this.programId = this.object.definition.name["en-US"];
+        this.previousValue = extensions[PREFIX_PEBL_EXTENSION + "previousValue"];
+        this.newValue = extensions[PREFIX_PEBL_EXTENSION + "newValue"];
+        this.action = extensions[PREFIX_PEBL_EXTENSION + "action"];
+
+    }
+
+    static is(x: XApiStatement): boolean {
+        let verb = x.verb.display["en-US"];
+        return (verb == "programLevelUp") || (verb == "programLevelDown") || (verb == "programInvited") || (verb == "programUninvited")
+                || (verb == "programExpelled") || (verb == "programJoined") || (verb == "programActivityLaunched")
+                || (verb == "programActivityCompleted") || (verb == "programActivityTeamCompleted") || (verb == "programModified")
+                || (verb == "programDeleted") || (verb == "programCompleted") || (verb == "programCopied") || (verb == "programDiscussed")
+    }
+}
+
 export class Endpoint {
     readonly url: string;
     readonly headers: { [key: string]: any };
@@ -488,4 +557,53 @@ export class GroupRole {
 
 export class Role {
     //TODO
+}
+
+export class Asset {
+    //TODO
+    readonly id: string;
+    
+    constructor(raw: { [key: string]: any }) {
+        this.id = raw.id;
+    }
+}
+
+export class Membership extends XApiStatement {
+
+    readonly thread: string;
+    readonly membershipId: string;
+    readonly activityType: string;
+    readonly description?: string;
+    readonly role: string;
+    readonly organization?: string;
+    readonly organizationName?: string;
+
+    constructor(raw: { [key: string]: any }) {
+        super(raw);
+
+        this.thread = this.object.id;
+        if (this.thread.indexOf(PREFIX_PEBL_THREAD) != -1)
+            this.thread = this.thread.substring(PREFIX_PEBL_THREAD.length);
+
+        this.membershipId = this.object.definition.name["en-US"];
+        this.description = this.object.definition.description && this.object.definition.description["en-US"];
+
+        let extensions = this.object.definition.extensions;
+
+        this.role = extensions[PREFIX_PEBL_EXTENSION + "role"];
+        this.activityType = extensions[PREFIX_PEBL_EXTENSION + "activityType"];
+        this.organization = extensions[PREFIX_PEBL_EXTENSION + "organization"];
+        this.organizationName = extensions[PREFIX_PEBL_EXTENSION + "organizationName"];
+    }
+
+    static is(x: XApiStatement): boolean {
+        let verb = x.verb.display["en-US"];
+        return (verb == "joined");
+    }
+}
+
+export class ModuleEvent extends XApiStatement {
+    constructor(raw: { [key: string]: any }) {
+        super(raw);
+    }
 }
