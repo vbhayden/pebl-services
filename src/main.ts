@@ -7,7 +7,7 @@ import * as http from 'http';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
-import { Authentication } from './adapters';
+import { Authentication, SessionDataCache, MessageQueue } from './adapters';
 import { OpenIDConnectAuthentication } from './plugins/openidConnect';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
@@ -38,9 +38,12 @@ const redisClient = redis.createClient({
 });
 
 
-const redisCache = new RedisSessionDataCache(redisClient);
-const messageQueue = new MessageQueuePlugin({
+const redisCache: SessionDataCache = new RedisSessionDataCache(redisClient);
+const messageQueue: MessageQueue = new MessageQueuePlugin({
   client: redisClient,
+  options: {
+      password: config.redisAuth
+  },
   ns: 'rsmq',
   realtime: true
 }, redisCache);
