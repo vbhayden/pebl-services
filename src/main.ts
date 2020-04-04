@@ -8,6 +8,9 @@ import * as http from 'http';
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
 
+import { RedisSessionDataCache } from './plugins/sessionCache';
+import { MessageQueuePlugin } from './plugins/messageQueue';
+
 let express = require('express');
 
 let expressApp = express();
@@ -31,6 +34,15 @@ let RedisSessionStore = require('connect-redis')(expressSession);
 const redisClient = redis.createClient({
   password: config.redisAuth
 });
+
+const redisCache = new RedisSessionDataCache(redisClient);
+const messageQueue = new MessageQueuePlugin({
+  client: redisClient,
+  ns: 'rsmq',
+  realtime: true
+}, redisCache);
+
+messageQueue.createIncomingQueue(function(success) { });
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
@@ -117,7 +129,13 @@ expressApp.get('/', function(req: Request, res: Response) {
     if (!req.session.test) {
       req.session.test = 0
     }
-    req.session.test = req.session.test + 1
+    req.session.test = req.session.test + 1;
+    messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
+      //TODO
+    });
+    messageQueue.enqueueIncomingMessage({ message: 'incomingMessage test', sessionId: req.session.id } as any, function(success: boolean) {
+      //TODO
+    });
   }
   console.log('get route', req.originalUrl, req.session?.test);
   res.end();

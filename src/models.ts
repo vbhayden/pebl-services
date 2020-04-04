@@ -7,10 +7,14 @@ export class ServiceMessage {
   //TODO
   readonly requestType: string;
   readonly userProfile: UserProfile;
+  readonly sessionId: string;
+  readonly message: string;
 
   constructor(raw: { [key: string]: any }) {
     this.requestType = raw.requestType;
     this.userProfile = raw.UserProfile;
+    this.sessionId = raw.sessionId;
+    this.message = raw.message;
   }
 }
 
