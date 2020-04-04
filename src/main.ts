@@ -7,6 +7,8 @@ import * as http from 'http';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
+import { Authentication } from './adapters';
+import { OpenIDConnectAuthentication } from './plugins/openidConnect';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
 import { MessageQueuePlugin } from './plugins/messageQueue';
@@ -35,6 +37,7 @@ const redisClient = redis.createClient({
   password: config.redisAuth
 });
 
+
 const redisCache = new RedisSessionDataCache(redisClient);
 const messageQueue = new MessageQueuePlugin({
   client: redisClient,
@@ -43,6 +46,9 @@ const messageQueue = new MessageQueuePlugin({
 }, redisCache);
 
 messageQueue.createIncomingQueue(function(success) { });
+
+const activeAuth: Authentication = new OpenIDConnectAuthentication(config);
+
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
@@ -124,12 +130,7 @@ expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
 expressApp.get('/', function(req: Request, res: Response) {
-  console.log('get route', req.originalUrl);
   if (req.session) {
-    if (!req.session.test) {
-      req.session.test = 0
-    }
-    req.session.test = req.session.test + 1;
     messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
       //TODO
     });
@@ -137,9 +138,50 @@ expressApp.get('/', function(req: Request, res: Response) {
       //TODO
     });
   }
-  console.log('get route', req.originalUrl, req.session?.test);
-  res.end();
+  res.send("Hello World!").end();
 });
+
+
+expressApp.get('/login', function(req: Request, res: Response) {
+  if (req.session) {
+    if (!req.session.loggedIn) {
+      activeAuth.login(req, req.session, res);
+    } else {
+      res.status(200).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+});
+
+expressApp.get('/redirect', function(req: Request, res: Response) {
+  if (req.session) {
+    if (!req.session.loggedIn) {
+      activeAuth.redirect(req, req.session, res);
+    } else {
+      res.status(200).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+});
+
+expressApp.get('/logout', function(req: Request, res: Response) {
+  if (req.session) {
+    if (req.session.loggedIn) {
+      activeAuth.logout(req.session, res);
+    } else {
+      res.status(200).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+})
+
+expressApp.post('/validate', function(req: Request, res: Response) {
+  activeAuth.validate(req.body.token, res);
+})
+
 
 expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
   ws.on('message', function(msg: String) {

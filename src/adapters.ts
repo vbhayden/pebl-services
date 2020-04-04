@@ -1,3 +1,4 @@
+import { Request, Response } from 'express';
 import { ServiceMessage, UserProfile, Annotation, SharedAnnotation, XApiStatement, Message, Activity, ProgramAction, XApiQuery, Profile, Group, GroupRole, Role, Asset, Membership, ModuleEvent } from './models';
 
 export interface MessageQueue {
@@ -130,5 +131,10 @@ export interface Roles {
 }
 
 export interface Authentication {
-
+  validate(token: string, res: Response): void;
+  refresh(session: Express.Session): void;
+  login(req: Request, session: Express.Session, res: Response): void;
+  logout(session: Express.Session, res: Response): void;
+  getProfile(session: Express.Session): void;
+  redirect(req: Request, session: Express.Session, res: Response): void;
 }
