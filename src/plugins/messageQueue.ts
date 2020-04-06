@@ -1,19 +1,54 @@
 import { MessageQueue, SessionDataCache } from '../adapters';
 import { ServiceMessage } from '../models';
 
+import * as redis from 'redis';
+
 import RedisSMQ = require("rsmq");
 
 export class RedisMessageQueuePlugin implements MessageQueue {
   // private LRSPlugin: LRS;
   private SessionCachePlugin: SessionDataCache;
   private rsmq: RedisSMQ;
-  private redisConfig: { [key: string]: any };
+  private subscriber: redis.RedisClient;
 
   constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataCache) {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
-    this.redisConfig = redisConfig;
     this.SessionCachePlugin = sessionCachePlugin
+    this.subscriber = redis.createClient(redisConfig.options);
+    this.subscriber.on('message', (channel: string, message: string) => {
+      console.log('RECIEVED MESSAGE');
+      console.log(channel);
+      console.log(message);
+      if (channel === 'rsmq:rt:incomingMessages') {
+        this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
+          if ((<RedisSMQ.QueueMessage>resp).id) {
+            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+            serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
+
+            this.dispatchMessage(serviceMessage);
+          }
+        });
+      } else {
+        let sessionId = channel.replace('rsmq:rt:', '');
+        this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
+          if ((<RedisSMQ.QueueMessage>resp).id) {
+            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+            serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
+            //TODO: How to get the websocket here?
+            // this.receievedMessage(serviceMessage, (success) => {
+            //   if (success) {
+            //     //Delete the message after successful processing
+            //     this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
+            //       //TODO
+            //     });
+            //   }
+            // });
+
+          }
+        });
+      }
+    });
   }
 
   createIncomingQueue(callback: ((success: boolean) => void)): void {
@@ -22,49 +57,19 @@ export class RedisMessageQueuePlugin implements MessageQueue {
         console.log(err);
         return callback(false);
       } else if (resp === 1) {
-        const subscriber = this.redisConfig.client;
-        subscriber.subscribe('rsmq:rt:incomingMessages');
-        subscriber.on('message', (message: string) => {
-          this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
-            if ((<RedisSMQ.QueueMessage>resp).id) {
-              let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
-              serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-
-              this.dispatchMessage(serviceMessage);
-              // this.enqueueOutgoingMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message) as any, function(success: boolean) {
-              //   //TODO
-              //   if (success) {
-              //     this.rsmq.deleteMessage({ qname: 'incomingMessages', id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
-              //       //TODO
-              //     });
-              //   }
-              // });
-            }
-          });
-        })
+        this.subscriber.subscribe('rsmq:rt:incomingMessages');
         callback(true);
       }
     });
   }
 
-  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void)): void {
+  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void), receievedMessage: ((message: ServiceMessage, processed: ((success: boolean) => void)) => void)): void {
     this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
       if (err) {
         console.log(err);
         return callback(false);
       } else if (resp === 1) {
-        const subscriber = this.redisConfig.client;
-        subscriber.subscribe('rsmq:rt:' + sessionId);
-        subscriber.on('message', (message: string) => {
-          this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
-            if ((<RedisSMQ.QueueMessage>resp).id) {
-              //TODO: Send the message back down the websocket to the client
-              this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
-                //TODO
-              });
-            }
-          });
-        });
+        this.subscriber.subscribe('rsmq:rt:' + sessionId);
         callback(true);
       }
     });

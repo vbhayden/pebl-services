@@ -7,7 +7,7 @@ export interface MessageQueue {
   enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
 
   createIncomingQueue(callback: ((success: boolean) => void)): void;
-  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void)): void;
+  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void), receivedMessage: ((message: ServiceMessage, processed: ((success: boolean) => void)) => void)): void;
 
   //TODO: define this ServiceMessage
   dispatchMessage(message: ServiceMessage): void; //Get the next highest priority message from the queue

@@ -226,6 +226,9 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
 
         messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
           //TODO
+        }, function(receivedMessage: ServiceMessage, processed: ((success: boolean) => void)) {
+          ws.send(JSON.stringify(receivedMessage));
+          processed(true);
         });
         messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
           //TODO
