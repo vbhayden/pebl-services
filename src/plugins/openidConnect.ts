@@ -1,10 +1,10 @@
-import { Authentication } from '../adapters'
+import { AuthenticationManager } from '../adapters'
 
 import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client"
 let OpenIDClient = require("openid-client")
 
-export class OpenIDConnectAuthentication implements Authentication {
+export class OpenIDConnectAuthentication implements AuthenticationManager {
   private activeClient: Client | null = null;
   private config: { [key: string]: any };
 

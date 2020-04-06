@@ -94,7 +94,7 @@ export interface LRS {
   removeProfile(profile: Profile, callback: ((success: boolean) => void)): void; //Removes the specified profile from an LRS
 }
 
-export interface Groups {
+export interface GroupManager {
   addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
   deleteGroup(id: string): void; //Delete the group with the specified Id
   updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
@@ -112,7 +112,7 @@ export interface Groups {
   getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
 }
 
-export interface Users {
+export interface UserManager {
   addUserProfile(id: string, userName: string, userEmail?: string, roles?: Role[]): void; // Add a user with the specified metadata
   deleteUserProfile(id: string): void; // Delete a user with the specified id
   updateUserProfile(id: string, userName?: string, userEmail?: string): void; // Update user metadata
@@ -121,7 +121,7 @@ export interface Users {
   getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
 }
 
-export interface Roles {
+export interface RoleManager {
   addRole(id: string, name: string, permissions: string[]): void; //Add a role based on a set of permissions
   deleteRole(id: string): void; //Remove a role
   updateRole(id: string, name?: string, permissions?: string[]): void; //Updates the permission set and/or name of a role
@@ -130,7 +130,7 @@ export interface Roles {
   getRoles(callback: ((roles: Role[]) => void)): void; //Get all the roles in the system
 }
 
-export interface Authentication {
+export interface AuthenticationManager {
   validate(token: string, res: Response): void;
   refresh(session: Express.Session, res: Response): void;
   login(req: Request, session: Express.Session, res: Response): void;
@@ -139,7 +139,13 @@ export interface Authentication {
   redirect(req: Request, session: Express.Session, res: Response): void;
 }
 
-export interface MessageValidation {
-  validate(data: { [key: string]: any }): void;
+export interface ValidationManager {
+  validate(data: { [key: string]: any }): boolean;
+  register(messageTemplate: { [key: string]: any }): void;
+}
 
+export interface AuthorizationManager {
+  authorized(data: { [key: string]: any },
+    successCallback: (() => void),
+    failureCallback: ((err: string) => void)): void;
 }
