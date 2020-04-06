@@ -7,12 +7,15 @@ import * as http from 'http';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
-import { Authentication, SessionDataCache, MessageQueue } from './adapters';
+import { AuthenticationManager, AuthorizationManager, ValidationManager, SessionDataCache, MessageQueue } from './adapters';
 import { OpenIDConnectAuthentication } from './plugins/openidConnect';
 import { ServiceMessage } from './models';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
 import { RedisMessageQueuePlugin } from './plugins/messageQueue';
+import { DefaultAuthorizationManager } from './plugins/authorizationManager'
+import { DefaultValidationManager } from './plugins/validationManager'
+
 
 let express = require('express');
 
@@ -38,6 +41,8 @@ const redisClient = redis.createClient({
   password: config.redisAuth
 });
 
+const validationManager: ValidationManager = new DefaultValidationManager();
+const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager();
 const redisCache: SessionDataCache = new RedisSessionDataCache(redisClient);
 const messageQueue: MessageQueue = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -50,7 +55,7 @@ const messageQueue: MessageQueue = new RedisMessageQueuePlugin({
 
 messageQueue.createIncomingQueue(function(success) { });
 
-const activeAuth: Authentication = new OpenIDConnectAuthentication(config);
+const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config);
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
@@ -134,7 +139,7 @@ expressApp.get('/', function(req: Request, res: Response) {
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
     if (!req.session.loggedIn) {
-      activeAuth.login(req, req.session, res);
+      authenticationManager.login(req, req.session, res);
     } else {
       res.status(200).end();
     }
@@ -146,7 +151,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
 expressApp.get('/redirect', function(req: Request, res: Response) {
   if (req.session) {
     if (!req.session.loggedIn) {
-      activeAuth.redirect(req, req.session, res);
+      authenticationManager.redirect(req, req.session, res);
     } else {
       res.status(200).end();
     }
@@ -158,7 +163,7 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
     if (req.session.loggedIn) {
-      activeAuth.logout(req.session, res);
+      authenticationManager.logout(req.session, res);
     } else {
       res.status(200).end();
     }
@@ -170,7 +175,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 expressApp.get('/refresh', function(req: Request, res: Response) {
   if (req.session) {
     if (req.session.loggedIn) {
-      activeAuth.refresh(req.session, res);
+      authenticationManager.refresh(req.session, res);
     } else {
       res.status(401).end();
     }
@@ -180,10 +185,10 @@ expressApp.get('/refresh', function(req: Request, res: Response) {
 });
 
 expressApp.post('/validate', function(req: Request, res: Response) {
-  activeAuth.validate(req.body.token, res);
+  authenticationManager.validate(req.body.token, res);
 });
 
-expressApp.ws('/ws', function(ws: WebSocket, req: Request) {
+expressApp.ws('/', function(ws: WebSocket, req: Request) {
   if (req.session) {
     if (req.session.loggedIn) {
       ws.on('message', function(msg: String) {
@@ -203,6 +208,50 @@ expressApp.ws('/ws', function(ws: WebSocket, req: Request) {
       ws.terminate();
     }
   }
+});
+
+expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
+  ws.on('message', function(msg) {
+    if (req.session) {
+      //TODO: Validate & Authorize
+      if (typeof msg === 'string') {
+        let payload: any;
+        try {
+          payload = JSON.parse(msg);
+          if (!validationManager.validate(payload)) {
+            ws.send("Invalid Message");
+            return
+          }
+        } catch (e) {
+          ws.send("Invalid Message");
+          return;
+        }
+
+        authorizationManager.authorized(payload,
+          () => {
+            if ((req !== undefined) && (payload !== undefined) && (req.session !== undefined)) {
+              let serviceMessage = new ServiceMessage({
+                sessionId: req.session.id,
+                userProfile: { identity: 'test account' } as any,
+                payload: payload
+              });
+
+              messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
+                //TODO
+              });
+              messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
+                //TODO
+              });
+            }
+          },
+          (err: any) => {
+            ws.send("Invalid Message");
+          });
+      }
+    } else {
+      ws.terminate();
+    }
+  });
 });
 
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {
@@ -233,7 +282,6 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
         messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
           //TODO
         });
-
       }
     } else {
       ws.terminate();
