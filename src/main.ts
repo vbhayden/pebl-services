@@ -12,7 +12,7 @@ import { OpenIDConnectAuthentication } from './plugins/openidConnect';
 import { ServiceMessage } from './models';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
-import { MessageQueuePlugin } from './plugins/messageQueue';
+import { RedisMessageQueuePlugin } from './plugins/messageQueue';
 
 let express = require('express');
 
@@ -26,10 +26,10 @@ if (process.argv.length < 3) {
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 
-let privKey
-let cert
-let credentials: { [key: string]: any } = {}
-let httpsServer
+let privKey;
+let cert;
+let credentials: { [key: string]: any } = {};
+let httpsServer;
 
 let expressSession = require('express-session');
 let RedisSessionStore = require('connect-redis')(expressSession);
@@ -38,9 +38,8 @@ const redisClient = redis.createClient({
   password: config.redisAuth
 });
 
-
 const redisCache: SessionDataCache = new RedisSessionDataCache(redisClient);
-const messageQueue: MessageQueue = new MessageQueuePlugin({
+const messageQueue: MessageQueue = new RedisMessageQueuePlugin({
   client: redisClient,
   options: {
     password: config.redisAuth
@@ -53,7 +52,6 @@ messageQueue.createIncomingQueue(function(success) { });
 
 const activeAuth: Authentication = new OpenIDConnectAuthentication(config);
 
-
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
   cert = fs.readFileSync(config.certificatePath, "utf8");
@@ -62,7 +60,7 @@ if (config.useSSL) {
     serverName: config.serverName,
     key: privKey,
     cert: cert
-  }
+  };
 
   httpsServer = https.createServer(credentials, expressApp);
 } else {
@@ -76,10 +74,8 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 //     let slashIndex = req.path.indexOf("/", 1);
 //     if ((slashIndex != -1) && (slashIndex > 1)) {
 //         let app = req.path.substr(1, slashIndex - 1);
-
 //         let applicationParameters = lookupApplicationFromFile(app);
 //         let origin: string = <string>req.headers["origin"];
-
 //         if (applicationParameters && origin) {
 //             var domains = applicationParameters.domains
 //             var isGood = false;
@@ -89,7 +85,6 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 //                     break
 //                 }
 //             }
-
 //             if (isGood) {
 //                 res.header('Access-Control-Allow-Origin', origin);
 //                 res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
@@ -105,7 +100,6 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 redisClient.on("error", function(error) {
   console.error(error);
 });
-
 
 expressApp.use(
   expressSession({
@@ -136,7 +130,6 @@ expressApp.use(bodyParser.json());
 expressApp.get('/', function(req: Request, res: Response) {
   res.send("Hello World!").end();
 });
-
 
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
@@ -172,27 +165,44 @@ expressApp.get('/logout', function(req: Request, res: Response) {
   } else {
     res.status(503).end();
   }
-})
+});
+
+expressApp.get('/refresh', function(req: Request, res: Response) {
+  if (req.session) {
+    if (req.session.loggedIn) {
+      activeAuth.refresh(req.session, res);
+    } else {
+      res.status(401).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+});
 
 expressApp.post('/validate', function(req: Request, res: Response) {
   activeAuth.validate(req.body.token, res);
-})
+});
 
-
-expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
-  ws.on('message', function(msg) {
-    console.log(msg, req.session?.test);
-    if (req.session) {
-      if (!req.session.test) {
-        req.session.test = 0
-      }
-      req.session.test = req.session.test + 1
-      req.session.save(function(err) {
-        console.log(err);
+expressApp.ws('/ws', function(ws: WebSocket, req: Request) {
+  if (req.session) {
+    if (req.session.loggedIn) {
+      ws.on('message', function(msg: String) {
+        console.log(msg, req.session?.test);
+        if (req.session) {
+          // if (!req.session.test) {
+          //   req.session.test = 0;
+          // }
+          // req.session.test = req.session.test + 1;
+          // req.session.save(function(err) {
+          //   console.log(err);
+          // });
+        }
       });
+      ws.send("ping");
+    } else {
+      ws.terminate();
     }
-  });
-  ws.send("ping")
+  }
 });
 
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {
@@ -222,6 +232,8 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
         });
 
       }
+    } else {
+      ws.terminate();
     }
   });
 });

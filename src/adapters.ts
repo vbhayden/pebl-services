@@ -132,9 +132,14 @@ export interface Roles {
 
 export interface Authentication {
   validate(token: string, res: Response): void;
-  refresh(session: Express.Session): void;
+  refresh(session: Express.Session, res: Response): void;
   login(req: Request, session: Express.Session, res: Response): void;
   logout(session: Express.Session, res: Response): void;
   getProfile(session: Express.Session): void;
   redirect(req: Request, session: Express.Session, res: Response): void;
+}
+
+export interface MessageValidation {
+  validate(data: { [key: string]: any }): void;
+
 }

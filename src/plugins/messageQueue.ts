@@ -1,10 +1,9 @@
 import { MessageQueue, SessionDataCache } from '../adapters';
 import { ServiceMessage } from '../models';
-import * as redis from 'redis';
 
 import RedisSMQ = require("rsmq");
 
-export class MessageQueuePlugin implements MessageQueue {
+export class RedisMessageQueuePlugin implements MessageQueue {
   // private LRSPlugin: LRS;
   private SessionCachePlugin: SessionDataCache;
   private rsmq: RedisSMQ;
@@ -18,25 +17,24 @@ export class MessageQueuePlugin implements MessageQueue {
   }
 
   createIncomingQueue(callback: ((success: boolean) => void)): void {
-    let self = this;
-    this.rsmq.createQueue({ qname: 'incomingMessages' }, function(err, resp) {
+    this.rsmq.createQueue({ qname: 'incomingMessages' }, (err, resp) => {
       if (err) {
         console.log(err);
         return callback(false);
       } else if (resp === 1) {
-        const subscriber = redis.createClient(self.redisConfig.options);
+        const subscriber = this.redisConfig.client;
         subscriber.subscribe('rsmq:rt:incomingMessages');
-        subscriber.on('message', function(message) {
-          self.rsmq.receiveMessage({ qname: 'incomingMessages' }, function(err, resp) {
+        subscriber.on('message', (message: string) => {
+          this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
             if ((<RedisSMQ.QueueMessage>resp).id) {
               let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
               serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
 
-              self.dispatchMessage(serviceMessage);
-              // self.enqueueOutgoingMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message) as any, function(success: boolean) {
+              this.dispatchMessage(serviceMessage);
+              // this.enqueueOutgoingMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message) as any, function(success: boolean) {
               //   //TODO
               //   if (success) {
-              //     self.rsmq.deleteMessage({ qname: 'incomingMessages', id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
+              //     this.rsmq.deleteMessage({ qname: 'incomingMessages', id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
               //       //TODO
               //     });
               //   }
@@ -50,19 +48,18 @@ export class MessageQueuePlugin implements MessageQueue {
   }
 
   createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void)): void {
-    let self = this;
-    this.rsmq.createQueue({ qname: sessionId }, function(err, resp) {
+    this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
       if (err) {
         console.log(err);
         return callback(false);
       } else if (resp === 1) {
-        const subscriber = redis.createClient(self.redisConfig.options);
+        const subscriber = this.redisConfig.client;
         subscriber.subscribe('rsmq:rt:' + sessionId);
-        subscriber.on('message', function(message) {
-          self.rsmq.receiveMessage({ qname: sessionId }, function(err, resp) {
+        subscriber.on('message', (message: string) => {
+          this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
             if ((<RedisSMQ.QueueMessage>resp).id) {
               //TODO: Send the message back down the websocket to the client
-              self.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
+              this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
                 //TODO
               });
             }
@@ -154,14 +151,13 @@ export class MessageQueuePlugin implements MessageQueue {
 
   dispatchToCache(message: ServiceMessage): void {
     //TODO
-    let self = this;
     if (message.payload.requestType === 'getAnnotations') {
-      this.SessionCachePlugin.getAnnotations(message.userProfile, function(annotations) {
+      this.SessionCachePlugin.getAnnotations(message.userProfile, (annotations) => {
         let payload = {
           requestType: message.payload.requestType,
           data: annotations
         }
-        self.dispatchToClient(new ServiceMessage({
+        this.dispatchToClient(new ServiceMessage({
           sessionId: message.sessionId,
           userProfile: message.userProfile,
           messageId: message.messageId,
@@ -173,15 +169,14 @@ export class MessageQueuePlugin implements MessageQueue {
 
   dispatchToClient(message: ServiceMessage): void {
     //TODO
-    let self = this;
-    this.enqueueOutgoingMessage(message, function(success) {
+    this.enqueueOutgoingMessage(message, (success) => {
       if (success && message.messageId) {
-        self.rsmq.deleteMessage({ qname: 'incomingMessages', id: message.messageId }, function(err, resp) {
-        	if (err) {
-        		console.log(err);
-        	} else {
-        		console.log(resp);
-        	}
+        this.rsmq.deleteMessage({ qname: 'incomingMessages', id: message.messageId }, (err, resp) => {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log(resp);
+          }
           //TODO
         });
       }

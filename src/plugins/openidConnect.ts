@@ -33,11 +33,12 @@ export class OpenIDConnectAuthentication implements Authentication {
     }
   }
 
-  refresh(session: Express.Session): void {
+  refresh(session: Express.Session, res: Response): void {
     if (this.activeClient) {
       this.activeClient.refresh(session.activeTokens.refresh_token)
         .then(function(tokenSet) {
           session.tokenSet = tokenSet;
+          res.send(tokenSet.id_token).end();
         });
     }
   }
