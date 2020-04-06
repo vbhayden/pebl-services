@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
 import { Authentication, SessionDataCache, MessageQueue } from './adapters';
 import { OpenIDConnectAuthentication } from './plugins/openidConnect';
+import { ServiceMessage } from './models';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
 import { MessageQueuePlugin } from './plugins/messageQueue';
@@ -42,7 +43,7 @@ const redisCache: SessionDataCache = new RedisSessionDataCache(redisClient);
 const messageQueue: MessageQueue = new MessageQueuePlugin({
   client: redisClient,
   options: {
-      password: config.redisAuth
+    password: config.redisAuth
   },
   ns: 'rsmq',
   realtime: true
@@ -133,14 +134,6 @@ expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
 expressApp.get('/', function(req: Request, res: Response) {
-  if (req.session) {
-    messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
-      //TODO
-    });
-    messageQueue.enqueueIncomingMessage({ message: 'incomingMessage test', sessionId: req.session.id } as any, function(success: boolean) {
-      //TODO
-    });
-  }
   res.send("Hello World!").end();
 });
 
@@ -187,7 +180,7 @@ expressApp.post('/validate', function(req: Request, res: Response) {
 
 
 expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
-  ws.on('message', function(msg: String) {
+  ws.on('message', function(msg) {
     console.log(msg, req.session?.test);
     if (req.session) {
       if (!req.session.test) {
@@ -200,6 +193,37 @@ expressApp.ws('/echo', function(ws: WebSocket, req: Request) {
     }
   });
   ws.send("ping")
+});
+
+expressApp.ws('/message', function(ws: WebSocket, req: Request) {
+  ws.on('message', function(msg) {
+    if (req.session) {
+      //TODO: Validate & Authorize
+      if (typeof msg === 'string') {
+        let payload;
+        try {
+          payload = JSON.parse(msg);
+        } catch (e) {
+          ws.send("Invalid Message");
+          return;
+        }
+
+        let serviceMessage = new ServiceMessage({
+          sessionId: req.session.id,
+          userProfile: { identity: 'test account' } as any,
+          payload: payload
+        });
+
+        messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
+          //TODO
+        });
+        messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
+          //TODO
+        });
+
+      }
+    }
+  });
 });
 
 httpsServer.listen(config.port, function() {

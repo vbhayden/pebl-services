@@ -24,6 +24,7 @@ export class RedisSessionDataCache implements SessionDataCache {
 
   getAnnotations(userProfile: UserProfile, callback: ((stmts: Annotation[]) => void)): void {
     this.redis.hvals(this.getUserKey(userProfile.identity) + ':' + annotationsKey, function(err, result) {
+    	console.log(result);
       if (err) {
         //TODO: Handle error
         callback([]);
