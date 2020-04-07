@@ -1,17 +1,18 @@
-import { MessageQueue, SessionDataCache } from '../adapters';
-import { ServiceMessage } from '../models';
+import { MessageQueueManager } from '../interfaces/messageQueueManager';
+import { SessionDataManager } from '../interfaces/sessionDataManager';
+import { ServiceMessage } from '../models/serviceMessage';
 
 import * as redis from 'redis';
 
 import RedisSMQ = require("rsmq");
 
-export class RedisMessageQueuePlugin implements MessageQueue {
+export class RedisMessageQueuePlugin implements MessageQueueManager {
   // private LRSPlugin: LRS;
-  private SessionCachePlugin: SessionDataCache;
+  private SessionCachePlugin: SessionDataManager;
   private rsmq: RedisSMQ;
   private subscriber: redis.RedisClient;
 
-  constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataCache) {
+  constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataManager) {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
     this.SessionCachePlugin = sessionCachePlugin

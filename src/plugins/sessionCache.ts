@@ -1,6 +1,15 @@
-import { SessionDataCache } from '../adapters';
+import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { RedisClient } from 'redis';
-import { UserProfile, Annotation, SharedAnnotation, XApiStatement, Activity, ModuleEvent, Message, ProgramAction, Asset, Membership } from '../models';
+import { UserProfile } from '../models/userProfile';
+import { Annotation } from '../models/annotation';
+import { SharedAnnotation } from '../models/sharedAnnotation';
+import { XApiStatement } from '../models/xapiStatement';
+import { Message } from '../models/message';
+import { ProgramAction } from '../models/programAction';
+import { Activity } from '../models/activity';
+import { Asset } from '../models/asset';
+import { Membership } from '../models/membership';
+import { ModuleEvent } from '../models/moduleEvent';
 
 const annotationsKey = 'annotations';
 const sharedAnnotationsKey = 'sharedAnnotations';
@@ -15,7 +24,7 @@ const membershipsKey = 'memberships';
 const moduleEventsKey = 'moduleEvents';
 
 
-export class RedisSessionDataCache implements SessionDataCache {
+export class RedisSessionDataCache implements SessionDataManager {
   private redis: RedisClient;
 
   constructor(redisClient: RedisClient) {

@@ -1,6 +1,11 @@
-import { LRS } from '../adapters';
-import { XApiStatement, Endpoint, Voided, Activity, XApiQuery, Profile } from '../models';
+import { LRS } from '../interfaces/lrsManager';
 import * as network from '../utils/network';
+import { Endpoint } from '../models/endpoint';
+import { XApiStatement } from '../models/xapiStatement';
+import { Voided } from '../models/voided';
+import { XApiQuery } from '../models/xapiQuery';
+import { Activity } from '../models/activity';
+import { Profile } from '../models/profile';
 
 //TODO: Move these consts somewhere else?
 // const USER_PREFIX = "user-";

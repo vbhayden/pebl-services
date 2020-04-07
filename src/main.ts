@@ -7,15 +7,18 @@ import * as http from 'http';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
-import { AuthenticationManager, AuthorizationManager, ValidationManager, SessionDataCache, MessageQueue } from './adapters';
 import { OpenIDConnectAuthentication } from './plugins/openidConnect';
-import { ServiceMessage } from './models';
 
 import { RedisSessionDataCache } from './plugins/sessionCache';
 import { RedisMessageQueuePlugin } from './plugins/messageQueue';
 import { DefaultAuthorizationManager } from './plugins/authorizationManager'
 import { DefaultValidationManager } from './plugins/validationManager'
-
+import { ValidationManager } from "./interfaces/validationManager";
+import { AuthorizationManager } from "./interfaces/authorizationManager";
+import { SessionDataManager } from "./interfaces/sessionDataManager";
+import { MessageQueueManager } from "./interfaces/messageQueueManager";
+import { AuthenticationManager } from "./interfaces/authenticationManager";
+import { ServiceMessage } from "./models/serviceMessage";
 
 let express = require('express');
 
@@ -43,8 +46,8 @@ const redisClient = redis.createClient({
 
 const validationManager: ValidationManager = new DefaultValidationManager();
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager();
-const redisCache: SessionDataCache = new RedisSessionDataCache(redisClient);
-const messageQueue: MessageQueue = new RedisMessageQueuePlugin({
+const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
   options: {
     password: config.redisAuth
@@ -238,6 +241,9 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
 
               messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
                 //TODO
+              }, function(receivedMessage: ServiceMessage, processed: ((success: boolean) => void)) {
+                // ws.send(JSON.stringify(receivedMessage));
+                // processed(true);
               });
               messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
                 //TODO

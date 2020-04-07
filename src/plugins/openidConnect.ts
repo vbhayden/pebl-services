@@ -1,4 +1,4 @@
-import { AuthenticationManager } from '../adapters'
+import { AuthenticationManager } from '../interfaces/authenticationManager'
 
 import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client"
@@ -20,7 +20,6 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         });
       });
   }
-
 
   validate(token: string, res: Response): void {
     if (this.activeClient) {
