@@ -28,7 +28,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           if ((<RedisSMQ.QueueMessage>resp).id) {
             let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-
+            console.log('dispatching');
             this.dispatchMessage(serviceMessage);
           }
         });
@@ -205,8 +205,35 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   private dispatchCleanup(message: ServiceMessage): void {
-    let queues = this.rsmq.listQueues;
-    // let sessions = this.redisClient.scan()
+    let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
+      this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
+        cursor = result[0];
+        accumulator.push(...result[1]);
+        if (cursor !== '0') {
+          scanAll(cursor, pattern, accumulator, callback);
+        } else {
+          callback(accumulator);
+        }
+      });
+    }
+
+    this.rsmq.listQueues((err, queues) => {
+      if (err) {
+        //TODO
+      } else {
+        scanAll('0', 'sess:*', [], (sessions: string[]) => {
+          let filtered = queues.filter((queue: string) => {
+            if (queue === 'incomingMessages')
+              return false;
+            return !(sessions.includes('sess:' + queue));
+          });
+
+          for (let queue of filtered) {
+            this.removeOutgoingQueue(queue);
+          }
+        });
+      }
+    });
   }
 
   // private constructXApiQuery(message: ServiceMessage): XApiQuery {
