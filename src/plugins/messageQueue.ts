@@ -9,7 +9,7 @@ import RedisSMQ = require("rsmq");
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
   // private LRSPlugin: LRS;
-  private SessionCachePlugin: SessionDataManager;
+  private sessionCachePlugin: SessionDataManager;
   private rsmq: RedisSMQ;
   private redisClient: redis.RedisClient;
   private subscriber: redis.RedisClient;
@@ -19,7 +19,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
     this.redisClient = redisConfig.client;
-    this.SessionCachePlugin = sessionCachePlugin;
+    this.sessionCachePlugin = sessionCachePlugin;
     this.sessionSocketMap = {};
     this.subscriber = redis.createClient(redisConfig.options);
     this.subscriber.on('message', (channel: string, message: string) => {
@@ -28,7 +28,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           if ((<RedisSMQ.QueueMessage>resp).id) {
             let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-            console.log('dispatching');
             this.dispatchMessage(serviceMessage);
           }
         });
@@ -56,11 +55,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.rsmq.createQueue({ qname: 'incomingMessages' }, (err, resp) => {
       if (err) {
         console.log(err);
-        return callback(false);
+        callback(false);
       } else if (resp === 1) {
-        this.subscriber.subscribe('rsmq:rt:incomingMessages');
         callback(true);
       }
+      this.subscriber.subscribe('rsmq:rt:incomingMessages');
     });
   }
 
@@ -68,12 +67,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
       if (err) {
         console.log(err);
-        return callback(false);
+        console.log('outgoing error');
+        callback(false);
       } else if (resp === 1) {
-        this.sessionSocketMap[sessionId] = websocket;
-        this.subscriber.subscribe('rsmq:rt:' + sessionId);
+
         callback(true);
       }
+      this.sessionSocketMap[sessionId] = websocket;
+      this.subscriber.subscribe('rsmq:rt:' + sessionId);
     });
   }
 
@@ -168,19 +169,21 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToCache(message: ServiceMessage): void {
     //TODO
-    if (message.payload.requestType === 'getAnnotations') {
-      this.SessionCachePlugin.getAnnotations(message.userProfile, (annotations) => {
-        let payload = {
-          requestType: message.payload.requestType,
-          data: annotations
-        }
-        this.dispatchToClient(new ServiceMessage({
-          sessionId: message.sessionId,
-          userProfile: message.userProfile,
-          messageId: message.messageId,
-          payload: payload
-        }));
-      });
+    for (let template of this.sessionCachePlugin.getMessageTemplates()) {
+      if (message.payload.requestType === template.verb) {
+        template.action(message, (data) => {
+          let payload = {
+            requestType: message.payload.requestType,
+            data: data
+          }
+          this.dispatchToClient(new ServiceMessage({
+            sessionId: message.sessionId,
+            userProfile: message.userProfile,
+            messageId: message.messageId,
+            payload: payload
+          }));
+        });
+      }
     }
   }
 

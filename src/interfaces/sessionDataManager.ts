@@ -8,8 +8,9 @@ import { Activity } from "../models/activity";
 import { ProgramAction } from "../models/programAction";
 import { Membership } from "../models/membership";
 import { ModuleEvent } from "../models/moduleEvent";
+import { PeBLPlugin } from '../models/peblPlugin';
 
-export interface SessionDataManager {
+export interface SessionDataManager extends PeBLPlugin {
   //TODO: Are xAPI statements being stored in the cache or a different format for the data?
   // getAnnotationsForBook(userProfile: UserProfile, book: string): Annotation[]; //Retrieve annotations made by the user within a specific book
   getAnnotations(userProfile: UserProfile, callback: ((stmts: Annotation[]) => void)): void; //Retrieve annotations made by the user across all books
