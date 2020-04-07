@@ -19,6 +19,12 @@ import { SessionDataManager } from "./interfaces/sessionDataManager";
 import { MessageQueueManager } from "./interfaces/messageQueueManager";
 import { AuthenticationManager } from "./interfaces/authenticationManager";
 import { ServiceMessage } from "./models/serviceMessage";
+import { GroupManager } from "./interfaces/groupManager";
+import { DefaultGroupManager } from "./plugins/groupManager";
+import { UserManager } from "./interfaces/userManager";
+import { RoleManager } from "./interfaces/roleManager";
+import { DefaultUserManager } from "./plugins/userManager";
+import { DefaultRoleManager } from "./plugins/roleManager";
 
 let express = require('express');
 
@@ -44,8 +50,17 @@ const redisClient = redis.createClient({
   password: config.redisAuth
 });
 
+const groupManager: GroupManager = new DefaultGroupManager();
+const userManager: UserManager = new DefaultUserManager();
+const roleManager: RoleManager = new DefaultRoleManager();
 const validationManager: ValidationManager = new DefaultValidationManager();
-const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager();
+
+validationManager.register(groupManager);
+validationManager.register(roleManager);
+validationManager.register(userManager);
+
+const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
+
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,

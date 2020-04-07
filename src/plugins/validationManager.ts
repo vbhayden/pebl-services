@@ -20,7 +20,7 @@ export class DefaultValidationManager {
     return false;
   }
 
-  register(plugin: PeBLPlugin): void {
+  register<T extends PeBLPlugin>(plugin: T): void {
     let messageTemplates = plugin.getMessageTemplates();
     for (let messageTemplate of messageTemplates) {
       if (!this.registeredTemplates[messageTemplate.verb]) {

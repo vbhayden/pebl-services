@@ -1,9 +1,10 @@
 import { Group } from "../models/group";
 import { Role } from "../models/role";
 import { GroupRole } from "../models/groupRole";
+import { PeBLPlugin } from "../models/peblPlugin";
 
 
-export interface GroupManager {
+export interface GroupManager extends PeBLPlugin {
   addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
   deleteGroup(id: string): void; //Delete the group with the specified Id
   updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
