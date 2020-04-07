@@ -9,12 +9,13 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
   constructor() {
     super();
-    this.addMessageTemplate(new MessageTemplate("addGroup", {
-      "id": "string",
-      "groupName": "string",
-      "groupDescription": "string",
-      "groupAvatar": "?string"
+    this.addMessageTemplate(new MessageTemplate("addGroup", this.validateAddGroup, (payload) => {
+      this.addGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
     }));
+  }
+
+  validateAddGroup(payload: { [key: string]: any }): boolean {
+    return false;
   }
 
   addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void {

@@ -223,7 +223,7 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
           payload = JSON.parse(msg);
           if (!validationManager.validate(payload)) {
             ws.send("Invalid Message");
-            return
+            return;
           }
         } catch (e) {
           ws.send("Invalid Message");
@@ -232,23 +232,7 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
 
         authorizationManager.authorized(payload,
           () => {
-            if ((req !== undefined) && (payload !== undefined) && (req.session !== undefined)) {
-              // let serviceMessage = new ServiceMessage({
-              //   sessionId: req.session.id,
-              //   userProfile: { identity: 'test account' } as any,
-              //   payload: payload
-              // });
-
-              // messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) {
-              //   //TODO
-              // }, function(receivedMessage: ServiceMessage, processed: ((success: boolean) => void)) {
-              //   // ws.send(JSON.stringify(receivedMessage));
-              //   // processed(true);
-              // });
-              // messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
-              //   //TODO
-              // });
-            }
+            console.log("test");
           },
           (err: any) => {
             ws.send("Invalid Message");
