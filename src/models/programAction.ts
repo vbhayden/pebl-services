@@ -1,4 +1,5 @@
 import { XApiStatement } from "./xapiStatement";
+import { PREFIX_PEBL_EXTENSION } from "../utils/constants";
 
 export class ProgramAction extends XApiStatement {
   readonly thread: string;

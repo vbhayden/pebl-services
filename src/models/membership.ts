@@ -1,4 +1,5 @@
 import { XApiStatement } from "./xapiStatement";
+import { PREFIX_PEBL_THREAD, PREFIX_PEBL_EXTENSION } from "../utils/constants";
 
 export class Membership extends XApiStatement {
 

@@ -1,4 +1,5 @@
 import { XApiStatement } from "./xapiStatement";
+import { PREFIX_PEBL_THREAD } from "../utils/constants";
 
 export class Voided extends XApiStatement {
   readonly thread: string;

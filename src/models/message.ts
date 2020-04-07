@@ -1,4 +1,5 @@
 import { XApiStatement } from "./xapiStatement";
+import { PREFIX_PEBL_THREAD, PREFIX_PEBL_EXTENSION, NAMESPACE_USER_MESSAGES } from "../utils/constants";
 
 export class Message extends XApiStatement {
   readonly thread: string;
