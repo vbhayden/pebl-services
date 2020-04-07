@@ -2,6 +2,7 @@ import { MessageQueue, SessionDataCache } from '../adapters';
 import { ServiceMessage } from '../models';
 
 import * as redis from 'redis';
+import * as WebSocket from 'ws';
 
 import RedisSMQ = require("rsmq");
 
@@ -9,17 +10,18 @@ export class RedisMessageQueuePlugin implements MessageQueue {
   // private LRSPlugin: LRS;
   private SessionCachePlugin: SessionDataCache;
   private rsmq: RedisSMQ;
+  private redisClient: redis.RedisClient;
   private subscriber: redis.RedisClient;
+  private sessionSocketMap: {[key: string]: WebSocket}
 
   constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataCache) {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
-    this.SessionCachePlugin = sessionCachePlugin
+    this.redisClient = redisConfig.client;
+    this.SessionCachePlugin = sessionCachePlugin;
+    this.sessionSocketMap = {};
     this.subscriber = redis.createClient(redisConfig.options);
     this.subscriber.on('message', (channel: string, message: string) => {
-      console.log('RECIEVED MESSAGE');
-      console.log(channel);
-      console.log(message);
       if (channel === 'rsmq:rt:incomingMessages') {
         this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
           if ((<RedisSMQ.QueueMessage>resp).id) {
@@ -36,15 +38,13 @@ export class RedisMessageQueuePlugin implements MessageQueue {
             let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
             //TODO: How to get the websocket here?
-            // this.receievedMessage(serviceMessage, (success) => {
-            //   if (success) {
-            //     //Delete the message after successful processing
-            //     this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
-            //       //TODO
-            //     });
-            //   }
-            // });
-
+            let socket = this.sessionSocketMap[sessionId];
+            if (socket && socket.readyState === 1) {
+            	socket.send(JSON.stringify(serviceMessage));
+            	this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
+                  //TODO
+                });
+            }
           }
         });
       }
@@ -63,16 +63,25 @@ export class RedisMessageQueuePlugin implements MessageQueue {
     });
   }
 
-  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void), receievedMessage: ((message: ServiceMessage, processed: ((success: boolean) => void)) => void)): void {
+  createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
       if (err) {
         console.log(err);
         return callback(false);
       } else if (resp === 1) {
+      	this.sessionSocketMap[sessionId] = websocket;
         this.subscriber.subscribe('rsmq:rt:' + sessionId);
         callback(true);
       }
     });
+  }
+
+  removeOutgoingQueue(sessionId: string): void {
+  	this.subscriber.unsubscribe('rsmq:rt:' + sessionId);
+  	this.rsmq.deleteQueue({qname: sessionId}, (err, resp) => {
+  		//
+  	});
+  	delete this.sessionSocketMap[sessionId];
   }
 
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
@@ -108,6 +117,8 @@ export class RedisMessageQueuePlugin implements MessageQueue {
       this.dispatchToCache(message);
     } else if (target === 'database') {
       this.dispatchToDatabase(message);
+    } else if (target === 'cleanup') {
+      this.dispatchCleanup(message);
     }
   }
 
@@ -192,6 +203,10 @@ export class RedisMessageQueuePlugin implements MessageQueue {
     //TODO
   }
 
+  private dispatchCleanup(message: ServiceMessage): void {
+  	let queues = this.rsmq.listQueues;
+  	// let sessions = this.redisClient.scan()
+  }
 
   // private constructXApiQuery(message: ServiceMessage): XApiQuery {
   //   return new XApiQuery({

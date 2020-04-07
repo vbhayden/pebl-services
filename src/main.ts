@@ -236,7 +236,7 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
                 payload: payload
               });
 
-              messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
+              messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) {
                 //TODO
               });
               messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
@@ -273,11 +273,8 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
           payload: payload
         });
 
-        messageQueue.createOutgoingQueue(req.session.id, function(success: boolean) {
+        messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) {
           //TODO
-        }, function(receivedMessage: ServiceMessage, processed: ((success: boolean) => void)) {
-          ws.send(JSON.stringify(receivedMessage));
-          processed(true);
         });
         messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
           //TODO
@@ -287,6 +284,12 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
       ws.terminate();
     }
   });
+  
+  ws.on('close', function() {
+    if (req.session) {
+      messageQueue.removeOutgoingQueue(req.session.id);
+    }
+  })
 });
 
 httpsServer.listen(config.port, function() {
