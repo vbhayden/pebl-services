@@ -10,6 +10,8 @@ import { Activity } from '../models/activity';
 import { Asset } from '../models/asset';
 import { Membership } from '../models/membership';
 import { ModuleEvent } from '../models/moduleEvent';
+import { PeBLPlugin } from '../models/peblPlugin';
+import { MessageTemplate } from '../models/messageTemplate';
 
 const annotationsKey = 'annotations';
 const sharedAnnotationsKey = 'sharedAnnotations';
@@ -24,11 +26,22 @@ const membershipsKey = 'memberships';
 const moduleEventsKey = 'moduleEvents';
 
 
-export class RedisSessionDataCache implements SessionDataManager {
+export class RedisSessionDataCache extends PeBLPlugin implements SessionDataManager {
   private redis: RedisClient;
 
   constructor(redisClient: RedisClient) {
+    super();
     this.redis = redisClient;
+    this.addMessageTemplate(new MessageTemplate("getAnnotations", this.validateGetAnnotations, (payload, callback) => {
+      this.getAnnotations(payload.userProfile, function(annotations) {
+        if (callback)
+          callback(annotations);
+      });
+    }))
+  }
+
+  validateGetAnnotations(payoad: { [key: string]: any }): boolean {
+    return false;
   }
 
   getAnnotations(userProfile: UserProfile, callback: ((stmts: Annotation[]) => void)): void {
