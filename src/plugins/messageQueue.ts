@@ -1,26 +1,30 @@
 import { MessageQueueManager } from '../interfaces/messageQueueManager';
-import { SessionDataManager } from '../interfaces/sessionDataManager';
+// import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
 
 import RedisSMQ = require("rsmq");
+// import { MessageTemplate } from '../models/messageTemplate';
+import { PluginManager } from '../interfaces/pluginManager';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
   // private LRSPlugin: LRS;
-  private sessionCachePlugin: SessionDataManager;
+  // private sessionCachePlugin: SessionDataManager;
   private rsmq: RedisSMQ;
   private redisClient: redis.RedisClient;
   private subscriber: redis.RedisClient;
   private sessionSocketMap: { [key: string]: WebSocket }
+  private pluginManager: PluginManager;
 
-  constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataManager) {
+  constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager) {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
     this.redisClient = redisConfig.client;
-    this.sessionCachePlugin = sessionCachePlugin;
+    // this.sessionCachePlugin = sessionCachePlugin;
     this.sessionSocketMap = {};
+    this.pluginManager = pluginManager;
     this.subscriber = redis.createClient(redisConfig.options);
     this.subscriber.on('message', (channel: string, message: string) => {
       if (channel === 'rsmq:rt:incomingMessages') {
@@ -169,22 +173,29 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToCache(message: ServiceMessage): void {
     //TODO
-    for (let template of this.sessionCachePlugin.getMessageTemplates()) {
-      if (message.payload.requestType === template.verb) {
-        template.action(message, (data) => {
-          let payload = {
-            requestType: message.payload.requestType,
-            data: data
-          }
-          this.dispatchToClient(new ServiceMessage({
-            sessionId: message.sessionId,
-            userProfile: message.userProfile,
-            messageId: message.messageId,
-            payload: payload
-          }));
-        });
-      }
+    // for (let template of this.sessionCachePlugin.getMessageTemplates()) {
+    //   if (message.payload.requestType === template.verb) {
+
+    let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
+
+    if (messageTemplate) {
+      messageTemplate.action(message, (data) => {
+        let payload = {
+          requestType: message.payload.requestType,
+          data: data
+        }
+        this.dispatchToClient(new ServiceMessage({
+          sessionId: message.sessionId,
+          userProfile: message.userProfile,
+          messageId: message.messageId,
+          payload: payload
+        }));
+      });
+    } else {
+      console.log("bad message template");
     }
+    //   }
+    // }
   }
 
   dispatchToClient(message: ServiceMessage): void {

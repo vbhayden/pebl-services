@@ -25,6 +25,8 @@ import { UserManager } from "./interfaces/userManager";
 import { RoleManager } from "./interfaces/roleManager";
 import { DefaultUserManager } from "./plugins/userManager";
 import { DefaultRoleManager } from "./plugins/roleManager";
+import { PluginManager } from "./interfaces/pluginManager";
+import { DefaultPluginManager } from "./plugins/pluginManager";
 
 let express = require('express');
 
@@ -50,18 +52,18 @@ const redisClient = redis.createClient({
   password: config.redisAuth
 });
 
-const groupManager: GroupManager = new DefaultGroupManager();
-const userManager: UserManager = new DefaultUserManager();
-const roleManager: RoleManager = new DefaultRoleManager();
-const validationManager: ValidationManager = new DefaultValidationManager();
-
-validationManager.register(groupManager);
-validationManager.register(roleManager);
-validationManager.register(userManager);
-
+const pluginManager: PluginManager = new DefaultPluginManager();
+const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const groupManager: GroupManager = new DefaultGroupManager(redisCache);
+const userManager: UserManager = new DefaultUserManager(redisCache);
+const roleManager: RoleManager = new DefaultRoleManager(redisCache);
+const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
 
-const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+pluginManager.register(groupManager);
+pluginManager.register(roleManager);
+pluginManager.register(userManager);
+
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
   options: {
@@ -69,7 +71,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   },
   ns: 'rsmq',
   realtime: true
-}, redisCache);
+}, pluginManager);
 
 messageQueue.createIncomingQueue(function(success) { });
 

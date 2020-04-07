@@ -1,10 +1,11 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { RoleManager } from "../interfaces/roleManager";
 import { Role } from "../models/role";
+import { SessionDataManager } from "../interfaces/sessionDataManager";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
-  constructor() {
+  constructor(redisCache: SessionDataManager) {
     super();
   }
 

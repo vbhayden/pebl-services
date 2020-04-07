@@ -4,10 +4,11 @@ import { MessageTemplate } from "../models/messageTemplate";
 import { Group } from "../models/group";
 import { Role } from "../models/role";
 import { GroupRole } from "../models/groupRole";
+import { SessionDataManager } from "../interfaces/sessionDataManager";
 
 export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
-  constructor() {
+  constructor(redisCache: SessionDataManager) {
     super();
     this.addMessageTemplate(new MessageTemplate("addGroup", this.validateAddGroup, (payload) => {
       this.addGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);

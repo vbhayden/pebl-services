@@ -2,10 +2,11 @@ import { UserManager } from "../interfaces/userManager";
 import { UserProfile } from "../models/userProfile";
 import { Role } from "../models/role";
 import { PeBLPlugin } from "../models/peblPlugin";
+import { SessionDataManager } from "../interfaces/sessionDataManager";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
-  constructor() {
+  constructor(redisCache: SessionDataManager) {
     super();
   }
 

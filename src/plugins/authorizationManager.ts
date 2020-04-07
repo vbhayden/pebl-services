@@ -19,6 +19,9 @@ export class DefaultAuthorizationManager {
     successCallback: () => void,
     failureCallback: (err: string) => void): void {
 
+    console.log(this.groupManager);
+    console.log(this.userManager);
+    console.log(this.roleManager);
 
   }
 }
