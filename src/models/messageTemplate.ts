@@ -1,11 +1,14 @@
 export class MessageTemplate {
-  verb: string
-  [key: string]: string
+  verb: string;
+  validate: (payload: { [key: string]: any }) => boolean;
+  action: (payload: { [key: string]: any }) => void;
 
-  constructor(verb: string, fields: { [key: string]: string }) {
+  constructor(verb: string,
+    validate: (payload: { [key: string]: any }) => boolean,
+    action: (payload: { [key: string]: any }) => void) {
+
     this.verb = verb;
-    for (let key in fields) {
-      this[key] = fields[key];
-    }
+    this.validate = validate;
+    this.action = action;
   }
 }
