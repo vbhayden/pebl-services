@@ -11,14 +11,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   // private LRSPlugin: LRS;
   private SessionCachePlugin: SessionDataManager;
   private rsmq: RedisSMQ;
-  // private redisClient: redis.RedisClient;
+  private redisClient: redis.RedisClient;
   private subscriber: redis.RedisClient;
   private sessionSocketMap: { [key: string]: WebSocket }
 
   constructor(redisConfig: { [key: string]: any }, sessionCachePlugin: SessionDataManager) {
     // this.LRSPlugin = LRSPlugin;
     this.rsmq = new RedisSMQ(redisConfig);
-    // this.redisClient = redisConfig.client;
+    this.redisClient = redisConfig.client;
     this.SessionCachePlugin = sessionCachePlugin;
     this.sessionSocketMap = {};
     this.subscriber = redis.createClient(redisConfig.options);
