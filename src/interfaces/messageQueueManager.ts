@@ -1,4 +1,5 @@
 import { ServiceMessage } from "../models/serviceMessage";
+import * as WebSocket from 'ws';
 
 export interface MessageQueueManager {
   //TODO: Is there a priority for messages?
@@ -6,7 +7,9 @@ export interface MessageQueueManager {
   enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
 
   createIncomingQueue(callback: ((success: boolean) => void)): void;
-  createOutgoingQueue(sessionId: string, callback: ((success: boolean) => void), receivedMessage: ((message: ServiceMessage, processed: ((success: boolean) => void)) => void)): void;
+  createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
+
+  removeOutgoingQueue(sessionId: string): void;
 
   //TODO: define this ServiceMessage
   dispatchMessage(message: ServiceMessage): void; //Get the next highest priority message from the queue
