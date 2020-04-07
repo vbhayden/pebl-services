@@ -6,13 +6,7 @@ import { Voided } from '../models/voided';
 import { XApiQuery } from '../models/xapiQuery';
 import { Activity } from '../models/activity';
 import { Profile } from '../models/profile';
-
-//TODO: Move these consts somewhere else?
-// const USER_PREFIX = "user-";
-// const GROUP_PREFIX = "group-";
-const PEBL_THREAD_PREFIX = "peblThread://";
-// const PEBL_THREAD_USER_PREFIX = "peblThread://" + USER_PREFIX;
-// const PEBL_THREAD_GROUP_PREFIX = "peblThread://" + GROUP_PREFIX;
+import { PREFIX_PEBL_THREAD } from '../utils/constants';
 
 export class LRSPlugin implements LRS {
   private endpoint: Endpoint;
@@ -89,7 +83,7 @@ export class LRSPlugin implements LRS {
       Object.assign(headers, { "If-Match": activity.etag });
     }
 
-    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PEBL_THREAD_PREFIX + activity.type + "s") + "&profileId=" + activity.id;
+    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PREFIX_PEBL_THREAD + activity.type + "s") + "&profileId=" + activity.id;
 
     network.postData(this.endpoint.url, path, headers, jsObj, function() {
       callback(true);
@@ -99,7 +93,7 @@ export class LRSPlugin implements LRS {
   }
 
   getActivity(activityType: string, callback: ((activity?: Activity) => void), activityId?: string): void {
-    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PEBL_THREAD_PREFIX + activityType + "s") + (activityId ? ("&profileId=" + encodeURIComponent(activityId)) : '') + "&t=" + Date.now();
+    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PREFIX_PEBL_THREAD + activityType + "s") + (activityId ? ("&profileId=" + encodeURIComponent(activityId)) : '') + "&t=" + Date.now();
 
     network.getData(this.endpoint.url, path, this.endpoint.headers, function(incomingData) {
       let jsonObj = JSON.parse(incomingData);
@@ -114,7 +108,7 @@ export class LRSPlugin implements LRS {
     if (activity.etag) {
       Object.assign(headers, { "If-Match": activity.etag });
     }
-    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PEBL_THREAD_PREFIX + activity.type + "s") + "&profileId=" + activity.id;
+    let path = "data/xapi/activities/profile?activityId=" + encodeURIComponent(PREFIX_PEBL_THREAD + activity.type + "s") + "&profileId=" + activity.id;
 
     network.deleteData(this.endpoint.url, path, headers, function(incomingData) {
       callback(true);
@@ -132,7 +126,7 @@ export class LRSPlugin implements LRS {
       Object.assign(headers, { "If-Match": profile.etag });
     }
 
-    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profile.type + "s") + "&profileId=" + profile.id;
+    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PREFIX_PEBL_THREAD + profile.type + "s") + "&profileId=" + profile.id;
 
     network.postData(this.endpoint.url, path, headers, jsObj, function() {
       callback(true);
@@ -142,7 +136,7 @@ export class LRSPlugin implements LRS {
   }
 
   getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string, ): void {
-    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profileType + "s") + (profileId ? ("&profileId=" + encodeURIComponent(profileId)) : '') + "&t=" + Date.now();
+    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PREFIX_PEBL_THREAD + profileType + "s") + (profileId ? ("&profileId=" + encodeURIComponent(profileId)) : '') + "&t=" + Date.now();
 
     network.getData(this.endpoint.url, path, this.endpoint.headers, function(incomingData) {
       let jsonObj = JSON.parse(incomingData);
@@ -157,7 +151,7 @@ export class LRSPlugin implements LRS {
     if (profile.etag) {
       Object.assign(headers, { "If-Match": profile.etag });
     }
-    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PEBL_THREAD_PREFIX + profile.type + "s") + "&profileId=" + profile.id;
+    let path = "data/xapi/agents/profile?agent=" + encodeURIComponent(PREFIX_PEBL_THREAD + profile.type + "s") + "&profileId=" + profile.id;
 
     network.deleteData(this.endpoint.url, path, headers, function(incomingData) {
       callback(true);
