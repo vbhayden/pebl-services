@@ -73,16 +73,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   realtime: true
 }, pluginManager);
 
-messageQueue.createIncomingQueue((success) => { });
-messageQueue.createJobsQueue((success) => {
-  if (success) {
-      setTimeout(() => {
-        messageQueue.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "cleanup" } }), (success) => {
-          console.log("queued job");
-        });
-      }, 5000);
-  }
-});
+messageQueue.initialize();
 
 const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config);
 

@@ -3,6 +3,8 @@ import * as WebSocket from 'ws';
 
 export interface MessageQueueManager {
   //TODO: Is there a priority for messages?
+  initialize(): void;
+
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
   enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
   enqueueJobsMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
