@@ -1,3 +1,5 @@
+import { PeblData } from '../models/peblData';
+
 export class XApiStatement {
   identity?: string;
   readonly id: string;
@@ -36,5 +38,15 @@ export class XApiStatement {
       return true;
     else
       return false;
+  }
+
+  static peblToXapi(data: PeblData): XApiStatement {
+    //TODO
+    return new XApiStatement({});
+  }
+
+  static xApiToPebl(data: XApiStatement): PeblData {
+    //TODO
+    return new PeblData({});
   }
 }
