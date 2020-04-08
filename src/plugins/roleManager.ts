@@ -9,6 +9,27 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     super();
   }
 
+  validateAddRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateDeleteRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateUpdateRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateGetRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateGetRoles(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+
   //Add a role based on a set of permissions
   addRole(id: string, name: string, permissions: string[]): void {
 

@@ -1,6 +1,7 @@
 
 export interface AuthorizationManager {
-  authorized(data: { [key: string]: any },
+  authorized(username: string,
+    data: { [key: string]: any },
     successCallback: (() => void),
     failureCallback: ((err: string) => void)): void;
 }

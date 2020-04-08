@@ -15,13 +15,15 @@ export class DefaultAuthorizationManager {
     this.roleManager = roleManager;
   }
 
-  authorized(message: { [key: string]: any },
+  authorized(username: string,
+    message: { [key: string]: any },
     successCallback: () => void,
     failureCallback: (err: string) => void): void {
+
+
 
     console.log(this.groupManager);
     console.log(this.userManager);
     console.log(this.roleManager);
-
   }
 }

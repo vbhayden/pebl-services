@@ -27,6 +27,24 @@ import { DefaultUserManager } from "./plugins/userManager";
 import { DefaultRoleManager } from "./plugins/roleManager";
 import { PluginManager } from "./interfaces/pluginManager";
 import { DefaultPluginManager } from "./plugins/pluginManager";
+import { ActivityManager } from "./interfaces/activityManager";
+import { DefaultActivityManager } from "./plugins/activityManager";
+import { AnnotationManager } from "./interfaces/annotationManager";
+import { DefaultAnnotationManager } from "./plugins/annotationManager";
+import { EventManager } from "./interfaces/eventManager";
+import { DefaultEventManager } from "./plugins/eventManager";
+import { AssetManager } from "./interfaces/assetManager";
+import { DefaultAssetManager } from "./plugins/assetManager";
+import { CompetencyManager } from "./interfaces/competencyManager";
+import { DefaultCompetencyManager } from "./plugins/competencyManager";
+import { MembershipManager } from "./interfaces/membershipManager";
+import { DefaultMembershipManager } from "./plugins/membershipManager";
+import { MessageManager } from "./interfaces/messageManager";
+import { ModuleEventsManager } from "./interfaces/moduleEventsManager";
+import { DefaultModuleEventsManager } from "./plugins/moduleEventsManager";
+import { NotificationManager } from "./interfaces/notificationManager";
+import { DefaultNotificationManager } from "./plugins/notificationManager";
+import { DefaultMessageManager } from "./plugins/messageManager";
 
 let express = require('express');
 
@@ -57,12 +75,31 @@ const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const roleManager: RoleManager = new DefaultRoleManager(redisCache);
-const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
+const activityManager: ActivityManager = new DefaultActivityManager(redisCache);
+const annotationManager: AnnotationManager = new DefaultAnnotationManager(redisCache);
+const eventManager: EventManager = new DefaultEventManager(redisCache);
+const assetManager: AssetManager = new DefaultAssetManager(redisCache);
+const competencyManager: CompetencyManager = new DefaultCompetencyManager(redisCache);
+const membershipManager: MembershipManager = new DefaultMembershipManager(redisCache);
+const messageManager: MessageManager = new DefaultMessageManager(redisCache);
+const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
+const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
+
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
+const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
 
 pluginManager.register(groupManager);
 pluginManager.register(roleManager);
 pluginManager.register(userManager);
+pluginManager.register(activityManager);
+pluginManager.register(annotationManager);
+pluginManager.register(eventManager);
+pluginManager.register(assetManager);
+pluginManager.register(competencyManager);
+pluginManager.register(membershipManager);
+pluginManager.register(messageManager);
+pluginManager.register(moduleEventsManager);
+pluginManager.register(notificationManager);
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -235,19 +272,22 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
     if (req.session) {
       //TODO: Validate & Authorize
       if (typeof msg === 'string') {
+        console.log(req.session.activeTokens.id_token);
         let payload: any;
         try {
           payload = JSON.parse(msg);
-          if (!validationManager.validate(payload)) {
-            ws.send("Invalid Message");
-            return;
-          }
+          validationManager.validate(payload)
+          // if (!validationManager.validate(payload)) {
+          //   ws.send("Invalid Message");
+          //   return;
+          // }
         } catch (e) {
           ws.send("Invalid Message");
           return;
         }
 
-        authorizationManager.authorized(payload,
+        authorizationManager.authorized("",
+          payload,
           () => {
             console.log("test");
           },
