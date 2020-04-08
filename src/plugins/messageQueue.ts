@@ -5,6 +5,8 @@ import { LRS } from '../interfaces/lrsManager';
 import { XApiStatement } from '../models/xapiStatement';
 import { PeblData } from '../models/peblData';
 
+import { QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT } from '../utils/constants';
+
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
 
@@ -66,7 +68,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         if (jobMessage.type === 'jobStarted') {
           this.timeouts[jobMessage.id] = setTimeout(() => {
             this.runFailedJobs(jobMessage);
-          }, jobMessage.timeout + 30000);
+          }, jobMessage.timeout + JOB_BUFFER_TIMEOUT);
         } else if (jobMessage.type === 'jobFinished') {
           clearTimeout(this.timeouts[jobMessage.id]);
         }
@@ -96,15 +98,15 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.createJobsQueue((success) => {
       if (success) {
         setTimeout(() => {
-          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 3600000, payload: { requestType: "cleanup" } }), (success) => {
+          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: QUEUE_CLEANUP_TIMEOUT, payload: { requestType: "cleanup" } }), (success) => {
             console.log("queued job");
           });
-        }, 3600000);
+        }, QUEUE_CLEANUP_TIMEOUT);
         setTimeout(() => {
-          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "lrsSync" } }), (success) => {
+          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: LRS_SYNC_TIMEOUT, payload: { requestType: "lrsSync" } }), (success) => {
             console.log("queued LRS sync");
           });
-        }, 5000)
+        }, LRS_SYNC_TIMEOUT)
       }
     });
   }
@@ -221,7 +223,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   dispatchToLrs(message: ServiceMessage): void {
     console.log('dispatch to LRS');
 
-    this.sessionDataManager.retrieveForLrs(500, (values) => {
+    this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
         //TODO: translate pebl data to xapi statements
         let statements = values.map((value) => {

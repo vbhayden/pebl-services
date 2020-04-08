@@ -21,6 +21,12 @@ export const KEY_ASSETS = 'assets';
 export const KEY_MEMBERSHIP = 'memberships';
 export const KEY_MODULE_EVENTS = 'moduleEvents';
 
+export const LRS_SYNC_TIMEOUT = 60000;
+export const QUEUE_CLEANUP_TIMEOUT = 3600000;
+export const JOB_BUFFER_TIMEOUT = 30000;
+
+export const LRS_SYNC_LIMIT = 500;
+
 
 export function generateUserAnnotationsKey(identity: string) {
   return 'user:' + identity + ':' + KEY_ANNOTATIONS;
