@@ -11,6 +11,6 @@ export interface EventManager extends PeBLPlugin {
   // getEventsForBook(userProfile: UserProfile, book: string): XApiStatement[]; //Retrieve all events for this user made within the specific book
   getEvents(userProfile: UserProfile, callback: ((stmts: XApiStatement[]) => void)): void //Retrieve all events for this user
   // saveEventsForBook(userProfile: UserProfile, book: string, events: XApiStatement[]): void; // Store the events for this user made within the specific book
-  saveEvents(userProfile: UserProfile, events: XApiStatement[]): void; // Store the events for this user
+  saveEvents(userProfile: UserProfile, stmts: XApiStatement[]): void; // Store the events for this user
   deleteEvent(userProfile: UserProfile, id: string): void; //Removes the event with the specified id
 }

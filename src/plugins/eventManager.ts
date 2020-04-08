@@ -3,6 +3,7 @@ import { UserProfile } from "../models/userProfile";
 import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
+import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
 
 export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
@@ -31,7 +32,12 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
   //Retrieve all events for this user
   getEvents(userProfile: UserProfile, callback: ((stmts: XApiStatement[]) => void)): void {
-
+    this.sessionData.getHashValues(generateUserEventsKey(userProfile.identity),
+      (result: string[]) => {
+        callback(result.map(function(x) {
+          return new XApiStatement(JSON.parse(x));
+        }));
+      });
   }
 
 
@@ -39,14 +45,23 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
 
   // Store the events for this user
-  saveEvents(userProfile: UserProfile, events: XApiStatement[]): void {
-
+  saveEvents(userProfile: UserProfile, stmts: XApiStatement[]): void {
+    let arr = [];
+    for (let stmt of stmts) {
+      arr.push(generateEventsKey(stmt.id));
+      arr.push(JSON.stringify(stmt));
+    }
+    this.sessionData.setHashValues(generateUserEventsKey(userProfile.identity), arr);
   }
 
   //Removes the event with the specified id
-  deleteEvent(userProfile: UserProfile, idt: string): void {
-
+  deleteEvent(userProfile: UserProfile, id: string): void {
+    this.sessionData.deleteHashValue(generateUserEventsKey(userProfile.identity),
+      generateEventsKey(id),
+      (result: boolean) => {
+        if (!result) {
+          console.log("failed to delete event", id);
+        }
+      });
   }
-
-
 }

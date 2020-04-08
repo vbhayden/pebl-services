@@ -33,6 +33,18 @@ import { AnnotationManager } from "./interfaces/annotationManager";
 import { DefaultAnnotationManager } from "./plugins/annotationManager";
 import { EventManager } from "./interfaces/eventManager";
 import { DefaultEventManager } from "./plugins/eventManager";
+import { AssetManager } from "./interfaces/assetManager";
+import { DefaultAssetManager } from "./plugins/assetManager";
+import { CompetencyManager } from "./interfaces/competencyManager";
+import { DefaultCompetencyManager } from "./plugins/competencyManager";
+import { MembershipManager } from "./interfaces/membershipManager";
+import { DefaultMembershipManager } from "./plugins/membershipManager";
+import { MessageManager } from "./interfaces/messageManager";
+import { ModuleEventsManager } from "./interfaces/moduleEventsManager";
+import { DefaultModuleEventsManager } from "./plugins/moduleEventsManager";
+import { NotificationManager } from "./interfaces/notificationManager";
+import { DefaultNotificationManager } from "./plugins/notificationManager";
+import { DefaultMessageManager } from "./plugins/messageManager";
 
 let express = require('express');
 
@@ -66,7 +78,12 @@ const roleManager: RoleManager = new DefaultRoleManager(redisCache);
 const activityManager: ActivityManager = new DefaultActivityManager(redisCache);
 const annotationManager: AnnotationManager = new DefaultAnnotationManager(redisCache);
 const eventManager: EventManager = new DefaultEventManager(redisCache);
-
+const assetManager: AssetManager = new DefaultAssetManager(redisCache);
+const competencyManager: CompetencyManager = new DefaultCompetencyManager(redisCache);
+const membershipManager: MembershipManager = new DefaultMembershipManager(redisCache);
+const messageManager: MessageManager = new DefaultMessageManager(redisCache);
+const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
+const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
@@ -77,6 +94,12 @@ pluginManager.register(userManager);
 pluginManager.register(activityManager);
 pluginManager.register(annotationManager);
 pluginManager.register(eventManager);
+pluginManager.register(assetManager);
+pluginManager.register(competencyManager);
+pluginManager.register(membershipManager);
+pluginManager.register(messageManager);
+pluginManager.register(moduleEventsManager);
+pluginManager.register(notificationManager);
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -90,11 +113,11 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
 messageQueue.createIncomingQueue((success) => { });
 messageQueue.createJobsQueue((success) => {
   if (success) {
-      setTimeout(() => {
-        messageQueue.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "cleanup" } }), (success) => {
-          console.log("queued job");
-        });
-      }, 5000);
+    setTimeout(() => {
+      messageQueue.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "cleanup" } }), (success) => {
+        console.log("queued job");
+      });
+    }, 5000);
   }
 });
 
