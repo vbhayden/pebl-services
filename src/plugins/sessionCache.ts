@@ -33,4 +33,22 @@ export class RedisSessionDataCache implements SessionDataManager {
       }
     });
   }
+
+  queueForLrs(value: string): void {
+    this.redis.rpush('outgoingXapi', value);
+  }
+
+  retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
+    let transaction = this.redis.multi();
+    transaction.lrange('outgoingXapi', 0, count, (err, resp) => {
+      if (err) {
+        console.log(err);
+        callback(undefined);
+      } else {
+        callback(resp);
+      }
+    });
+    transaction.ltrim('outgoingXapi', count + 1, -1);
+    transaction.exec();
+  }
 }
