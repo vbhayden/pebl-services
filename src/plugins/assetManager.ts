@@ -3,6 +3,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { AssetManager } from "../interfaces/assetManager";
 import { Asset } from "../models/asset";
 import { generateUserAssetKey, generateAssetsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
   private sessionData: SessionDataManager;
@@ -10,7 +11,23 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("getAssets",
+      this.validateGetAssets,
+      (payload: { [key: string]: any }) => {
+        this.getAssets(payload.identity, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("saveAssets",
+      this.validateSaveAssets,
+      (payload: { [key: string]: any }) => {
+        this.saveAssets(payload.identity, payload.assets);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteAsset",
+      this.validateDeleteAsset,
+      (payload: { [key: string]: any }) => {
+        this.deleteAsset(payload.identity, payload.id);
+      }));
   }
 
   validateGetAssets(payload: { [key: string]: any }): boolean {

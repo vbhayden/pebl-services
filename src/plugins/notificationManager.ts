@@ -3,6 +3,7 @@ import { NotificationManager } from "../interfaces/notificationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement } from "../models/xapiStatement";
 import { generateUserNotificationsKey, generateNotificationsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
   private sessionData: SessionDataManager;
@@ -10,7 +11,23 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("getNotifications",
+      this.validateGetNotifications,
+      (payload) => {
+        this.getNotifications(payload.identity, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("saveNotifications",
+      this.validateSaveNotifications,
+      (payload) => {
+        this.saveNotifications(payload.identity, payload.notifications);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteNotification",
+      this.validateDeleteNotification,
+      (payload) => {
+        this.deleteNotification(payload.identity, payload.id);
+      }));
   }
 
   validateGetNotifications(payload: { [key: string]: any }): boolean {
@@ -21,7 +38,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     return false;
   }
 
-  validateDeleteNotifications(payload: { [key: string]: any }): boolean {
+  validateDeleteNotification(payload: { [key: string]: any }): boolean {
     return false;
   }
 

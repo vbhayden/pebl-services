@@ -3,6 +3,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { ModuleEventsManager } from "../interfaces/moduleEventsManager";
 import { ModuleEvent } from "../models/moduleEvent";
 import { generateUserModuleEventsKey, generateModuleEventsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEventsManager {
   private sessionData: SessionDataManager;
@@ -10,7 +11,24 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    console.log(this.sessionData);
+
+    this.addMessageTemplate(new MessageTemplate("getModuleEvents",
+      this.validateGetModuleEvents,
+      (payload) => {
+        this.getModuleEvents(payload.identity, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
+      this.validateSaveModuleEvents,
+      (payload) => {
+        this.saveModuleEvents(payload.identity, payload.events);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
+      this.validateDeleteModuleEvent,
+      (payload) => {
+        this.deleteModuleEvent(payload.identity, payload.id);
+      }));
   }
 
   validateGetModuleEvents(payload: { [key: string]: any }): boolean {

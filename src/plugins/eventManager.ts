@@ -3,6 +3,7 @@ import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
@@ -11,7 +12,23 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("getEvents",
+      this.validateGetEvents,
+      (payload: { [key: string]: any }) => {
+        this.getEvents(payload.identity, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("saveEvents",
+      this.validateSaveEvents,
+      (payload: { [key: string]: any }) => {
+        this.saveEvents(payload.identity, payload.stmts);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteEvent",
+      this.validateDeleteEvent,
+      (payload: { [key: string]: any }) => {
+        this.deleteEvent(payload.identity, payload.id);
+      }));
   }
 
   validateGetEvents(payload: { [key: string]: any }): boolean {

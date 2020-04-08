@@ -25,24 +25,52 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
         this.deleteGroup(payload.id);
       }));
 
+    this.addMessageTemplate(new MessageTemplate("updateGroup",
+      this.validateUpdateGroup,
+      (payload) => {
+        this.updateGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
+      }));
 
+    this.addMessageTemplate(new MessageTemplate("addGroupMember",
+      this.validateAddGroupMember,
+      (payload) => {
+        this.addGroupMember(payload.id, payload.userId, payload.role);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteGroupMember",
+      this.validateDeleteGroupMember,
+      (payload) => {
+        this.deleteGroupMember(payload.id, payload.userId);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("updateGroupMember",
+      this.validateUpdateGroupMember,
+      (payload) => {
+        this.updateGroupMember(payload.id, payload.userId, payload.role);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("getGroups",
+      this.validateGetGroups,
+      (payload) => {
+        this.getGroups(payload.callback);
+      }));
   }
 
   validateAddGroup(payload: { [key: string]: any }): boolean {
-    if (!(payload.id instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupName instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupDescription instanceof String)) {
-      return false;
-    }
-    if (payload.groupAvatar) {
-      if (!(payload.groupAvatar instanceof String)) {
-        return false;
-      }
-    }
+    // if (!(payload.id instanceof String)) {
+    //   return false;
+    // }
+    // if (!(payload.groupName instanceof String)) {
+    //   return false;
+    // }
+    // if (!(payload.groupDescription instanceof String)) {
+    //   return false;
+    // }
+    // if (payload.groupAvatar) {
+    //   if (!(payload.groupAvatar instanceof String)) {
+    //     return false;
+    //   }
+    // }
 
     return true;
   }

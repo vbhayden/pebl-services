@@ -3,6 +3,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MembershipManager } from "../interfaces/membershipManager";
 import { Membership } from "../models/membership";
 import { generateUserMembershipKey, generateMembershipsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultMembershipManager extends PeBLPlugin implements MembershipManager {
   private sessionData: SessionDataManager;
@@ -10,7 +11,23 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("getMemberships",
+      this.validateGetMemberships,
+      (payload) => {
+        this.getMemberships(payload.identity, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("saveMemberships",
+      this.validateSaveMemberships,
+      (payload) => {
+        this.saveMemberships(payload.identity, payload.memberships);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteMembership",
+      this.validateDeleteMembership,
+      (payload) => {
+        this.deleteMebership(payload.identity, payload.id);
+      }));
   }
 
   validateGetMemberships(payload: { [key: string]: any }): boolean {

@@ -6,7 +6,7 @@ export interface NotificationManager extends PeBLPlugin {
 
   validateGetNotifications(payload: { [key: string]: any }): boolean;
   validateSaveNotifications(payload: { [key: string]: any }): boolean;
-  validateDeleteNotifications(payload: { [key: string]: any }): boolean;
+  validateDeleteNotification(payload: { [key: string]: any }): boolean;
 
   getNotifications(identity: string, callback: ((notifications: XApiStatement[]) => void)): void; //Retrieves all notifications for this user
   // getNotificationsForBook(identity: string, book: string): Notification[]; //Retrieves all notifications for the specified book for this user

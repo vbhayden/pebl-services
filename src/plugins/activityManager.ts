@@ -50,41 +50,32 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
   }
 
   validateGetActivities(payload: { [key: string]: any }): boolean {
-    if (!(payload.identity instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupName instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupDescription instanceof String)) {
-      return false;
-    }
-    if (payload.groupAvatar) {
-      if (!(payload.groupAvatar instanceof String)) {
-        return false;
-      }
-    }
-
+    //TODO
     return false;
   }
 
   validateSaveActivities(payload: { [key: string]: any }): boolean {
+    //TODO
     return false;
   }
 
   validateDeleteActivity(payload: { [key: string]: any }): boolean {
+    //TODO
     return false;
   }
 
   validateGetActivityEvents(payload: { [key: string]: any }): boolean {
+    //TODO
     return false;
   }
 
   validateSaveActivityEvents(payload: { [key: string]: any }): boolean {
+    //TODO
     return false;
   }
 
   validateDeleteActivityEvent(payload: { [key: string]: any }): boolean {
+    //TODO
     return false;
   }
 

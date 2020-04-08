@@ -2,11 +2,39 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { RoleManager } from "../interfaces/roleManager";
 import { Role } from "../models/role";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
-  constructor(redisCache: SessionDataManager) {
+  private sessionData: SessionDataManager;
+
+  constructor(sessionData: SessionDataManager) {
     super();
+    this.sessionData = sessionData;
+    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("addRole",
+      this.validateAddRole,
+      (payload) => {
+        this.addRole(payload.id, payload.name, payload.permissions);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("deleteRole",
+      this.validateDeleteRole,
+      (payload) => {
+        this.deleteRole(payload.id);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("updateRole",
+      this.validateUpdateRole,
+      (payload) => {
+        this.updateRole(payload.id, payload.name, payload.permissions);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("getRoles",
+      this.validateGetRoles,
+      (payload) => {
+        this.getRoles(payload.callback);
+      }));
   }
 
   validateAddRole(payload: { [key: string]: any }): boolean {

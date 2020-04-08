@@ -3,12 +3,45 @@ import { UserProfile } from "../models/userProfile";
 import { Role } from "../models/role";
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
+  private sessionData: SessionDataManager;
+
   constructor(redisCache: SessionDataManager) {
     super();
+    this.sessionData = redisCache;
+    console.log(this.sessionData);
+    this.addMessageTemplate(new MessageTemplate("addUserProfile",
+      this.validateAddUserProfile,
+      (payload) => {
+        this.addUserProfile(payload.id, payload.userName, payload.userEmail, payload.roles);
+      }));
 
+    this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
+      this.validateDeleteUserProfile,
+      (payload) => {
+        this.deleteUserProfile(payload.id);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("updateUserProfile",
+      this.validateUpdateUserProfile,
+      (payload) => {
+        this.updateUserProfile(payload.id, payload.userName, payload.userEmail);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("getUserProfile",
+      this.validateGetUserProfile,
+      (payload) => {
+        this.getUserProfile(payload.id, payload.callback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("getUsers",
+      this.validateGetUsers,
+      (payload) => {
+        this.getUsers(payload.callback);
+      }));
   }
 
   validateAddUserProfile(payload: { [key: string]: any }): boolean {
