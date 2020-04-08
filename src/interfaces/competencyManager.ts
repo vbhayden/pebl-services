@@ -7,7 +7,7 @@ export interface CompetencyManager extends PeBLPlugin {
   validateSaveCompetencies(payload: { [key: string]: any }): boolean;
   validateDeleteCompetencies(payload: { [key: string]: any }): boolean;
 
-  // getCompetencies(userProfile: UserProfile, callback: ((competencies: Competency[]) => void)): void; //Retrueve competencies for this user
-  // saveCompetencies(userProfile: UserProfile, competencies: Competency[]): void; //Store competencies for this user
-  // deleteCompetency(userProfile: UserProfile, id: string): void; //Removes the competency with the specified id
+  // getCompetencies(identity: string, callback: ((competencies: Competency[]) => void)): void; //Retrueve competencies for this user
+  // saveCompetencies(identity: string, competencies: Competency[]): void; //Store competencies for this user
+  // deleteCompetency(identity: string, id: string): void; //Removes the competency with the specified id
 }

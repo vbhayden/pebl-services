@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { AnnotationManager } from "../interfaces/annotationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { UserProfile } from "../models/userProfile";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
 import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateUserSharedAnnotationsKey } from "../utils/constants";
@@ -41,10 +40,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //TODO: Are xAPI statements being stored in the cache or a different format for the data?
-  // getAnnotationsForBook(userProfile: UserProfile, book: string): Annotation[]; //Retrieve annotations made by the user within a specific book
+  // getAnnotationsForBook(identity: string, book: string): Annotation[]; //Retrieve annotations made by the user within a specific book
   //Retrieve annotations made by the user across all books
-  getAnnotations(userProfile: UserProfile, callback: ((stmts: Annotation[]) => void)): void {
-    this.sessionData.getHashValues(generateUserAnnotationsKey(userProfile.identity),
+  getAnnotations(identity: string, callback: ((stmts: Annotation[]) => void)): void {
+    this.sessionData.getHashValues(generateUserAnnotationsKey(identity),
       (result: string[]) => {
         console.log(result);
         callback(result.map(function(x) {
@@ -54,20 +53,20 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Store annotations made by the user within the specific book
-  saveAnnotations(userProfile: UserProfile, stmts: Annotation[]): void {
+  saveAnnotations(identity: string, stmts: Annotation[]): void {
     let arr = [];
     for (let stmt of stmts) {
       arr.push(generateAnnotationsKey(stmt.id));
       arr.push(JSON.stringify(stmt));
     }
-    this.sessionData.setHashValues(generateUserAnnotationsKey(userProfile.identity), arr);
+    this.sessionData.setHashValues(generateUserAnnotationsKey(identity), arr);
   }
 
-  // getSharedAnnotationsForBook(userProfile: UserProfile, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
+  // getSharedAnnotationsForBook(identity: string, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
 
   //Retrieve shared annotations visible to the user made across all books
-  getSharedAnnotations(userProfile: UserProfile, callback: ((stmts: SharedAnnotation[]) => void)): void {
-    this.sessionData.getHashValues(generateUserSharedAnnotationsKey(userProfile.identity),
+  getSharedAnnotations(identity: string, callback: ((stmts: SharedAnnotation[]) => void)): void {
+    this.sessionData.getHashValues(generateUserSharedAnnotationsKey(identity),
       (result: string[]) => {
         callback(result.map(function(x) {
           return new SharedAnnotation(JSON.parse(x));
@@ -76,18 +75,18 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Store shared annotations visible to the user made within the specific book
-  saveSharedAnnotations(userProfile: UserProfile, stmts: SharedAnnotation[]): void {
+  saveSharedAnnotations(identity: string, stmts: SharedAnnotation[]): void {
     let arr = [];
     for (let stmt of stmts) {
       arr.push(generateSharedAnnotationsKey(stmt.id));
       arr.push(JSON.stringify(stmt));
     }
-    this.sessionData.setHashValues(generateUserSharedAnnotationsKey(userProfile.identity), arr);
+    this.sessionData.setHashValues(generateUserSharedAnnotationsKey(identity), arr);
   }
 
   //Removes the annotation with the specific id    
-  deleteAnnotation(userProfile: UserProfile, id: string): void {
-    this.sessionData.deleteHashValue(generateUserAnnotationsKey(userProfile.identity),
+  deleteAnnotation(identity: string, id: string): void {
+    this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
       generateAnnotationsKey(id),
       (result: boolean) => {
         if (!result) {
@@ -97,8 +96,8 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Removes the shared annotation with the specific id
-  deleteSharedAnnotation(userProfile: UserProfile, id: string): void {
-    this.sessionData.deleteHashValue(generateSharedAnnotationsKey(userProfile.identity),
+  deleteSharedAnnotation(identity: string, id: string): void {
+    this.sessionData.deleteHashValue(generateSharedAnnotationsKey(identity),
       generateSharedAnnotationsKey(id),
       (result: boolean) => {
         if (!result) {

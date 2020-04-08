@@ -62,11 +62,6 @@ export function generateUserMembershipKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_MEMBERSHIP;
 }
 
-
-// export function getUserKey(identity: string): string {
-//   return + identity;
-// }
-
 export function generateAnnotationsKey(id: string): string {
   return 'annotation:' + id;
 }

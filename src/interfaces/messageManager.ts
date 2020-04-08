@@ -1,5 +1,4 @@
 import { Message } from "../models/message";
-import { UserProfile } from "../models/userProfile";
 import { PeBLPlugin } from "../models/peblPlugin";
 
 export interface MessageManager extends PeBLPlugin {
@@ -8,10 +7,10 @@ export interface MessageManager extends PeBLPlugin {
   validateSaveMessages(payload: { [key: string]: any }): boolean;
   validateDeleteMessages(payload: { [key: string]: any }): boolean;
 
-  getMessages(userProfile: UserProfile, callback: ((messages: Message[]) => void)): void;
+  getMessages(identity: string, callback: ((messages: Message[]) => void)): void;
 
-  saveMessages(userProfile: UserProfile, messages: Message[]): void;
+  saveMessages(identity: string, messages: Message[]): void;
 
-  deleteMessage(userProfile: UserProfile, id: string): void;
+  deleteMessage(identity: string, id: string): void;
 
 }

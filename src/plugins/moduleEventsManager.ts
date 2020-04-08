@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { ModuleEventsManager } from "../interfaces/moduleEventsManager";
-import { UserProfile } from "../models/userProfile";
 import { ModuleEvent } from "../models/moduleEvent";
 import { generateUserModuleEventsKey, generateModuleEventsKey } from "../utils/constants";
 
@@ -26,8 +25,8 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     return false;
   }
 
-  getModuleEvents(userProfile: UserProfile, callback: ((events: ModuleEvent[]) => void)): void {
-    this.sessionData.getHashValues(generateUserModuleEventsKey(userProfile.identity),
+  getModuleEvents(identity: string, callback: ((events: ModuleEvent[]) => void)): void {
+    this.sessionData.getHashValues(generateUserModuleEventsKey(identity),
       (result: string[]) => {
         callback(result.map(function(x) {
           return new ModuleEvent(JSON.parse(x));
@@ -35,17 +34,17 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
       });
   }
 
-  saveModuleEvents(userProfile: UserProfile, events: ModuleEvent[]): void {
+  saveModuleEvents(identity: string, events: ModuleEvent[]): void {
     let arr = [];
     for (let event of events) {
       arr.push(generateModuleEventsKey(event.id));
       arr.push(JSON.stringify(event));
     }
-    this.sessionData.setHashValues(generateUserModuleEventsKey(userProfile.identity), arr);
+    this.sessionData.setHashValues(generateUserModuleEventsKey(identity), arr);
   }
 
-  deleteModuleEvent(userProfile: UserProfile, id: string): void {
-    this.sessionData.deleteHashValue(generateUserModuleEventsKey(userProfile.identity),
+  deleteModuleEvent(identity: string, id: string): void {
+    this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity),
       generateModuleEventsKey(id), (result: boolean) => {
         if (!result) {
           console.log("failed to remove module event", id);

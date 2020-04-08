@@ -1,5 +1,4 @@
 import { PeBLPlugin } from "../models/peblPlugin";
-import { UserProfile } from "../models/userProfile";
 import { ModuleEvent } from "../models/moduleEvent";
 
 export interface ModuleEventsManager extends PeBLPlugin {
@@ -8,7 +7,7 @@ export interface ModuleEventsManager extends PeBLPlugin {
   validateSaveModuleEvents(payload: { [key: string]: any }): boolean;
   validateDeleteModuleEvent(payload: { [key: string]: any }): boolean;
 
-  getModuleEvents(userProfile: UserProfile, callback: ((events: ModuleEvent[]) => void)): void;
-  saveModuleEvents(userProfile: UserProfile, events: ModuleEvent[]): void;
-  deleteModuleEvent(userProfile: UserProfile, id: string): void;
+  getModuleEvents(identity: string, callback: ((events: ModuleEvent[]) => void)): void;
+  saveModuleEvents(identity: string, events: ModuleEvent[]): void;
+  deleteModuleEvent(identity: string, id: string): void;
 }
