@@ -1,8 +1,6 @@
 import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { RedisClient } from 'redis';
 import { UserProfile } from '../models/userProfile';
-import { Annotation } from '../models/annotation';
-import { SharedAnnotation } from '../models/sharedAnnotation';
 import { XApiStatement } from '../models/xapiStatement';
 import { Message } from '../models/message';
 import { ProgramAction } from '../models/programAction';
@@ -10,11 +8,9 @@ import { Activity } from '../models/activity';
 import { Asset } from '../models/asset';
 import { Membership } from '../models/membership';
 import { ModuleEvent } from '../models/moduleEvent';
-import { PeBLPlugin } from '../models/peblPlugin';
-import { MessageTemplate } from '../models/messageTemplate';
 
-const annotationsKey = 'annotations';
-const sharedAnnotationsKey = 'sharedAnnotations';
+// const annotationsKey = 'annotations';
+// const sharedAnnotationsKey = 'sharedAnnotations';
 const eventsKey = 'events';
 // const competenciesKey = 'competencies';
 const messagesKey = 'messages';
@@ -26,85 +22,35 @@ const membershipsKey = 'memberships';
 const moduleEventsKey = 'moduleEvents';
 
 
-export class RedisSessionDataCache extends PeBLPlugin implements SessionDataManager {
+export class RedisSessionDataCache implements SessionDataManager {
   private redis: RedisClient;
 
   constructor(redisClient: RedisClient) {
-    super();
     this.redis = redisClient;
-    this.addMessageTemplate(new MessageTemplate("getAnnotations", this.validateGetAnnotations, (payload, callback) => {
-      this.getAnnotations(payload.userProfile, function(annotations) {
-        if (callback)
-          callback(annotations);
-      });
-    }))
   }
 
-  validateGetAnnotations(payoad: { [key: string]: any }): boolean {
-    return false;
+  setHashValues(key: string, values: string[]): void {
+    this.redis.hmset(key, values);
   }
 
-  getAnnotations(userProfile: UserProfile, callback: ((stmts: Annotation[]) => void)): void {
-    this.redis.hvals(this.getUserKey(userProfile.identity) + ':' + annotationsKey, function(err, result) {
-      console.log(result);
+  getHashValues(key: string, callback: (data: string[]) => void): void {
+    this.redis.hvals(key, (err, result) => {
       if (err) {
-        //TODO: Handle error
+        console.log(err);
         callback([]);
       } else {
-        callback(result.map(function(x) {
-          return new Annotation(JSON.parse(x));
-        }));
+        callback(result);
       }
     });
   }
 
-  saveAnnotations(userProfile: UserProfile, stmts: Annotation[]): void {
-    let arr = [];
-    for (let stmt of stmts) {
-      arr.push(this.getAnnotationsKey(stmt.id));
-      arr.push(JSON.stringify(stmt));
-    }
-    this.redis.hmset(this.getUserKey(userProfile.identity) + ':' + annotationsKey, arr);
-  }
-
-  removeAnnotation(userProfile: UserProfile, id: string): void {
-    this.redis.hdel(this.getUserKey(userProfile.identity) + ':' + annotationsKey, this.getAnnotationsKey(id), function(err, result) {
+  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
+    this.redis.hdel(key, field, (err, result) => {
       if (err) {
-        //TODO
+        console.log(err);
+        callback(false);
       } else {
-        //TODO
-      }
-    });
-  }
-
-  getSharedAnnotations(userProfile: UserProfile, callback: ((stmts: SharedAnnotation[]) => void)): void {
-    this.redis.hvals(this.getUserKey(userProfile.identity) + ':' + sharedAnnotationsKey, function(err, result) {
-      if (err) {
-        //TODO: Handle error
-        callback([]);
-      } else {
-        callback(result.map(function(x) {
-          return new SharedAnnotation(JSON.parse(x));
-        }));
-      }
-    })
-  }
-
-  saveSharedAnnotations(userProfile: UserProfile, stmts: SharedAnnotation[]): void {
-    let arr = [];
-    for (let stmt of stmts) {
-      arr.push(this.getSharedAnnotationsKey(stmt.id));
-      arr.push(JSON.stringify(stmt));
-    }
-    this.redis.hmset(this.getUserKey(userProfile.identity) + ':' + sharedAnnotationsKey, arr);
-  }
-
-  removeSharedAnnotation(userProfile: UserProfile, id: string): void {
-    this.redis.hdel(this.getUserKey(userProfile.identity) + ':' + sharedAnnotationsKey, this.getSharedAnnotationsKey(id), function(err, result) {
-      if (err) {
-        //TODO
-      } else {
-        //TODO
+        callback(true);
       }
     });
   }
@@ -433,13 +379,9 @@ export class RedisSessionDataCache extends PeBLPlugin implements SessionDataMana
     return 'event:' + id;
   }
 
-  private getSharedAnnotationsKey(id: string): string {
-    return 'sharedAnnotation:' + id;
-  }
-
-  private getAnnotationsKey(id: string): string {
-    return 'annotation:' + id;
-  }
+  // private getSharedAnnotationsKey(id: string): string {
+  //   return 'sharedAnnotation:' + id;
+  // }
 
   private getUserKey(identity: string): string {
     return 'user:' + identity;

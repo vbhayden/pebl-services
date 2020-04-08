@@ -27,6 +27,12 @@ import { DefaultUserManager } from "./plugins/userManager";
 import { DefaultRoleManager } from "./plugins/roleManager";
 import { PluginManager } from "./interfaces/pluginManager";
 import { DefaultPluginManager } from "./plugins/pluginManager";
+import { ActivityManager } from "./interfaces/activityManager";
+import { DefaultActivityManager } from "./plugins/activityManager";
+import { AnnotationManager } from "./interfaces/annotationManager";
+import { DefaultAnnotationManager } from "./plugins/annotationManager";
+import { EventManager } from "./interfaces/eventManager";
+import { DefaultEventManager } from "./plugins/eventManager";
 
 let express = require('express');
 
@@ -57,12 +63,20 @@ const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const roleManager: RoleManager = new DefaultRoleManager(redisCache);
-const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
+const activityManager: ActivityManager = new DefaultActivityManager(redisCache);
+const annotationManager: AnnotationManager = new DefaultAnnotationManager(redisCache);
+const eventManager: EventManager = new DefaultEventManager(redisCache);
+
+
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
+const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
 
 pluginManager.register(groupManager);
 pluginManager.register(roleManager);
 pluginManager.register(userManager);
+pluginManager.register(activityManager);
+pluginManager.register(annotationManager);
+pluginManager.register(eventManager);
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -235,19 +249,22 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
     if (req.session) {
       //TODO: Validate & Authorize
       if (typeof msg === 'string') {
+        console.log(req.session.activeTokens.id_token);
         let payload: any;
         try {
           payload = JSON.parse(msg);
-          if (!validationManager.validate(payload)) {
-            ws.send("Invalid Message");
-            return;
-          }
+          validationManager.validate(payload)
+          // if (!validationManager.validate(payload)) {
+          //   ws.send("Invalid Message");
+          //   return;
+          // }
         } catch (e) {
           ws.send("Invalid Message");
           return;
         }
 
-        authorizationManager.authorized(payload,
+        authorizationManager.authorized("",
+          payload,
           () => {
             console.log("test");
           },

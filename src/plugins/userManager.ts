@@ -8,7 +8,29 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   constructor(redisCache: SessionDataManager) {
     super();
+
   }
+
+  validateAddUserProfile(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateDeleteUserProfile(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateUpdateUserProfile(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateGetUserProfile(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateGetUsers(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
 
   // Add a user with the specified metadata    
   addUserProfile(id: string, userName: string, userEmail?: string, roles?: Role[]): void {

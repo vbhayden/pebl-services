@@ -1,10 +1,21 @@
 import { Group } from "../models/group";
-import { Role } from "../models/role";
-import { GroupRole } from "../models/groupRole";
+// import { Role } from "../models/role";
+// import { GroupRole } from "../models/groupRole";
 import { PeBLPlugin } from "../models/peblPlugin";
 
 
 export interface GroupManager extends PeBLPlugin {
+
+  validateAddGroup(payload: { [key: string]: any }): boolean;
+  validateDeleteGroup(payload: { [key: string]: any }): boolean;
+  validateUpdateGroup(payload: { [key: string]: any }): boolean;
+
+  validateAddGroupMember(payload: { [key: string]: any }): boolean;
+  validateDeleteGroupMember(payload: { [key: string]: any }): boolean;
+  validateUpdateGroupMember(payload: { [key: string]: any }): boolean;
+
+  validateGetGroups(payload: { [key: string]: any }): boolean;
+
   addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
   deleteGroup(id: string): void; //Delete the group with the specified Id
   updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
@@ -15,9 +26,9 @@ export interface GroupManager extends PeBLPlugin {
 
   getGroups(callback: ((groups: Group[]) => void)): void; //Get all existing groups
 
-  createGroupRole(id: string, roleName: string, permissions: Role[]): void; //Create a role within a group
-  updateGroupRole(id: string, roleName?: string, permissions?: Role[]): void; //Update a role within a group
-  deleteGroupRole(id: string, roleName: string): void; //Delete a role within a group
+  // createGroupRole(id: string, roleName: string, permissions: Role[]): void; //Create a role within a group
+  // updateGroupRole(id: string, roleName?: string, permissions?: Role[]): void; //Update a role within a group
+  // deleteGroupRole(id: string, roleName: string): void; //Delete a role within a group
 
-  getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
+  // getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
 }
