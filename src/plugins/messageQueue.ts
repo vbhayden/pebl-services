@@ -1,6 +1,9 @@
 import { MessageQueueManager } from '../interfaces/messageQueueManager';
-// import { SessionDataManager } from '../interfaces/sessionDataManager';
+import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
+import { LRS } from '../interfaces/lrsManager';
+import { XApiStatement } from '../models/xapiStatement';
+import { PeblData } from '../models/peblData';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -10,7 +13,7 @@ import RedisSMQ = require("rsmq");
 import { PluginManager } from '../interfaces/pluginManager';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
-  // private LRSPlugin: LRS;
+  private lrsManager: LRS;
   // private sessionCachePlugin: SessionDataManager;
   private rsmq: RedisSMQ;
   private redisClient: redis.RedisClient;
@@ -18,12 +21,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private sessionSocketMap: { [key: string]: WebSocket }
   private pluginManager: PluginManager;
   private timeouts: { [key: string]: NodeJS.Timeout }
+  private sessionDataManager: SessionDataManager;
 
-  constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager) {
-    // this.LRSPlugin = LRSPlugin;
+  constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager, sessionDataManager: SessionDataManager, lrsManager: LRS) {
+    this.lrsManager = lrsManager;
     this.rsmq = new RedisSMQ(redisConfig);
     this.redisClient = redisConfig.client;
-    // this.sessionCachePlugin = sessionCachePlugin;
+    this.sessionDataManager = sessionDataManager;
     this.sessionSocketMap = {};
     this.timeouts = {};
     this.pluginManager = pluginManager;
@@ -92,10 +96,15 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.createJobsQueue((success) => {
       if (success) {
         setTimeout(() => {
-          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "cleanup" } }), (success) => {
+          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 3600000, payload: { requestType: "cleanup" } }), (success) => {
             console.log("queued job");
           });
-        }, 5000);
+        }, 3600000);
+        setTimeout(() => {
+          this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: 5000, payload: { requestType: "lrsSync" } }), (success) => {
+            console.log("queued LRS sync");
+          });
+        }, 5000)
       }
     });
   }
@@ -193,6 +202,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       this.dispatchToDatabase(message);
     } else if (target === 'cleanup') {
       this.dispatchCleanup(message);
+    } else if (target === 'lrsSync') {
+      this.dispatchToLrs(message);
     }
   }
 
@@ -201,52 +212,31 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     //Return some constant string representing the target
     if (message.payload.requestType === 'cleanup')
       return 'cleanup';
+    else if (message.payload.requestType === 'lrsSync')
+      return 'lrsSync';
     else
       return 'cache';
   }
 
   dispatchToLrs(message: ServiceMessage): void {
-    //TODO: standardize requestTypes
-    // if (message.requestType === 'getStatements') {
-    //   this.LRSPlugin.getStatements(this.constructXApiQuery(message), function(stmts) {
-    //     // TODO: do something with the result
-    //   });
-    // } else if (message.requestType === 'storeStatements') {
-    //   //TODO: get the statements out of the message
-    //   let stmts = [] as XApiStatement[];
-    //   this.LRSPlugin.storeStatements(stmts);
-    // } else if (message.requestType === 'voidStatements') {
-    //   //TODO: get the statements out of the message
-    //   let stmts = [] as XApiStatement[];
-    //   this.LRSPlugin.voidStatements(stmts);
-    // } else if (message.requestType === 'storeActivity') {
-    //   //TODO: get the activity out of the message
-    //   let activity = {} as Activity;
-    //   this.LRSPlugin.storeActivity(activity, function(succeeded) {
-    //     //TODO: Do something if failed or succeeded
-    //   });
-    // } else if (message.requestType === 'getActivity') {
-    //   //TODO: get the activity type out of the message
-    //   let activityType = '';
-    //   //TODO: get the activity id out of the message
-    //   let activityId = '';
+    console.log('dispatch to LRS');
 
-    //   this.LRSPlugin.getActivity(activityType, function(activity) {
-    //     //TODO: do something with the result
-    //     if (activity) {
-
-    //     } else {
-
-    //     }
-    //   }, activityId);
-    // }
+    this.sessionDataManager.retrieveForLrs(500, (values) => {
+      if (values) {
+        //TODO: translate pebl data to xapi statements
+        let statements = values.map((value) => {
+          let peblData = new PeblData(JSON.parse(value));
+          return XApiStatement.peblToXapi(peblData);
+        });
+        this.lrsManager.storeStatements(statements);
+      }
+      setTimeout(() => {
+        this.retryJob(message);
+      }, message.messageTimeout);
+    });
   }
 
   dispatchToCache(message: ServiceMessage): void {
-    //TODO
-    // for (let template of this.sessionCachePlugin.getMessageTemplates()) {
-    //   if (message.payload.requestType === template.verb) {
-
     let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
 
     if (messageTemplate) {
@@ -265,12 +255,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     } else {
       console.log("bad message template");
     }
-    //   }
-    // }
   }
 
   dispatchToClient(message: ServiceMessage): void {
-    //TODO
     this.enqueueOutgoingMessage(message, (success) => {
       if (success && message.messageId) {
         this.rsmq.deleteMessage({ qname: 'incomingMessages', id: message.messageId }, (err, resp) => {
@@ -279,7 +266,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           } else {
             console.log(resp);
           }
-          //TODO
         });
       }
     });
@@ -319,26 +305,30 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
           //Re-add the message in specified timeout period
           setTimeout(() => {
-            this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: message.messageTimeout, payload: message.payload }), (success) => {
-              if (success && message.messageId) {
-                //Delete the old message
-                this.rsmq.deleteMessage({ qname: 'jobs', id: message.messageId }, (err, resp) => {
-                  if (err) {
-                    console.log(err);
-                  } else {
-                    let jobFinishedMessage = {
-                      type: 'jobFinished',
-                      id: message.messageId,
-                      timeout: message.messageTimeout
-                    }
-                    this.redisClient.publish('activeJobs', JSON.stringify(jobFinishedMessage));
-                    console.log('job finished');
-                  }
-                });
-              }
-            });
+            this.retryJob(message);
           }, message.messageTimeout);
 
+        });
+      }
+    });
+  }
+
+  private retryJob(message: ServiceMessage): void {
+    this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: message.messageTimeout, payload: message.payload }), (success) => {
+      if (success && message.messageId) {
+        //Delete the old message
+        this.rsmq.deleteMessage({ qname: 'jobs', id: message.messageId }, (err, resp) => {
+          if (err) {
+            console.log(err);
+          } else {
+            let jobFinishedMessage = {
+              type: 'jobFinished',
+              id: message.messageId,
+              timeout: message.messageTimeout
+            }
+            this.redisClient.publish('activeJobs', JSON.stringify(jobFinishedMessage));
+            console.log('job finished');
+          }
         });
       }
     });
@@ -348,23 +338,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.rsmq.receiveMessage({ qname: 'jobs' }, (err, resp) => {
       if ((<RedisSMQ.QueueMessage>resp).id) {
         let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
-        this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: serviceMessage.messageTimeout, payload: serviceMessage.payload }), (success) => {
-          if (success && serviceMessage.messageId) {
-            //Delete the old message
-            this.rsmq.deleteMessage({ qname: 'jobs', id: serviceMessage.messageId }, (err, resp) => {
-              if (err) {
-                console.log(err);
-              } else {
-                let jobFinishedMessage = {
-                  type: 'jobFinished',
-                  id: serviceMessage.messageId,
-                  timeout: serviceMessage.messageTimeout
-                }
-                this.redisClient.publish('activeJobs', JSON.stringify(jobFinishedMessage));
-              }
-            });
-          }
-        });
+        this.retryJob(serviceMessage);
       }
     });
   }
