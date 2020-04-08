@@ -45,6 +45,9 @@ import { DefaultModuleEventsManager } from "./plugins/moduleEventsManager";
 import { NotificationManager } from "./interfaces/notificationManager";
 import { DefaultNotificationManager } from "./plugins/notificationManager";
 import { DefaultMessageManager } from "./plugins/messageManager";
+import { LRS } from "./interfaces/lrsManager";
+import { LRSPlugin } from "./plugins/lrs";
+import { Endpoint } from "./models/endpoint";
 
 let express = require('express');
 
@@ -84,6 +87,10 @@ const membershipManager: MembershipManager = new DefaultMembershipManager(redisC
 const messageManager: MessageManager = new DefaultMessageManager(redisCache);
 const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
+const lrsManager: LRS = new LRSPlugin(new Endpoint({
+  url: config.lrsUrl,
+  headers: config.lrsHeaders
+}));
 
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
@@ -108,7 +115,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   },
   ns: 'rsmq',
   realtime: true
-}, pluginManager);
+}, pluginManager, redisCache, lrsManager);
 
 messageQueue.initialize();
 
