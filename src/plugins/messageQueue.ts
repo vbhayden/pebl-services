@@ -17,6 +17,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private subscriber: redis.RedisClient;
   private sessionSocketMap: { [key: string]: WebSocket }
   private pluginManager: PluginManager;
+  private timeouts: { [key: string]: NodeJS.Timeout }
 
   constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager) {
     // this.LRSPlugin = LRSPlugin;
@@ -24,8 +25,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.redisClient = redisConfig.client;
     // this.sessionCachePlugin = sessionCachePlugin;
     this.sessionSocketMap = {};
+    this.timeouts = {};
     this.pluginManager = pluginManager;
     this.subscriber = redis.createClient(redisConfig.options);
+    this.subscriber.subscribe('activeJobs');
     this.subscriber.on('message', (channel: string, message: string) => {
       if (channel === 'rsmq:rt:incomingMessages') {
         this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
@@ -35,13 +38,41 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             this.dispatchMessage(serviceMessage);
           }
         });
+      } else if (channel === 'rsmq:rt:jobs') {
+        this.rsmq.receiveMessage({ qname: 'jobs' }, (err, resp) => {
+          if ((<RedisSMQ.QueueMessage>resp).id) {
+            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+            serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
+            this.dispatchMessage(serviceMessage);
+
+            let jobStartedMessage = {
+				  		type: 'jobStarted',
+				  		id: serviceMessage.messageId,
+				  		timeout: serviceMessage.messageTimeout
+				  	}
+				  	this.redisClient.publish('activeJobs', JSON.stringify(jobStartedMessage));
+				  	console.log('job started');
+          }
+        });
+      } else if (channel === 'activeJobs') {
+      	//When a job is started, all nodes receive a jobStarted message indicating which job was started and how long it should take for it to run
+      	//They set a timeout to check for failed jobs in the case they do not recieve the paired jobFinished message within the alloted timeout
+      	//When a jobFinished event arrives, the nodes remove their timeouts for that job
+      	let jobMessage = JSON.parse(message);
+      	if (jobMessage.type === 'jobStarted') {
+      		this.timeouts[jobMessage.id] = setTimeout(() => {
+      			this.runFailedJobs(jobMessage);
+      		}, jobMessage.timeout + 30000);
+      	} else if (jobMessage.type === 'jobFinished') {
+      		clearTimeout(this.timeouts[jobMessage.id]);
+      	}
       } else {
         let sessionId = channel.replace('rsmq:rt:', '');
         this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
           if ((<RedisSMQ.QueueMessage>resp).id) {
             let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-            //TODO: How to get the websocket here?
+
             let socket = this.sessionSocketMap[sessionId];
             if (socket && socket.readyState === 1) {
               socket.send(JSON.stringify(serviceMessage));
@@ -53,6 +84,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         });
       }
     });
+
   }
 
   createIncomingQueue(callback: ((success: boolean) => void)): void {
@@ -71,7 +103,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
       if (err) {
         console.log(err);
-        console.log('outgoing error');
         callback(false);
       } else if (resp === 1) {
 
@@ -79,6 +110,18 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       }
       this.sessionSocketMap[sessionId] = websocket;
       this.subscriber.subscribe('rsmq:rt:' + sessionId);
+    });
+  }
+
+  createJobsQueue(callback: ((success: boolean) => void)): void {
+    this.rsmq.createQueue({ qname: 'jobs' }, (err, resp) => {
+      if (err) {
+        console.log(err);
+        callback(false);
+      } else if (resp === 1) {
+        callback(true);
+      }
+      this.subscriber.subscribe('rsmq:rt:jobs');
     });
   }
 
@@ -96,18 +139,30 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         console.log(err);
         return callback(false);
       }
-      console.log('Message sent. ID:', resp);
       callback(true);
     });
   }
 
   enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
-    this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
+    if (message.sessionId) {
+      this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
+        if (err) {
+          console.log(err);
+          return callback(false);
+        }
+        callback(true);
+      });
+    } else {
+      callback(false);
+    }
+  }
+
+  enqueueJobsMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
+    this.rsmq.sendMessage({ qname: 'jobs', message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
         console.log(err);
         return callback(false);
       }
-      console.log('Message sent. ID:', resp);
       callback(true);
     });
   }
@@ -131,7 +186,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   determineDispatchTarget(message: ServiceMessage): string {
     // TODO: How do we determine this?
     //Return some constant string representing the target
-    return 'cache';
+    if (message.payload.requestType === 'cleanup')
+      return 'cleanup';
+    else
+      return 'cache';
   }
 
   dispatchToLrs(message: ServiceMessage): void {
@@ -237,7 +295,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       } else {
         scanAll('0', 'sess:*', [], (sessions: string[]) => {
           let filtered = queues.filter((queue: string) => {
-            if (queue === 'incomingMessages')
+            if (queue === 'incomingMessages' || queue === 'jobs')
               return false;
             return !(sessions.includes('sess:' + queue));
           });
@@ -245,9 +303,57 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           for (let queue of filtered) {
             this.removeOutgoingQueue(queue);
           }
+
+          //Re-add the message in specified timeout period
+          setTimeout(() => {
+          	this.enqueueJobsMessage(new ServiceMessage({ messageTimeout: message.messageTimeout, payload: message.payload }), (success) => {
+	            if (success && message.messageId) {
+	              //Delete the old message
+	              this.rsmq.deleteMessage({ qname: 'jobs', id: message.messageId }, (err, resp) => {
+	              	if (err) {
+	              		console.log(err);
+	              	} else {
+	              		let jobFinishedMessage = {
+				          		type: 'jobFinished',
+				          		id: message.messageId,
+				          		timeout: message.messageTimeout
+				          	}
+				          	this.redisClient.publish('activeJobs', JSON.stringify(jobFinishedMessage));
+				          	console.log('job finished');
+	              	}
+	              });
+	            }
+	          });
+          }, message.messageTimeout);
+          
         });
       }
     });
+  }
+
+  private runFailedJobs(jobMessage: { [key: string]: any }) {
+  	this.rsmq.receiveMessage({ qname: 'jobs' }, (err, resp) => {
+			if ((<RedisSMQ.QueueMessage>resp).id) {
+				let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+				this.enqueueJobsMessage(new ServiceMessage({messageTimeout: serviceMessage.messageTimeout, payload: serviceMessage.payload}), (success) => {
+					if (success && serviceMessage.messageId) {
+              //Delete the old message
+              this.rsmq.deleteMessage({ qname: 'jobs', id: serviceMessage.messageId }, (err, resp) => {
+              	if (err) {
+              		console.log(err);
+              	} else {
+              		let jobFinishedMessage = {
+			          		type: 'jobFinished',
+			          		id: serviceMessage.messageId,
+			          		timeout: serviceMessage.messageTimeout
+			          	}
+			          	this.redisClient.publish('activeJobs', JSON.stringify(jobFinishedMessage));
+              	}
+              });
+            }
+				});
+			}
+		});
   }
 
   // private constructXApiQuery(message: ServiceMessage): XApiQuery {
