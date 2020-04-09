@@ -46,11 +46,16 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (this.activeClient) {
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
-      res.redirect(this.activeClient.authorizationUrl({
-        scope: this.config.authenticationScope,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256'
-      }));
+
+      session.save(() => {
+        if (this.activeClient) {
+          res.redirect(this.activeClient.authorizationUrl({
+            scope: this.config.authenticationScope,
+            code_challenge: codeChallenge,
+            code_challenge_method: 'S256'
+          }));
+        }
+      });
     } else {
       res.status(503).end();
     }
@@ -58,7 +63,6 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   logout(session: Express.Session, res: Response): void {
     if (this.activeClient) {
-      console.log("logging out", this.config.homepage);
       session.loggedIn = false;
       res.redirect(this.activeClient.endSessionUrl({
         id_token_hint: session.activeTokens.id_token,
@@ -88,6 +92,9 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           session.activeTokens = tokenSet;
           session.loggedIn = true;
           res.send(tokenSet.id_token).status(200).end();
+        }).catch(function(err) {
+          console.log(err);
+          res.status(401).end();
         });
     } else {
       res.status(503).end();

@@ -139,32 +139,32 @@ if (config.useSSL) {
 expressApp = require('express-ws')(expressApp, httpsServer).app;
 
 // Potentially needed for CORS
-// var allowCrossDomain = function(req: Request, res: Response, next: Function) {
-//     let slashIndex = req.path.indexOf("/", 1);
-//     if ((slashIndex != -1) && (slashIndex > 1)) {
-//         let app = req.path.substr(1, slashIndex - 1);
-//         let applicationParameters = lookupApplicationFromFile(app);
-//         let origin: string = <string>req.headers["origin"];
-//         if (applicationParameters && origin) {
-//             var domains = applicationParameters.domains
-//             var isGood = false;
-//             for (var i = 0; i < domains.length; i++) {
-//                 if (domains[i] == origin) {
-//                     isGood = true;
-//                     break
-//                 }
-//             }
-//             if (isGood) {
-//                 res.header('Access-Control-Allow-Origin', origin);
-//                 res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-//                 res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-//             }
-//         }
-//     }
-//     next();
-// }
+var allowCrossDomain = function(req: Request, res: Response, next: Function) {
+  // let slashIndex = req.path.indexOf("/", 1);
+  // if ((slashIndex != -1) && (slashIndex > 1)) {
+  //     let app = req.path.substr(1, slashIndex - 1);
+  //     let applicationParameters = lookupApplicationFromFile(app);
+  // let origin: string = <string>req.headers["origin"];
+  //     if (applicationParameters && origin) {
+  //         var domains = applicationParameters.domains
+  //         var isGood = false;
+  //         for (var i = 0; i < domains.length; i++) {
+  //             if (domains[i] == origin) {
+  //                 isGood = true;
+  //                 break
+  //             }
+  //         }
+  //         if (isGood) {
+  // res.header('Access-Control-Allow-Origin', origin);
+  // res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  // res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  //         }
+  //     }
+  // }
+  next();
+}
 
-// expressApp.use(allowCrossDomain);
+expressApp.use(allowCrossDomain);
 
 redisClient.on("error", function(error) {
   console.error(error);
@@ -172,14 +172,15 @@ redisClient.on("error", function(error) {
 
 expressApp.use(
   expressSession({
-    store: new RedisSessionStore({ client: redisClient }),
+    store: new RedisSessionStore({ client: redisClient, ttl: config.sessionTTL }),
     secret: config.sessionSecret,
     cookie: {
       secure: config.useSSL,
       httpOnly: true,
       maxAge: config.sessionTTL,
-      sameSite: "strict"
+      sameSite: "lax"
     },
+    name: "s",
     proxy: config.usesProxy,
     saveUninitialized: false,
     resave: false
@@ -205,7 +206,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      res.status(200).end();
+      authenticationManager.refresh(req.session, res);
     }
   } else {
     res.status(503).end();
@@ -283,7 +284,7 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
         let payload: any;
         try {
           payload = JSON.parse(msg);
-          validationManager.validate(payload)
+          console.log(validationManager.validate(payload));
           // if (!validationManager.validate(payload)) {
           //   ws.send("Invalid Message");
           //   return;
