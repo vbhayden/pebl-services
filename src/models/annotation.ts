@@ -1,5 +1,6 @@
 import { XApiStatement } from "./xapiStatement";
 import { PREFIX_PEBL, PREFIX_PEBL_THREAD, PREFIX_PEBL_EXTENSION } from "../utils/constants";
+import { ActivityObject } from "./xapiStatement"
 
 export class Annotation extends XApiStatement {
   readonly book: string;
@@ -9,15 +10,19 @@ export class Annotation extends XApiStatement {
   readonly title: string;
   readonly style: string;
   readonly text?: string;
-  readonly owner: string;
+  readonly owner: string | string[];
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
 
-    this.title = this.object.definition.name && this.object.definition.name["en-US"];
-    this.text = this.object.definition.description && this.object.definition.description["en-US"];
+    let object = this.object as ActivityObject;
+    if (!object.definition)
+      object.definition = {};
 
-    this.book = this.object.id;
+    this.title = (object.definition.name && object.definition.name["en-US"]) || "";
+    this.text = object.definition.description && object.definition.description["en-US"];
+
+    this.book = object.id;
     if (this.book.indexOf(PREFIX_PEBL) != -1)
       this.book = this.book.substring(this.book.indexOf(PREFIX_PEBL) + PREFIX_PEBL.length);
     else if (this.book.indexOf(PREFIX_PEBL_THREAD) != -1)
@@ -25,7 +30,9 @@ export class Annotation extends XApiStatement {
 
     this.owner = this.getActorId();
 
-    let extensions = this.object.definition.extensions;
+    if (!object.definition.extensions)
+      object.definition.extensions = {};
+    let extensions = object.definition.extensions;
 
     this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
     this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];

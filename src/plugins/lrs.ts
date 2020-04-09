@@ -17,14 +17,6 @@ export class LRSPlugin implements LRS {
 
   private toVoidRecord(rec: XApiStatement): XApiStatement {
     let o = {
-      "context": {
-        "contextActivities": {
-          "parent": [{
-            "id": (rec.object) ? rec.object.id : "",
-            "objectType": "Activity"
-          }]
-        }
-      },
       "actor": rec.actor,
       "verb": {
         "display": {
@@ -61,6 +53,12 @@ export class LRSPlugin implements LRS {
     });
 
     self.storeStatements(voidedStatements);
+  }
+
+  parseStatements(strings: string[]): XApiStatement[] {
+    return strings.map((string) => {
+      return new XApiStatement(JSON.parse(string));
+    });
   }
 
   getStatements(xApiQuery: XApiQuery, callback: ((stmts: XApiStatement[]) => void)): void {

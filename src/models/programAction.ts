@@ -1,5 +1,6 @@
 import { XApiStatement } from "./xapiStatement";
 import { PREFIX_PEBL_EXTENSION } from "../utils/constants";
+import { ActivityObject } from "./xapiStatement";
 
 export class ProgramAction extends XApiStatement {
   readonly thread: string;
@@ -11,11 +12,18 @@ export class ProgramAction extends XApiStatement {
   constructor(raw: { [key: string]: any }) {
     super(raw);
 
-    this.thread = this.object.id;
+    let object = this.object as ActivityObject;
+    this.thread = object.id;
 
-    let extensions = this.object.definition.extensions;
+    if (!object.definition)
+      object.definition = {};
+    if (!object.definition.name)
+      object.definition.name = {};
+    if (!object.definition.extensions)
+      object.definition.extensions = {};
+    let extensions = object.definition.extensions;
 
-    this.programId = this.object.definition.name["en-US"];
+    this.programId = object.definition.name["en-US"];
     this.previousValue = extensions[PREFIX_PEBL_EXTENSION + "previousValue"];
     this.newValue = extensions[PREFIX_PEBL_EXTENSION + "newValue"];
     this.action = extensions[PREFIX_PEBL_EXTENSION + "action"];

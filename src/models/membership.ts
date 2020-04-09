@@ -1,5 +1,6 @@
 import { XApiStatement } from "./xapiStatement";
 import { PREFIX_PEBL_THREAD, PREFIX_PEBL_EXTENSION } from "../utils/constants";
+import { ActivityObject } from "./xapiStatement";
 
 export class Membership extends XApiStatement {
 
@@ -13,15 +14,22 @@ export class Membership extends XApiStatement {
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
+    let object = this.object as ActivityObject;
 
-    this.thread = this.object.id;
+    this.thread = object.id;
     if (this.thread.indexOf(PREFIX_PEBL_THREAD) != -1)
       this.thread = this.thread.substring(PREFIX_PEBL_THREAD.length);
 
-    this.membershipId = this.object.definition.name["en-US"];
-    this.description = this.object.definition.description && this.object.definition.description["en-US"];
+    if (!object.definition)
+      object.definition = {};
+    if (!object.definition.name)
+      object.definition.name = {};
+    this.membershipId = object.definition.name["en-US"];
+    this.description = object.definition.description && object.definition.description["en-US"];
 
-    let extensions = this.object.definition.extensions;
+    if (!object.definition.extensions)
+      object.definition.extensions = {};
+    let extensions = object.definition.extensions;
 
     this.role = extensions[PREFIX_PEBL_EXTENSION + "role"];
     this.activityType = extensions[PREFIX_PEBL_EXTENSION + "activityType"];

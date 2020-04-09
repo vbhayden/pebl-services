@@ -2,8 +2,6 @@ import { MessageQueueManager } from '../interfaces/messageQueueManager';
 import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
-import { XApiStatement } from '../models/xapiStatement';
-import { PeblData } from '../models/peblData';
 
 import { QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT } from '../utils/constants';
 
@@ -225,11 +223,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
-        //TODO: translate pebl data to xapi statements
-        let statements = values.map((value) => {
-          let peblData = new PeblData(JSON.parse(value));
-          return XApiStatement.peblToXapi(peblData);
-        });
+        let statements = this.lrsManager.parseStatements(values);
         this.lrsManager.storeStatements(statements);
       }
       setTimeout(() => {
