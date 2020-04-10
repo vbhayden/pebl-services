@@ -55,8 +55,10 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   saveNotifications(identity: string, notifications: XApiStatement[]): void {
     let arr = [];
     for (let notification of notifications) {
+      let notificationStr = JSON.stringify(notification);
       arr.push(generateNotificationsKey(notification.id));
-      arr.push(JSON.stringify(notification));
+      arr.push(notificationStr);
+      this.sessionData.queueForLrs(notificationStr);
     }
     this.sessionData.setHashValues(generateUserNotificationsKey(identity), arr);
     this.sessionData.broadcast('notifications:userid:' + identity, JSON.stringify(notifications));

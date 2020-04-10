@@ -53,8 +53,10 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
   saveMemberships(identity: string, memberships: Membership[]): void {
     let arr = [];
     for (let membership of memberships) {
+      let memberStr = JSON.stringify(membership);
       arr.push(generateMembershipsKey(membership.id));
-      arr.push(JSON.stringify(membership));
+      arr.push(memberStr);
+      this.sessionData.queueForLrs(memberStr);
     }
     this.sessionData.setHashValues(generateUserMembershipKey(identity), arr);
   }

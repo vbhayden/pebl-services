@@ -55,8 +55,10 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   saveModuleEvents(identity: string, events: ModuleEvent[]): void {
     let arr = [];
     for (let event of events) {
+      let eventStr = JSON.stringify(event);
       arr.push(generateModuleEventsKey(event.id));
-      arr.push(JSON.stringify(event));
+      arr.push(eventStr);
+      this.sessionData.queueForLrs(eventStr);
     }
     this.sessionData.setHashValues(generateUserModuleEventsKey(identity), arr);
   }

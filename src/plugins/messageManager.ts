@@ -56,8 +56,10 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
   saveMessages(identity: string, messages: Message[]): void {
     let arr = [];
     for (let message of messages) {
+      let messageStr = JSON.stringify(message);
       arr.push(generateMessagesKey(message.id));
-      arr.push(JSON.stringify(message));
+      arr.push(messageStr);
+      this.sessionData.queueForLrs(messageStr);
     }
     this.sessionData.setHashValues(generateUserMessagesKey(identity), arr);
   }

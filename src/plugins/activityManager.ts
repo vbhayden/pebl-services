@@ -91,8 +91,10 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
   saveActivities(identity: string, activities: Activity[]): void {
     let arr = [];
     for (let activity of activities) {
+      let activityStr = JSON.stringify(activity);
       arr.push(generateActivitiesKey(activity.id));
-      arr.push(JSON.stringify(activity));
+      arr.push(activityStr);
+      this.sessionData.queueForLrs(activityStr);
     }
     this.sessionData.setHashValues(generateUserActivitiesKey(identity), arr);
   }
@@ -119,8 +121,10 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
   saveActivityEvents(identity: string, events: ProgramAction[]): void {
     let arr = [];
     for (let event of events) {
+      let eventStr = JSON.stringify(event);
       arr.push(generateActivityEventsKey(event.id));
-      arr.push(JSON.stringify(event));
+      arr.push(eventStr);
+      this.sessionData.queueForLrs(eventStr);
     }
     this.sessionData.setHashValues(generateUserActivityEventsKey(identity), arr);
   }

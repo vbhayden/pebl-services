@@ -64,8 +64,10 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   saveEvents(identity: string, stmts: XApiStatement[]): void {
     let arr = [];
     for (let stmt of stmts) {
+      let stmtStr = JSON.stringify(stmt);
       arr.push(generateEventsKey(stmt.id));
-      arr.push(JSON.stringify(stmt));
+      arr.push(stmtStr);
+      this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserEventsKey(identity), arr);
   }

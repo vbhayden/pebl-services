@@ -97,8 +97,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   saveAnnotations(identity: string, stmts: Annotation[]): void {
     let arr = [];
     for (let stmt of stmts) {
+      let stmtStr = JSON.stringify(stmt);
       arr.push(generateAnnotationsKey(stmt.id));
-      arr.push(JSON.stringify(stmt));
+      arr.push(stmtStr);
+      this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserAnnotationsKey(identity), arr);
   }
@@ -119,8 +121,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   saveSharedAnnotations(identity: string, stmts: SharedAnnotation[]): void {
     let arr = [];
     for (let stmt of stmts) {
+      let stmtStr = JSON.stringify(stmt);
       arr.push(generateSharedAnnotationsKey(stmt.id));
-      arr.push(JSON.stringify(stmt));
+      arr.push(stmtStr);
+      this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserSharedAnnotationsKey(identity), arr);
   }
