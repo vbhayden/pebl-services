@@ -267,8 +267,15 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
-        let statements = this.lrsManager.parseStatements(values);
-        this.lrsManager.storeStatements(statements);
+        let vals = this.lrsManager.parseStatements(values);
+        if (vals[0].length > 0)
+        	this.lrsManager.storeStatements(vals[0]);
+        if (vals[1].length > 0)
+        	for (let activity of vals[1])
+        		this.lrsManager.storeActivity(activity, (success) => {});
+        if (vals[2].length > 0)
+        	for (let profile of vals[2])
+        		this.lrsManager.storeProfile(profile, (success) => {});
       }
       setTimeout(() => {
         this.retryJob(message);

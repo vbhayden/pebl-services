@@ -55,10 +55,20 @@ export class LRSPlugin implements LRS {
     self.storeStatements(voidedStatements);
   }
 
-  parseStatements(strings: string[]): XApiStatement[] {
-    return strings.map((string) => {
-      return new XApiStatement(JSON.parse(string));
-    });
+  parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[]] {
+    let statements = [] as XApiStatement[];
+    let activities = [] as Activity[];
+    let profiles = [] as Profile[];
+    for (let string of strings) {
+      let obj = JSON.parse(string);
+      if (XApiStatement.is(obj))
+        statements.push(new XApiStatement(obj));
+      else if (Activity.is(obj))
+        activities.push(new Activity(obj));
+      else if (Profile.is(obj))
+        profiles.push(new Profile(obj));
+    }
+    return [statements, activities, profiles];
   }
 
   getStatements(xApiQuery: XApiQuery, callback: ((stmts: XApiStatement[]) => void)): void {
