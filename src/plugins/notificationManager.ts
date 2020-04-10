@@ -59,6 +59,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       arr.push(JSON.stringify(notification));
     }
     this.sessionData.setHashValues(generateUserNotificationsKey(identity), arr);
+    this.sessionData.broadcast('notifications:userid:' + identity, JSON.stringify(notifications));
   }
 
   deleteNotification(identity: string, id: string): void {

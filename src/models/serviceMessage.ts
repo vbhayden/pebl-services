@@ -1,8 +1,7 @@
-import { UserProfile } from "./userProfile";
 
 export class ServiceMessage {
   //TODO
-  readonly userProfile?: UserProfile;
+  readonly userProfile?: string;
   readonly sessionId?: string;
   payload: {
     requestType: string,

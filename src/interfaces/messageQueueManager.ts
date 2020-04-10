@@ -25,4 +25,7 @@ export interface MessageQueueManager {
 
   //TODO: Should this return a const value representing the target for dispatch?
   determineDispatchTarget(message: ServiceMessage): string; //Based on the message, determine which target to dispatch to
+
+  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
+  unsubscribeNotifications(userid: string): void;
 }

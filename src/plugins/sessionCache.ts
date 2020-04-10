@@ -8,6 +8,10 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis = redisClient;
   }
 
+  broadcast(channel: string, message: string): void {
+    this.redis.publish(channel, message);
+  }
+
   setHashValues(key: string, values: string[]): void {
     this.redis.hmset(key, values);
   }

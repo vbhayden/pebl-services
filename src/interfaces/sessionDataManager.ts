@@ -6,4 +6,6 @@ export interface SessionDataManager {
 
   queueForLrs(value: string): void;
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
+
+  broadcast(channel: string, message: string): void;
 }

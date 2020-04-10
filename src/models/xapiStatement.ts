@@ -165,11 +165,11 @@ export class ActivityObject {
 class Attachment {
   usageType: string;
   display: { [key: string]: string };
-  description: { [key: string]: string };
+  description?: { [key: string]: string };
   contentType: string;
   length: number;
   sha2: string;
-  fileUrl: string;
+  fileUrl?: string;
 
   constructor(raw: { [key: string]: any }) {
     this.usageType = raw.usageType;

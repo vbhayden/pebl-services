@@ -19,6 +19,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private redisClient: redis.RedisClient;
   private subscriber: redis.RedisClient;
   private sessionSocketMap: { [key: string]: WebSocket }
+  private useridSocketMap: { [key: string]: WebSocket }
   private pluginManager: PluginManager;
   private timeouts: { [key: string]: NodeJS.Timeout }
   private sessionDataManager: SessionDataManager;
@@ -29,6 +30,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.redisClient = redisConfig.client;
     this.sessionDataManager = sessionDataManager;
     this.sessionSocketMap = {};
+    this.useridSocketMap = {};
     this.timeouts = {};
     this.pluginManager = pluginManager;
     this.subscriber = redis.createClient(redisConfig.options);
@@ -37,7 +39,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (channel === 'rsmq:rt:incomingMessages') {
         this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
           if ((<RedisSMQ.QueueMessage>resp).id) {
-            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+            let serviceMessage = new ServiceMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message));
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
             this.dispatchMessage(serviceMessage);
           }
@@ -45,7 +47,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       } else if (channel === 'rsmq:rt:jobs') {
         this.rsmq.receiveMessage({ qname: 'jobs' }, (err, resp) => {
           if ((<RedisSMQ.QueueMessage>resp).id) {
-            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+            let serviceMessage = new ServiceMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message));
             serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
             this.dispatchMessage(serviceMessage);
 
@@ -69,6 +71,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           }, jobMessage.timeout + JOB_BUFFER_TIMEOUT);
         } else if (jobMessage.type === 'jobFinished') {
           clearTimeout(this.timeouts[jobMessage.id]);
+        }
+      } else if (channel.includes('notifications:userid:')) {
+        let userid = channel.replace('notifications:userid:', '');
+        let socket = this.useridSocketMap[userid];
+        let serviceMessage = new ServiceMessage({ userProfile: userid, payload: { requestType: 'getNotifications', data: JSON.parse(message) } })
+        if (socket && socket.readyState === 1) {
+          socket.send(JSON.stringify(serviceMessage));
         }
       } else {
         let sessionId = channel.replace('rsmq:rt:', '');
@@ -127,7 +136,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         console.log(err);
         callback(false);
       } else if (resp === 1) {
-
         callback(true);
       }
       this.sessionSocketMap[sessionId] = websocket;
@@ -147,12 +155,48 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
+  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
+    this.useridSocketMap[userid] = websocket;
+    this.subscriber.subscribe('notifications:userid:' + userid);
+    let message = new ServiceMessage({
+      userProfile: userid, sessionId: sessionId, payload: {
+        identity: userid, requestType: "getNotifications", callback: (data: any) => {
+          let payload = {
+            requestType: message.payload.requestType,
+            data: data
+          }
+          this.dispatchToClient(new ServiceMessage({
+            sessionId: message.sessionId,
+            userProfile: message.userProfile,
+            messageId: message.messageId,
+            payload: payload
+          }));
+          callback(true);
+        }
+      }
+    });
+
+    let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
+
+    if (messageTemplate) {
+      messageTemplate.action(message.payload);
+    } else {
+      console.log("bad message template");
+      callback(false);
+    }
+  }
+
   removeOutgoingQueue(sessionId: string): void {
     this.subscriber.unsubscribe('rsmq:rt:' + sessionId);
     this.rsmq.deleteQueue({ qname: sessionId }, (err, resp) => {
       //
     });
     delete this.sessionSocketMap[sessionId];
+  }
+
+  unsubscribeNotifications(userid: string): void {
+    this.subscriber.unsubscribe('notifications:userid:' + userid);
+    delete this.useridSocketMap[userid];
   }
 
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
@@ -233,21 +277,22 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchToCache(message: ServiceMessage): void {
-    let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
+    message.payload.callback = (data: any) => {
+      let payload = {
+        requestType: message.payload.requestType,
+        data: data
+      }
+      this.dispatchToClient(new ServiceMessage({
+        sessionId: message.sessionId,
+        userProfile: message.userProfile,
+        messageId: message.messageId,
+        payload: payload
+      }));
+    }
 
+    let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
     if (messageTemplate) {
-      messageTemplate.action(message, (data) => {
-        let payload = {
-          requestType: message.payload.requestType,
-          data: data
-        }
-        this.dispatchToClient(new ServiceMessage({
-          sessionId: message.sessionId,
-          userProfile: message.userProfile,
-          messageId: message.messageId,
-          payload: payload
-        }));
-      });
+      messageTemplate.action(message.payload);
     } else {
       console.log("bad message template");
     }
@@ -259,8 +304,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         this.rsmq.deleteMessage({ qname: 'incomingMessages', id: message.messageId }, (err, resp) => {
           if (err) {
             console.log(err);
-          } else {
-            console.log(resp);
           }
         });
       }

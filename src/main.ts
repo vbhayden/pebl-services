@@ -310,7 +310,13 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
 });
 
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {
+  if (req.session) {
+    messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) { });
+    messageQueue.subscribeNotifications(req.session.activeTokens.id_token.username, req.session.id, ws, function(success: boolean) { });
+  }
+
   ws.on('message', function(msg) {
+    console.log('message');
     if (req.session) {
       //TODO: Validate & Authorize
       if (typeof msg === 'string') {
@@ -324,16 +330,12 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
 
         let serviceMessage = new ServiceMessage({
           sessionId: req.session.id,
-          userProfile: { identity: 'test account' } as any,
+          userProfile: "tester",
           payload: payload
         });
 
-        messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) {
-          //TODO
-        });
-        messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) {
-          //TODO
-        });
+
+        messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
       }
     } else {
       ws.terminate();
@@ -343,6 +345,7 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
   ws.on('close', function() {
     if (req.session) {
       messageQueue.removeOutgoingQueue(req.session.id);
+      messageQueue.unsubscribeNotifications(req.session.activeTokens.id_token.username);
     }
   })
 });
