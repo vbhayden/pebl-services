@@ -72,12 +72,12 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         } else if (jobMessage.type === 'jobFinished') {
           clearTimeout(this.timeouts[jobMessage.id]);
         }
-      } else if (channel.includes('notifications:userid:')) {
-        let userid = channel.replace('notifications:userid:', '');
+      } else if (channel.includes('realtime:userid:')) {
+        //Message should already be a stringified ServiceMessage
+        let userid = channel.replace('realtime:userid:', '');
         let socket = this.useridSocketMap[userid];
-        let serviceMessage = new ServiceMessage({ userProfile: userid, payload: { requestType: 'getNotifications', data: JSON.parse(message) } })
         if (socket && socket.readyState === 1) {
-          socket.send(JSON.stringify(serviceMessage));
+          socket.send(message);
         }
       } else {
         let sessionId = channel.replace('rsmq:rt:', '');
@@ -157,17 +157,17 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.useridSocketMap[userid] = websocket;
-    this.subscriber.subscribe('notifications:userid:' + userid);
+    this.subscriber.subscribe('realtime:userid:' + userid);
     let message = new ServiceMessage({
-      userProfile: userid, sessionId: sessionId, payload: {
-        identity: userid, requestType: "getNotifications", callback: (data: any) => {
+      identity: userid, sessionId: sessionId, payload: {
+        identity: userid, requestType: "newNotifications", callback: (data: any) => {
           let payload = {
             requestType: message.payload.requestType,
             data: data
           }
           this.dispatchToClient(new ServiceMessage({
             sessionId: message.sessionId,
-            userProfile: message.userProfile,
+            identity: message.identity,
             messageId: message.messageId,
             payload: payload
           }));
@@ -195,7 +195,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   unsubscribeNotifications(userid: string): void {
-    this.subscriber.unsubscribe('notifications:userid:' + userid);
+    this.subscriber.unsubscribe('realtime:userid:' + userid);
     delete this.useridSocketMap[userid];
   }
 
@@ -269,13 +269,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (values) {
         let vals = this.lrsManager.parseStatements(values);
         if (vals[0].length > 0)
-        	this.lrsManager.storeStatements(vals[0]);
+          this.lrsManager.storeStatements(vals[0]);
         if (vals[1].length > 0)
-        	for (let activity of vals[1])
-        		this.lrsManager.storeActivity(activity, (success) => {});
+          for (let activity of vals[1])
+            this.lrsManager.storeActivity(activity, (success) => { });
         if (vals[2].length > 0)
-        	for (let profile of vals[2])
-        		this.lrsManager.storeProfile(profile, (success) => {});
+          for (let profile of vals[2])
+            this.lrsManager.storeProfile(profile, (success) => { });
       }
       setTimeout(() => {
         this.retryJob(message);
@@ -291,7 +291,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       }
       this.dispatchToClient(new ServiceMessage({
         sessionId: message.sessionId,
-        userProfile: message.userProfile,
+        identity: message.identity,
         messageId: message.messageId,
         payload: payload
       }));

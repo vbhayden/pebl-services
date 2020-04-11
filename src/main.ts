@@ -330,7 +330,7 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
 
         let serviceMessage = new ServiceMessage({
           sessionId: req.session.id,
-          userProfile: "tester",
+          identity: "tester",
           payload: payload
         });
 

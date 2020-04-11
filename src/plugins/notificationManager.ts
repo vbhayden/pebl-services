@@ -4,6 +4,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement } from "../models/xapiStatement";
 import { generateUserNotificationsKey, generateNotificationsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
+import { ServiceMessage } from "../models/serviceMessage";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
   private sessionData: SessionDataManager;
@@ -61,7 +62,13 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       this.sessionData.queueForLrs(notificationStr);
     }
     this.sessionData.setHashValues(generateUserNotificationsKey(identity), arr);
-    this.sessionData.broadcast('notifications:userid:' + identity, JSON.stringify(notifications));
+    this.sessionData.broadcast('realtime:userid:' + identity, JSON.stringify(new ServiceMessage({
+      identity: identity,
+      payload: {
+        requestType: "newNotifications",
+        data: notifications
+      }
+    })));
   }
 
   deleteNotification(identity: string, id: string): void {
