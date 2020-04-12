@@ -93,7 +93,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   unsubscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.deleteHashValue('users:thread', thread, (deleted) => {callback(deleted)});
+    this.sessionData.deleteHashValue('users:thread', thread, (deleted) => { callback(deleted) });
   }
 
   private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
@@ -105,7 +105,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   storeMessage(message: Message, callback: ((success: boolean) => void)): void {
-  	console.log(message);
+    console.log(message);
     let thread = message.thread;
     if (message.groupId)
       thread = this.getGroupScopedThread(thread, message.groupId);
@@ -139,6 +139,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   deleteMessage(thread: string, messageId: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.deleteHashValue('threads:' + thread, messageId, (deleted) => {callback(deleted)});
+    this.sessionData.deleteHashValue('threads:' + thread, messageId, (deleted) => { callback(deleted) });
   }
 }
