@@ -158,32 +158,33 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.useridSocketMap[userid] = websocket;
     this.subscriber.subscribe('realtime:userid:' + userid);
-    let message = new ServiceMessage({
-      identity: userid, sessionId: sessionId, payload: {
-        identity: userid, requestType: "newNotifications", callback: (data: any) => {
-          let payload = {
-            requestType: message.payload.requestType,
-            data: data
-          }
-          this.dispatchToClient(new ServiceMessage({
-            sessionId: message.sessionId,
-            identity: message.identity,
-            messageId: message.messageId,
-            payload: payload
-          }));
-          callback(true);
-        }
-      }
-    });
+    callback(true);
+    // let message = new ServiceMessage({
+    //   identity: userid, sessionId: sessionId, payload: {
+    //     identity: userid, requestType: "newNotifications", callback: (data: any) => {
+    //       let payload = {
+    //         requestType: message.payload.requestType,
+    //         data: data
+    //       }
+    //       this.dispatchToClient(new ServiceMessage({
+    //         sessionId: message.sessionId,
+    //         identity: message.identity,
+    //         messageId: message.messageId,
+    //         payload: payload
+    //       }));
+    //       callback(true);
+    //     }
+    //   }
+    // });
 
-    let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
+    // let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
 
-    if (messageTemplate) {
-      messageTemplate.action(message.payload);
-    } else {
-      console.log("bad message template");
-      callback(false);
-    }
+    // if (messageTemplate) {
+    //   messageTemplate.action(message.payload);
+    // } else {
+    //   console.log("bad message template");
+    //   callback(false);
+    // }
   }
 
   removeOutgoingQueue(sessionId: string): void {
@@ -296,7 +297,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         payload: payload
       }));
     }
-
+    console.log(message);
     let messageTemplate = this.pluginManager.getMessageTemplate(message.payload.requestType);
     if (messageTemplate) {
       messageTemplate.action(message.payload);

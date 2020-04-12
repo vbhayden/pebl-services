@@ -45,6 +45,8 @@ import { DefaultModuleEventsManager } from "./plugins/moduleEventsManager";
 import { NotificationManager } from "./interfaces/notificationManager";
 import { DefaultNotificationManager } from "./plugins/notificationManager";
 import { DefaultMessageManager } from "./plugins/messageManager";
+import { ThreadManager } from "./interfaces/threadManager";
+import { DefaultThreadManager } from "./plugins/threadManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
@@ -87,6 +89,7 @@ const membershipManager: MembershipManager = new DefaultMembershipManager(redisC
 const messageManager: MessageManager = new DefaultMessageManager(redisCache);
 const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
+const threadManager: ThreadManager = new DefaultThreadManager(redisCache);
 const lrsManager: LRS = new LRSPlugin(new Endpoint({
   url: config.lrsUrl,
   headers: config.lrsHeaders
@@ -107,6 +110,7 @@ pluginManager.register(membershipManager);
 pluginManager.register(messageManager);
 pluginManager.register(moduleEventsManager);
 pluginManager.register(notificationManager);
+pluginManager.register(threadManager);
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -312,7 +316,7 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {
   if (req.session) {
     messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) { });
-    messageQueue.subscribeNotifications(req.session.activeTokens.id_token.username, req.session.id, ws, function(success: boolean) { });
+    messageQueue.subscribeNotifications("learner", req.session.id, ws, function(success: boolean) { });
   }
 
   ws.on('message', function(msg) {
@@ -330,7 +334,7 @@ expressApp.ws('/message', function(ws: WebSocket, req: Request) {
 
         let serviceMessage = new ServiceMessage({
           sessionId: req.session.id,
-          identity: "tester",
+          identity: "learner",
           payload: payload
         });
 
