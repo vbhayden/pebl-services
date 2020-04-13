@@ -117,7 +117,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage({
             identity: user,
             payload: {
-              requestType: "newMessage",
+              requestType: "newThreadedMessage",
               data: message
             }
           })));
