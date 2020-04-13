@@ -10,7 +10,7 @@ export interface NotificationManager extends PeBLPlugin {
 
   getNotifications(identity: string, callback: ((notifications: XApiStatement[]) => void)): void; //Retrieves all notifications for this user
   // getNotificationsForBook(identity: string, book: string): Notification[]; //Retrieves all notifications for the specified book for this user
-  saveNotifications(identity: string, notifications: XApiStatement[]): void; //Stores the notifications for this user
-  deleteNotification(identity: string, id: string): void; //Removes the notification with the specified id
+  saveNotifications(identity: string, notifications: XApiStatement[], callback: ((success: boolean) => void)): void; //Stores the notifications for this user
+  deleteNotification(identity: string, id: string, callback: ((success: boolean) => void)): void; //Removes the notification with the specified id
 
 }

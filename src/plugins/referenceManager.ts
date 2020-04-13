@@ -76,6 +76,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
           if (!result) {
             console.log("failed to remove reference", id);
           }
+          callback(result);
         });
     });
   }

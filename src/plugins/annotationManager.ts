@@ -22,7 +22,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     this.addMessageTemplate(new MessageTemplate("saveAnnotations",
       this.validateSaveAnnotations,
       (payload: { [key: string]: any }) => {
-        this.saveAnnotations(payload.identity, payload.stmts);
+        this.saveAnnotations(payload.identity, payload.stmts, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getSharedAnnotations",
@@ -34,19 +34,19 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
       this.validateSaveSharedAnnotations,
       (payload: { [key: string]: any }) => {
-        this.saveSharedAnnotations(payload.identity, payload.stmts);
+        this.saveSharedAnnotations(payload.identity, payload.stmts, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
       this.validateDeleteAnnotation,
       (payload: { [key: string]: any }) => {
-        this.deleteAnnotation(payload.identity, payload.xId);
+        this.deleteAnnotation(payload.identity, payload.xId, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
       this.validateDeleteSharedAnnotation,
       (payload: { [key: string]: any }) => {
-        this.deleteSharedAnnotation(payload.identity, payload.xId);
+        this.deleteSharedAnnotation(payload.identity, payload.xId, payload.callback);
       }));
   }
 
@@ -94,7 +94,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Store annotations made by the user within the specific book
-  saveAnnotations(identity: string, stmts: Annotation[]): void {
+  saveAnnotations(identity: string, stmts: Annotation[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let stmt of stmts) {
       let stmtStr = JSON.stringify(stmt);
@@ -103,6 +103,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserAnnotationsKey(identity), arr);
+    callback(true);
   }
 
   // getSharedAnnotationsForBook(identity: string, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
@@ -118,7 +119,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Store shared annotations visible to the user made within the specific book
-  saveSharedAnnotations(identity: string, stmts: SharedAnnotation[]): void {
+  saveSharedAnnotations(identity: string, stmts: SharedAnnotation[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let stmt of stmts) {
       let stmtStr = JSON.stringify(stmt);
@@ -127,10 +128,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserSharedAnnotationsKey(identity), arr);
+    callback(true);
   }
 
   //Removes the annotation with the specific id    
-  deleteAnnotation(identity: string, id: string): void {
+  deleteAnnotation(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -140,12 +142,13 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           if (!result) {
             console.log("failed to remove annotation", id);
           }
+          callback(result);
         });
     });
   }
 
   //Removes the shared annotation with the specific id
-  deleteSharedAnnotation(identity: string, id: string): void {
+  deleteSharedAnnotation(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserSharedAnnotationsKey(identity), generateSharedAnnotationsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -155,6 +158,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           if (!result) {
             console.log("failed to remove shared annotation", id);
           }
+          callback(result);
         });
     });
   }

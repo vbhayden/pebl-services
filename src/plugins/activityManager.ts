@@ -21,13 +21,13 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     this.addMessageTemplate(new MessageTemplate("saveActivities",
       this.validateSaveActivities,
       (payload: { [key: string]: any }) => {
-        this.saveActivities(payload.identity, payload.activities);
+        this.saveActivities(payload.identity, payload.activities, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivity",
       this.validateDeleteActivity,
       (payload: { [key: string]: any }) => {
-        this.deleteActivity(payload.identity, payload.xId);
+        this.deleteActivity(payload.identity, payload.xId, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getActivityEvents",
@@ -39,13 +39,13 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     this.addMessageTemplate(new MessageTemplate("saveActivityEvents",
       this.validateSaveActivityEvents,
       (payload: { [key: string]: any }) => {
-        this.saveActivityEvents(payload.identity, payload.events);
+        this.saveActivityEvents(payload.identity, payload.events, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
       this.validateDeleteActivityEvent,
       (payload: { [key: string]: any }) => {
-        this.deleteActivityEvent(payload.identity, payload.xId);
+        this.deleteActivityEvent(payload.identity, payload.xId, payload.callback);
       }));
   }
 
@@ -88,7 +88,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       });
   }
 
-  saveActivities(identity: string, activities: Activity[]): void {
+  saveActivities(identity: string, activities: Activity[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let activity of activities) {
       let activityStr = JSON.stringify(activity);
@@ -97,15 +97,17 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       this.sessionData.queueForLrs(activityStr);
     }
     this.sessionData.setHashValues(generateUserActivitiesKey(identity), arr);
+    callback(true);
   }
 
-  deleteActivity(identity: string, id: string): void {
+  deleteActivity(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.deleteHashValue(generateUserActivitiesKey(identity),
       generateActivitiesKey(id),
       (result: boolean) => {
         if (!result) {
-          console.log("failed to delete activity", id)
+          console.log("failed to delete activity", id);
         }
+        callback(result);
       });
   }
 
@@ -118,7 +120,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       });
   }
 
-  saveActivityEvents(identity: string, events: ProgramAction[]): void {
+  saveActivityEvents(identity: string, events: ProgramAction[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let event of events) {
       let eventStr = JSON.stringify(event);
@@ -127,9 +129,10 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       this.sessionData.queueForLrs(eventStr);
     }
     this.sessionData.setHashValues(generateUserActivityEventsKey(identity), arr);
+    callback(true);
   }
 
-  deleteActivityEvent(identity: string, id: string): void {
+  deleteActivityEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserActivityEventsKey(identity), generateActivityEventsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -139,6 +142,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
           if (!result) {
             console.log("failed to remove activity event", id);
           }
+          callback(result);
         });
     });
   }

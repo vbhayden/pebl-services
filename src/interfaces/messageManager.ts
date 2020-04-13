@@ -9,8 +9,8 @@ export interface MessageManager extends PeBLPlugin {
 
   getMessages(identity: string, callback: ((messages: Message[]) => void)): void;
 
-  saveMessages(identity: string, messages: Message[]): void;
+  saveMessages(identity: string, messages: Message[], callback: ((success: boolean) => void)): void;
 
-  deleteMessage(identity: string, id: string): void;
+  deleteMessage(identity: string, id: string, callback: ((success: boolean) => void)): void;
 
 }

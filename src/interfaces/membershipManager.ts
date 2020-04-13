@@ -8,6 +8,6 @@ export interface MembershipManager extends PeBLPlugin {
   validateDeleteMembership(payload: { [key: string]: any }): boolean;
 
   getMemberships(identity: string, callback: ((memberships: Membership[]) => void)): void;
-  saveMemberships(identity: string, memberships: Membership[]): void;
-  deleteMembership(identity: string, id: string): void;
+  saveMemberships(identity: string, memberships: Membership[], callback: ((success: boolean) => void)): void;
+  deleteMembership(identity: string, id: string, callback: ((success: boolean) => void)): void;
 }

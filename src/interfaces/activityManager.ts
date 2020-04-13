@@ -13,10 +13,10 @@ export interface ActivityManager extends PeBLPlugin {
   validateDeleteActivityEvent(payload: { [key: string]: any }): boolean;
 
   getActivities(identity: string, callback: ((activities: Activity[]) => void)): void;
-  saveActivities(identity: string, activities: Activity[]): void;
-  deleteActivity(identity: string, id: string): void;
+  saveActivities(identity: string, activities: Activity[], callback: ((success: boolean) => void)): void;
+  deleteActivity(identity: string, id: string, callback: ((success: boolean) => void)): void;
 
   getActivityEvents(identity: string, callback: ((events: ProgramAction[]) => void)): void;
-  saveActivityEvents(identity: string, events: ProgramAction[]): void;
-  deleteActivityEvent(identity: string, id: string): void;
+  saveActivityEvents(identity: string, events: ProgramAction[], callback: ((success: boolean) => void)): void;
+  deleteActivityEvent(identity: string, id: string, callback: ((success: boolean) => void)): void;
 }

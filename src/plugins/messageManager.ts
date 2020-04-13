@@ -21,13 +21,13 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
     this.addMessageTemplate(new MessageTemplate("saveMessages",
       this.validateSaveMessages,
       (payload) => {
-        this.saveMessages(payload.identity, payload.messages);
+        this.saveMessages(payload.identity, payload.messages, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteMessage",
       this.validateDeleteMessages,
       (payload) => {
-        this.deleteMessage(payload.identity, payload.xId);
+        this.deleteMessage(payload.identity, payload.xId, payload.callback);
       }));
   }
 
@@ -53,7 +53,7 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
       })
   }
 
-  saveMessages(identity: string, messages: Message[]): void {
+  saveMessages(identity: string, messages: Message[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let message of messages) {
       let messageStr = JSON.stringify(message);
@@ -62,9 +62,10 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
       this.sessionData.queueForLrs(messageStr);
     }
     this.sessionData.setHashValues(generateUserMessagesKey(identity), arr);
+    callback(true);
   }
 
-  deleteMessage(identity: string, id: string): void {
+  deleteMessage(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserMessagesKey(identity), generateMessagesKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -74,6 +75,7 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
           if (!result) {
             console.log("failed to remove message", id);
           }
+          callback(result);
         });
     });
   }

@@ -20,13 +20,13 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     this.addMessageTemplate(new MessageTemplate("saveMemberships",
       this.validateSaveMemberships,
       (payload) => {
-        this.saveMemberships(payload.identity, payload.memberships);
+        this.saveMemberships(payload.identity, payload.memberships, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteMembership",
       this.validateDeleteMembership,
       (payload) => {
-        this.deleteMembership(payload.identity, payload.xId);
+        this.deleteMembership(payload.identity, payload.xId, payload.callback);
       }));
   }
 
@@ -50,7 +50,7 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     });
   }
 
-  saveMemberships(identity: string, memberships: Membership[]): void {
+  saveMemberships(identity: string, memberships: Membership[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let membership of memberships) {
       let memberStr = JSON.stringify(membership);
@@ -59,9 +59,10 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
       this.sessionData.queueForLrs(memberStr);
     }
     this.sessionData.setHashValues(generateUserMembershipKey(identity), arr);
+    callback(true);
   }
 
-  deleteMembership(identity: string, id: string): void {
+  deleteMembership(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserMembershipKey(identity), generateMembershipsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -71,6 +72,7 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
           if (!result) {
             console.log("failed to remove membership", id);
           }
+          callback(result);
         });
     });
   }
