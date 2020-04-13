@@ -1,3 +1,5 @@
+import { Voided } from './voided';
+
 class Verb {
   id: string;
   display: { [key: string]: string };
@@ -230,6 +232,27 @@ export class XApiStatement {
 
   toXAPI(): XApiStatement {
     return new XApiStatement(this);
+  }
+
+  toVoidRecord(): Voided {
+    let o = {
+      "actor": this.actor,
+      "verb": {
+        "display": {
+          "en-US": "voided"
+        },
+        "id": "http://adlnet.gov/expapi/verbs/voided"
+      },
+      "object": {
+        "id": this.id,
+        "objectType": "StatementRef"
+      },
+      "stored": this.stored,
+      "timestamp": this.timestamp,
+      "id": "v-" + this.id
+    };
+
+    return new Voided(o);
   }
 
   getActorId(): string | string[] {

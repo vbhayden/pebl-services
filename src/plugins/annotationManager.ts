@@ -40,13 +40,13 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
       this.validateDeleteAnnotation,
       (payload: { [key: string]: any }) => {
-        this.deleteAnnotation(payload.identity, payload.id);
+        this.deleteAnnotation(payload.identity, payload.xId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
       this.validateDeleteSharedAnnotation,
       (payload: { [key: string]: any }) => {
-        this.deleteSharedAnnotation(payload.identity, payload.id);
+        this.deleteSharedAnnotation(payload.identity, payload.xId);
       }));
   }
 
@@ -131,25 +131,31 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   //Removes the annotation with the specific id    
   deleteAnnotation(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
-      generateAnnotationsKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to delete annotation", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
+        generateAnnotationsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove annotation", id);
+          }
+        });
+    });
   }
 
   //Removes the shared annotation with the specific id
   deleteSharedAnnotation(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateSharedAnnotationsKey(identity),
-      generateSharedAnnotationsKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to delete shared annotation", id);
-        }
-      });
-
+    this.sessionData.getHashValue(generateUserSharedAnnotationsKey(identity), generateSharedAnnotationsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserSharedAnnotationsKey(identity),
+        generateSharedAnnotationsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove shared annotation", id);
+          }
+        });
+    });
   }
-
 }

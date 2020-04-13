@@ -27,7 +27,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     this.addMessageTemplate(new MessageTemplate("deleteEvent",
       this.validateDeleteEvent,
       (payload: { [key: string]: any }) => {
-        this.deleteEvent(payload.identity, payload.id);
+        this.deleteEvent(payload.identity, payload.xId);
       }));
   }
 
@@ -74,12 +74,16 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
   //Removes the event with the specified id
   deleteEvent(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserEventsKey(identity),
-      generateEventsKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to delete event", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserEventsKey(identity), generateEventsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserEventsKey(identity),
+        generateEventsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove event", id);
+          }
+        });
+    });
   }
 }

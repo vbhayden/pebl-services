@@ -9,5 +9,5 @@ export interface MembershipManager extends PeBLPlugin {
 
   getMemberships(identity: string, callback: ((memberships: Membership[]) => void)): void;
   saveMemberships(identity: string, memberships: Membership[]): void;
-  deleteMebership(identity: string, id: string): void;
+  deleteMembership(identity: string, id: string): void;
 }

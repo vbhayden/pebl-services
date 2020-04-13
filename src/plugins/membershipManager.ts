@@ -26,7 +26,7 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     this.addMessageTemplate(new MessageTemplate("deleteMembership",
       this.validateDeleteMembership,
       (payload) => {
-        this.deleteMebership(payload.identity, payload.id);
+        this.deleteMembership(payload.identity, payload.xId);
       }));
   }
 
@@ -61,13 +61,17 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     this.sessionData.setHashValues(generateUserMembershipKey(identity), arr);
   }
 
-  deleteMebership(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserMembershipKey(identity),
-      generateMembershipsKey(id), (result: boolean) => {
-        if (!result) {
-          console.log("failed to remove membership", id);
-        }
-      });
+  deleteMembership(identity: string, id: string): void {
+    this.sessionData.getHashValue(generateUserMembershipKey(identity), generateMembershipsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserMembershipKey(identity),
+        generateMembershipsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove membership", id);
+          }
+        });
+    });
   }
-
 }

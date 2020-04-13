@@ -21,6 +21,8 @@ export const KEY_ASSETS = 'assets';
 export const KEY_MEMBERSHIP = 'memberships';
 export const KEY_MODULE_EVENTS = 'moduleEvents';
 export const KEY_REFERENCES = 'references';
+export const KEY_ACTIONS = 'actions';
+export const KEY_SESSIONS = 'sessions';
 
 export const LRS_SYNC_TIMEOUT = 60000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
@@ -73,6 +75,14 @@ export function generateUserReferencesKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_REFERENCES;
 }
 
+export function generateUserActionsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_ACTIONS;
+}
+
+export function generateUserSessionsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_SESSIONS;
+}
+
 export function generateAnnotationsKey(id: string): string {
   return 'annotation:' + id;
 }
@@ -115,4 +125,12 @@ export function generateMembershipsKey(id: string): string {
 
 export function generateReferencesKey(id: string): string {
   return 'reference:' + id;
+}
+
+export function generateActionsKey(id: string): string {
+  return 'action:' + id;
+}
+
+export function generateSessionsKey(id: string): string {
+  return 'session:' + id;
 }

@@ -27,7 +27,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     this.addMessageTemplate(new MessageTemplate("deleteNotification",
       this.validateDeleteNotification,
       (payload) => {
-        this.deleteNotification(payload.identity, payload.id);
+        this.deleteNotification(payload.identity, payload.xId);
       }));
   }
 
@@ -72,13 +72,17 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   }
 
   deleteNotification(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
-      generateNotificationsKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to remove notification", id)
-        }
-      });
+    this.sessionData.getHashValue(generateUserNotificationsKey(identity), generateNotificationsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
+        generateNotificationsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove notification", id);
+          }
+        });
+    });
   }
 
 }

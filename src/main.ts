@@ -49,6 +49,10 @@ import { ThreadManager } from "./interfaces/threadManager";
 import { DefaultThreadManager } from "./plugins/threadManager";
 import { ReferenceManager } from "./interfaces/referenceManager";
 import { DefaultReferenceManager } from "./plugins/referenceManager";
+import { ActionManager } from "./interfaces/actionManager";
+import { DefaultActionManager } from "./plugins/actionManager";
+import { SessionManager } from "./interfaces/sessionManager";
+import { DefaultSessionManager } from "./plugins/sessionManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
@@ -93,6 +97,8 @@ const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const threadManager: ThreadManager = new DefaultThreadManager(redisCache);
 const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache);
+const actionManager: ActionManager = new DefaultActionManager(redisCache);
+const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const lrsManager: LRS = new LRSPlugin(new Endpoint({
   url: config.lrsUrl,
   headers: config.lrsHeaders
@@ -115,6 +121,8 @@ pluginManager.register(moduleEventsManager);
 pluginManager.register(notificationManager);
 pluginManager.register(threadManager);
 pluginManager.register(referenceManager);
+pluginManager.register(actionManager);
+pluginManager.register(sessionManager);
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,

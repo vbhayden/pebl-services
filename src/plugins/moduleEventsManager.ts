@@ -27,7 +27,7 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
       this.validateDeleteModuleEvent,
       (payload) => {
-        this.deleteModuleEvent(payload.identity, payload.id);
+        this.deleteModuleEvent(payload.identity, payload.xId);
       }));
   }
 
@@ -64,11 +64,16 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   }
 
   deleteModuleEvent(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity),
-      generateModuleEventsKey(id), (result: boolean) => {
-        if (!result) {
-          console.log("failed to remove module event", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserModuleEventsKey(identity), generateModuleEventsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity),
+        generateModuleEventsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove module event", id);
+          }
+        });
+    });
   }
 }

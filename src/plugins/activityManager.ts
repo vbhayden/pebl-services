@@ -27,7 +27,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     this.addMessageTemplate(new MessageTemplate("deleteActivity",
       this.validateDeleteActivity,
       (payload: { [key: string]: any }) => {
-        this.deleteActivity(payload.identity, payload.id);
+        this.deleteActivity(payload.identity, payload.xId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getActivityEvents",
@@ -45,7 +45,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
       this.validateDeleteActivityEvent,
       (payload: { [key: string]: any }) => {
-        this.deleteActivityEvent(payload.identity, payload.id);
+        this.deleteActivityEvent(payload.identity, payload.xId);
       }));
   }
 
@@ -130,12 +130,16 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
   }
 
   deleteActivityEvent(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateActivityEventsKey(identity),
-      generateActivityEventsKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to remove activity event", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserActivityEventsKey(identity), generateActivityEventsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserActivitiesKey(identity),
+        generateActivityEventsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove activity event", id);
+          }
+        });
+    });
   }
 }

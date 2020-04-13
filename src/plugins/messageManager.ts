@@ -24,10 +24,10 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
         this.saveMessages(payload.identity, payload.messages);
       }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteMessages",
+    this.addMessageTemplate(new MessageTemplate("deleteMessage",
       this.validateDeleteMessages,
       (payload) => {
-        this.deleteMessage(payload.identity, payload.id);
+        this.deleteMessage(payload.identity, payload.xId);
       }));
   }
 
@@ -65,12 +65,16 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
   }
 
   deleteMessage(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserMessagesKey(identity),
-      generateMessagesKey(id),
-      (result: boolean) => {
-        if (!result) {
-          console.log("failed to delete message", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserMessagesKey(identity), generateMessagesKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserMessagesKey(identity),
+        generateMessagesKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove message", id);
+          }
+        });
+    });
   }
 }

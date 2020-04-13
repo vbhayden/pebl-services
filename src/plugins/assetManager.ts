@@ -26,7 +26,7 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
     this.addMessageTemplate(new MessageTemplate("deleteAsset",
       this.validateDeleteAsset,
       (payload: { [key: string]: any }) => {
-        this.deleteAsset(payload.identity, payload.id);
+        this.deleteAsset(payload.identity, payload.xId);
       }));
   }
 
@@ -61,11 +61,16 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
   }
 
   deleteAsset(identity: string, id: string): void {
-    this.sessionData.deleteHashValue(generateUserAssetKey(identity),
-      generateAssetsKey(id), (result: boolean) => {
-        if (!result) {
-          console.log("failed to remove asset", id);
-        }
-      });
+    this.sessionData.getHashValue(generateUserAssetKey(identity), generateAssetsKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserAssetKey(identity),
+        generateAssetsKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove asset", id);
+          }
+        });
+    });
   }
 }

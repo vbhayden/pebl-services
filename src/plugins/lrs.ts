@@ -15,26 +15,7 @@ export class LRSPlugin implements LRS {
     this.endpoint = endpoint;
   }
 
-  private toVoidRecord(rec: XApiStatement): XApiStatement {
-    let o = {
-      "actor": rec.actor,
-      "verb": {
-        "display": {
-          "en-US": "voided"
-        },
-        "id": "http://adlnet.gov/expapi/verbs/voided"
-      },
-      "object": {
-        "id": rec.id,
-        "objectType": "StatementRef"
-      },
-      "stored": rec.stored,
-      "timestamp": rec.timestamp,
-      "id": "v-" + rec.id
-    };
 
-    return new Voided(o);
-  }
 
   storeStatements(stmts: XApiStatement[]): void {
     stmts.forEach(function(rec) {
@@ -46,13 +27,12 @@ export class LRSPlugin implements LRS {
     network.postData(this.endpoint.url, path, this.endpoint.headers, JSON.stringify(stmts));
   }
 
-  voidStatements(stmts: XApiStatement[]): void {
-    let self = this;
+  voidStatements(stmts: XApiStatement[]): Voided[] {
     let voidedStatements = stmts.map(function(stmt) {
-      return self.toVoidRecord(stmt);
+      return stmt.toVoidRecord();
     });
 
-    self.storeStatements(voidedStatements);
+    return voidedStatements;
   }
 
   parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[]] {

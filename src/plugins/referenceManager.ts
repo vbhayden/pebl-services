@@ -26,7 +26,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     this.addMessageTemplate(new MessageTemplate("deleteReference",
       this.validateDeleteReference,
       (payload: { [key: string]: any }) => {
-        this.deleteReference(payload.identity, payload.id, payload.callback);
+        this.deleteReference(payload.identity, payload.xId, payload.callback);
       }));
   }
 
@@ -67,13 +67,16 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
   }
 
   deleteReference(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
-      generateReferencesKey(id),
-      (deleted: boolean) => {
-        if (!deleted) {
-          console.log("failed to remove reference", id)
-        }
-        callback(deleted);
-      });
+    this.sessionData.getHashValue(generateUserReferencesKey(identity), generateReferencesKey(id), (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
+        generateReferencesKey(id), (result: boolean) => {
+          if (!result) {
+            console.log("failed to remove reference", id);
+          }
+        });
+    });
   }
 }

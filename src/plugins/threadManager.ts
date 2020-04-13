@@ -39,7 +39,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
       this.validateMessageOwnership,
       (payload: { [key: string]: any }) => {
-        this.deleteMessage(payload.thread, payload.messageId, payload.callback, payload.groupId);
+        this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
       }));
   }
 
@@ -139,6 +139,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   deleteMessage(thread: string, messageId: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.deleteHashValue('threads:' + thread, messageId, (deleted) => { callback(deleted) });
+
+    this.sessionData.getHashValue('threads:' + thread, messageId, (data) => {
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      this.sessionData.deleteHashValue('threads:' + thread,
+        messageId, (result: boolean) => {
+          callback(result);
+        });
+    });
   }
 }

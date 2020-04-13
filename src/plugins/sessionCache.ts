@@ -1,5 +1,6 @@
 import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { RedisClient } from 'redis';
+import { XApiStatement } from '../models/xapiStatement';
 
 export class RedisSessionDataCache implements SessionDataManager {
   private redis: RedisClient;
@@ -27,6 +28,17 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  getHashValue(key: string, field: string, callback: ((data?: string) => void)): void {
+    this.redis.hget(key, field, (err, result) => {
+      if (err) {
+        console.log(err);
+        callback(undefined);
+      } else {
+        callback(result);
+      }
+    });
+  }
+
   deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
     this.redis.hdel(key, field, (err, result) => {
       if (err) {
@@ -40,6 +52,11 @@ export class RedisSessionDataCache implements SessionDataManager {
 
   queueForLrs(value: string): void {
     this.redis.rpush('outgoingXapi', value);
+  }
+
+  queueForLrsVoid(value: string): void {
+    let stmt = new XApiStatement(JSON.parse(value));
+    this.redis.rpush('outgoingXapi', JSON.stringify(stmt.toVoidRecord()));
   }
 
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
