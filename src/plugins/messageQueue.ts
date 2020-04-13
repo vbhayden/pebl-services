@@ -37,13 +37,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.subscriber.subscribe('activeJobs');
     this.subscriber.on('message', (channel: string, message: string) => {
       if (channel === 'rsmq:rt:incomingMessages') {
-        this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
-          if ((<RedisSMQ.QueueMessage>resp).id) {
-            let serviceMessage = new ServiceMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message));
-            serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-            this.dispatchMessage(serviceMessage);
-          }
-        });
+        this.receiveIncomingMessages();
       } else if (channel === 'rsmq:rt:jobs') {
         this.rsmq.receiveMessage({ qname: 'jobs' }, (err, resp) => {
           if ((<RedisSMQ.QueueMessage>resp).id) {
@@ -81,20 +75,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         }
       } else {
         let sessionId = channel.replace('rsmq:rt:', '');
-        this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
-          if ((<RedisSMQ.QueueMessage>resp).id) {
-            let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
-            serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
-
-            let socket = this.sessionSocketMap[sessionId];
-            if (socket && socket.readyState === 1) {
-              socket.send(JSON.stringify(serviceMessage));
-              this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
-                //TODO
-              });
-            }
-          }
-        });
+        this.receiveOutgoingMessages(sessionId);
       }
     });
 
@@ -320,6 +301,37 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToDatabase(message: ServiceMessage): void {
     //TODO
+  }
+
+  receiveIncomingMessages(): void {
+    this.rsmq.receiveMessage({ qname: 'incomingMessages' }, (err, resp) => {
+      if ((<RedisSMQ.QueueMessage>resp).id) {
+        let serviceMessage = new ServiceMessage(JSON.parse((<RedisSMQ.QueueMessage>resp).message));
+        serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
+        this.dispatchMessage(serviceMessage);
+        //Call function again until no messages are received
+        this.receiveIncomingMessages();
+      }
+    });
+  }
+
+  receiveOutgoingMessages(sessionId: string) {
+    this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
+      if ((<RedisSMQ.QueueMessage>resp).id) {
+        let serviceMessage = JSON.parse((<RedisSMQ.QueueMessage>resp).message) as ServiceMessage;
+        serviceMessage.messageId = (<RedisSMQ.QueueMessage>resp).id;
+
+        let socket = this.sessionSocketMap[sessionId];
+        if (socket && socket.readyState === 1) {
+          socket.send(JSON.stringify(serviceMessage));
+          this.rsmq.deleteMessage({ qname: sessionId, id: (<RedisSMQ.QueueMessage>resp).id }, function(err, resp) {
+            //TODO
+          });
+        }
+        //Call function again until no messages are received
+        this.receiveOutgoingMessages(sessionId);
+      }
+    });
   }
 
   private dispatchCleanup(message: ServiceMessage): void {
