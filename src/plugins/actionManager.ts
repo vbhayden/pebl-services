@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { ActionManager } from "../interfaces/actionManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { MessageTemplate } from "../models/messageTemplate";
 import { Action } from "../models/action";
 import { generateUserActionsKey, generateActionsKey } from "../utils/constants";
 
@@ -11,23 +10,23 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getActions",
-      this.validateGetActions,
-      (payload: { [key: string]: any }) => {
-        this.getActions(payload.identity, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getActions",
+    //   this.validateGetActions,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getActions(payload.identity, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveActions",
-      this.validateSaveActions,
-      (payload: { [key: string]: any }) => {
-        this.saveActions(payload.identity, payload.actions, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveActions",
+    //   this.validateSaveActions,
+    //   (payload: { [key: string]: any }) => {
+    //     this.saveActions(payload.identity, payload.actions, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteAction",
-      this.validateDeleteAction,
-      (payload: { [key: string]: any }) => {
-        this.deleteAction(payload.identity, payload.xId, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteAction",
+    //   this.validateDeleteAction,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteAction(payload.identity, payload.xId, payload.callback);
+    //   }));
   }
 
   validateGetActions(payload: { [key: string]: any }): boolean {

@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { MessageTemplate } from "../models/messageTemplate";
 import { Reference } from "../models/reference";
 import { generateUserReferencesKey, generateReferencesKey } from "../utils/constants";
 
@@ -11,23 +10,23 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getReferences",
-      this.validateGetReference,
-      (payload: { [key: string]: any }) => {
-        this.getReferences(payload.identity, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getReferences",
+    //   this.validateGetReference,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getReferences(payload.identity, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveReferences",
-      this.validateSaveReferences,
-      (payload: { [key: string]: any }) => {
-        this.saveReferences(payload.identity, payload.references, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveReferences",
+    //   this.validateSaveReferences,
+    //   (payload: { [key: string]: any }) => {
+    //     this.saveReferences(payload.identity, payload.references, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteReference",
-      this.validateDeleteReference,
-      (payload: { [key: string]: any }) => {
-        this.deleteReference(payload.identity, payload.xId, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteReference",
+    //   this.validateDeleteReference,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteReference(payload.identity, payload.xId, payload.callback);
+    //   }));
   }
 
   validateGetReference(payload: { [key: string]: any }): boolean {

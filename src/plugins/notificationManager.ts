@@ -3,7 +3,6 @@ import { NotificationManager } from "../interfaces/notificationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement } from "../models/xapiStatement";
 import { generateUserNotificationsKey, generateNotificationsKey } from "../utils/constants";
-import { MessageTemplate } from "../models/messageTemplate";
 import { ServiceMessage } from "../models/serviceMessage";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
@@ -12,23 +11,23 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getNotifications",
-      this.validateGetNotifications,
-      (payload) => {
-        this.getNotifications(payload.identity, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getNotifications",
+    //   this.validateGetNotifications,
+    //   (payload) => {
+    //     this.getNotifications(payload.identity, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveNotifications",
-      this.validateSaveNotifications,
-      (payload) => {
-        this.saveNotifications(payload.identity, payload.notifications);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveNotifications",
+    //   this.validateSaveNotifications,
+    //   (payload) => {
+    //     this.saveNotifications(payload.identity, payload.notifications);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteNotification",
-      this.validateDeleteNotification,
-      (payload) => {
-        this.deleteNotification(payload.identity, payload.xId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteNotification",
+    //   this.validateDeleteNotification,
+    //   (payload) => {
+    //     this.deleteNotification(payload.identity, payload.xId);
+    //   }));
   }
 
   validateGetNotifications(payload: { [key: string]: any }): boolean {

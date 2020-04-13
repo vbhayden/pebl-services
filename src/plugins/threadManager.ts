@@ -3,7 +3,6 @@ import { ThreadManager } from "../interfaces/threadManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { ServiceMessage } from "../models/serviceMessage";
-import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -12,35 +11,35 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     super();
     this.sessionData = sessionData;
 
-    this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
-      this.validateThreadWritePermission,
-      (payload: { [key: string]: any }) => {
-        this.storeMessage(payload.message, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
+    //   this.validateThreadWritePermission,
+    //   (payload: { [key: string]: any }) => {
+    //     this.storeMessage(payload.message, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
-      this.validateThreadReadPermission,
-      (payload: { [key: string]: any }) => {
-        this.getMessages(payload.thread, payload.callback, payload.groupId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
+    //   this.validateThreadReadPermission,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getMessages(payload.thread, payload.callback, payload.groupId);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("subscribeThread",
-      this.validateThreadReadPermission,
-      (payload: { [key: string]: any }) => {
-        this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("subscribeThread",
+    //   this.validateThreadReadPermission,
+    //   (payload: { [key: string]: any }) => {
+    //     this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
-      this.validateThreadReadPermission,
-      (payload: { [key: string]: any }) => {
-        this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
+    //   this.validateThreadReadPermission,
+    //   (payload: { [key: string]: any }) => {
+    //     this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
-      this.validateMessageOwnership,
-      (payload: { [key: string]: any }) => {
-        this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
+    //   this.validateMessageOwnership,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
+    //   }));
   }
 
   private validateThread(thread: string): boolean {

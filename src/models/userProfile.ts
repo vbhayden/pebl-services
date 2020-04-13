@@ -1,13 +1,9 @@
-import { Endpoint } from "./endpoint";
-
 export class UserProfile {
   readonly identity: string;
   readonly name: string;
   readonly homePage: string;
   readonly preferredName: string;
   readonly metadata?: { [key: string]: any };
-  readonly endpoints: Endpoint[];
-  readonly registryEndpoint?: Endpoint;
   readonly currentTeam?: string | null;
   readonly currentClass?: string | null;
   readonly firstName?: string;
@@ -26,19 +22,12 @@ export class UserProfile {
     this.name = raw.name;
     this.homePage = raw.homePage;
     this.preferredName = raw.preferredName;
-    if (raw.registryEndpoint)
-      this.registryEndpoint = new Endpoint(raw.registryEndpoint);
     if (raw.currentTeam)
       this.currentTeam = raw.currentTeam;
     if (raw.currentClass)
       this.currentClass = raw.currentClass;
-    this.endpoints = [];
 
     this.metadata = raw.metadata;
-
-    if (raw.endpoints)
-      for (let endpointObj of raw.endpoints)
-        this.endpoints.push(new Endpoint(endpointObj));
 
     if (this.homePage == null)
       this.homePage = "acct:keycloak-server";
@@ -67,8 +56,6 @@ export class UserProfile {
 
   toObject(): { [key: string]: any } {
     let urls: { [key: string]: any } = {};
-    for (let e of this.endpoints)
-      urls[e.url] = e.toObject();
     let obj = {
       "identity": this.identity,
       "name": this.name,
@@ -76,7 +63,6 @@ export class UserProfile {
       "preferredName": this.preferredName,
       "lrsUrls": urls,
       "metadata": {},
-      "registryEndpoint": this.registryEndpoint,
       "currentTeam": this.currentTeam,
       "currentClass": this.currentClass,
       "firstName": this.firstName,

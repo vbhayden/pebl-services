@@ -3,7 +3,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { generateUserSessionsKey, generateSessionsKey } from "../utils/constants";
-import { MessageTemplate } from "../models/messageTemplate";
+// import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
@@ -12,23 +12,23 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     super();
     this.sessionData = sessionData;
 
-    this.addMessageTemplate(new MessageTemplate("getSessions",
-      this.validateGetSessions,
-      (payload) => {
-        this.getSessions(payload.identity, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getSessions",
+    //   this.validateGetSessions,
+    //   (payload) => {
+    //     this.getSessions(payload.identity, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveSessions",
-      this.validateSaveSessions,
-      (payload) => {
-        this.saveSessions(payload.identity, payload.sessions);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveSessions",
+    //   this.validateSaveSessions,
+    //   (payload) => {
+    //     this.saveSessions(payload.identity, payload.sessions);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteSession",
-      this.validateDeleteSession,
-      (payload) => {
-        this.deleteSession(payload.identity, payload.xId);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteSession",
+    //   this.validateDeleteSession,
+    //   (payload) => {
+    //     this.deleteSession(payload.identity, payload.xId);
+    //   }));
   }
 
   validateGetSessions(payload: { [key: string]: any }): boolean {

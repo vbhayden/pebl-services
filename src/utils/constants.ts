@@ -10,6 +10,11 @@ export const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.ht
 
 // const competenciesKey = 'competencies';
 
+export const SET_ALL_GROUPS = "groups:all";
+export const SET_ALL_ROLES = "roles:all";
+export const SET_ALL_USERS = "users:all";
+export const SET_ALL_USER_ROLES = "userRoles:all"
+
 export const KEY_ANNOTATIONS = 'annotations';
 export const KEY_SHARED_ANNOTATIONS = 'sharedAnnotations';
 export const KEY_EVENTS = 'events';
@@ -23,6 +28,9 @@ export const KEY_MODULE_EVENTS = 'moduleEvents';
 export const KEY_REFERENCES = 'references';
 export const KEY_ACTIONS = 'actions';
 export const KEY_SESSIONS = 'sessions';
+export const KEY_ROLES = 'roles';
+export const KEY_GROUPS = 'groups';
+export const KEY_USERS = 'users';
 
 export const LRS_SYNC_TIMEOUT = 60000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
@@ -31,6 +39,9 @@ export const JOB_BUFFER_TIMEOUT = 30000;
 export const LRS_SYNC_LIMIT = 500;
 
 
+// Store ids
+
+// user
 export function generateUserAnnotationsKey(identity: string) {
   return 'user:' + identity + ':' + KEY_ANNOTATIONS;
 }
@@ -82,6 +93,22 @@ export function generateUserActionsKey(identity: string): string {
 export function generateUserSessionsKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_SESSIONS;
 }
+
+export function generateUserGroupsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_GROUPS;
+}
+
+export function generateUserRolesKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_ROLES;
+}
+
+
+//groups
+export function generateGroupMembersKey(groupId: string): string {
+  return 'group:' + groupId + ':' + KEY_MEMBERSHIP;
+}
+
+// Type ids
 
 export function generateAnnotationsKey(id: string): string {
   return 'annotation:' + id;

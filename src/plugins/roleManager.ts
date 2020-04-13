@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { RoleManager } from "../interfaces/roleManager";
 import { Role } from "../models/role";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { MessageTemplate } from "../models/messageTemplate";
+import { SET_ALL_ROLES } from "../utils/constants";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
@@ -12,29 +12,29 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     super();
     this.sessionData = sessionData;
     console.log(this.sessionData);
-    this.addMessageTemplate(new MessageTemplate("addRole",
-      this.validateAddRole,
-      (payload) => {
-        this.addRole(payload.id, payload.name, payload.permissions);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("addRole",
+    //   this.validateAddRole,
+    //   (payload) => {
+    //     this.addRole(payload.id, payload.name, payload.permissions);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteRole",
-      this.validateDeleteRole,
-      (payload) => {
-        this.deleteRole(payload.id);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteRole",
+    //   this.validateDeleteRole,
+    //   (payload) => {
+    //     this.deleteRole(payload.id);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("updateRole",
-      this.validateUpdateRole,
-      (payload) => {
-        this.updateRole(payload.id, payload.name, payload.permissions);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("updateRole",
+    //   this.validateUpdateRole,
+    //   (payload) => {
+    //     this.updateRole(payload.id, payload.name, payload.permissions);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("getRoles",
-      this.validateGetRoles,
-      (payload) => {
-        this.getRoles(payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getRoles",
+    //   this.validateGetRoles,
+    //   (payload) => {
+    //     this.getRoles(payload.callback);
+    //   }));
   }
 
   validateAddRole(payload: { [key: string]: any }): boolean {
@@ -57,29 +57,61 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     return false;
   }
 
+  // validateCopyRole(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
+
+  // copyRole(id: string, newName: string): void {
+
+  // }
 
   //Add a role based on a set of permissions
   addRole(id: string, name: string, permissions: string[]): void {
-
+    this.sessionData.setHashValue(SET_ALL_ROLES,
+      id,
+      JSON.stringify({
+        name: name,
+        permissions: permissions
+      }));
   }
 
   //Remove a role    
   deleteRole(id: string): void {
-
+    this.sessionData.deleteHashValue(SET_ALL_ROLES,
+      id,
+      (deleted: boolean) => {
+        if (!deleted) {
+          console.log("Failed to delete role", id);
+        }
+      });
   }
 
   //Updates the permission set and/or name of a role    
   updateRole(id: string, name?: string, permissions?: string[]): void {
-
+    this.sessionData.setHashValue(SET_ALL_ROLES,
+      id,
+      JSON.stringify({
+        name: name,
+        permissions: permissions
+      }));
   }
 
   //Get a role with the specified id
   getRole(id: string, callback: ((role: Role) => void)): void {
-
+    this.sessionData.getHashValue(SET_ALL_ROLES,
+      id,
+      (data?: string) => {
+        if (data !== undefined) {
+          callback(Role.convert(data));
+        }
+      });
   }
 
   //Get all the roles in the system    
   getRoles(callback: ((roles: Role[]) => void)): void {
-
+    this.sessionData.getHashValues(SET_ALL_ROLES,
+      (data: string[]) => {
+        callback(data.map((x) => Role.convert(x)));
+      });
   }
 }

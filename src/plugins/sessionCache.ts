@@ -17,6 +17,11 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis.hmset(key, values);
   }
 
+  setHashValue(key: string, field: string, value: string): void {
+    this.redis.hset(key, field, value);
+  }
+
+
   getHashValues(key: string, callback: (data: string[]) => void): void {
     this.redis.hvals(key, (err, result) => {
       if (err) {
@@ -28,7 +33,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  getHashValue(key: string, field: string, callback: ((data?: string) => void)): void {
+  getHashValue(key: string, field: string, callback: (data?: string) => void): void {
     this.redis.hget(key, field, (err, result) => {
       if (err) {
         console.log(err);
@@ -39,15 +44,73 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
-    this.redis.hdel(key, field, (err, result) => {
+  deleteHashValue(key: string, field: string, callback?: (deleted: boolean) => void): void {
+    this.redis.hdel(key, field, (err) => {
       if (err) {
         console.log(err);
-        callback(false);
+        if (callback !== undefined) {
+          callback(false);
+        }
       } else {
-        callback(true);
+        if (callback !== undefined) {
+          callback(true);
+        }
       }
     });
+  }
+
+  deleteValue(key: string, callback?: (deleted: boolean) => void): void {
+    this.redis.del(key, (err) => {
+      if (err) {
+        console.log(err);
+        if (callback !== undefined) {
+          callback(false);
+        }
+      } else {
+        if (callback !== undefined) {
+          callback(true);
+        }
+      }
+    });
+  }
+
+  addSetValue(key: string, value: (string[] | string)): void {
+    //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)
+    if (value instanceof Array) {
+      this.redis.sadd(key, ...value);
+    } else {
+      this.redis.sadd(key, value);
+    }
+  }
+
+  getSetValues(key: string, callback: (data: string[]) => void): void {
+    this.redis.smembers(key, (err, result) => {
+      if (err) {
+        console.log(err);
+        if (callback !== undefined) {
+          callback([]);
+        }
+      } else {
+        if (callback !== undefined) {
+          callback(result);
+        }
+      }
+    })
+  }
+
+  deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void {
+    this.redis.srem(key, value, (err) => {
+      if (err) {
+        console.log(err);
+        if (callback !== undefined) {
+          callback(false);
+        }
+      } else {
+        if (callback !== undefined) {
+          callback(true);
+        }
+      }
+    })
   }
 
   queueForLrs(value: string): void {

@@ -46,16 +46,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (this.activeClient) {
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
-
-      session.save(() => {
-        if (this.activeClient) {
-          res.redirect(this.activeClient.authorizationUrl({
-            scope: this.config.authenticationScope,
-            code_challenge: codeChallenge,
-            code_challenge_method: 'S256'
-          }));
-        }
-      });
+      res.redirect(this.activeClient.authorizationUrl({
+        scope: this.config.authenticationScope,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256'
+      }));
     } else {
       res.status(503).end();
     }
