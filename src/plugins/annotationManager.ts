@@ -4,7 +4,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
 import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey } from "../utils/constants";
-import { MessageTemplate } from "../models/messageTemplate";
+// import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 
 export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationManager {
@@ -14,41 +14,41 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getAnnotations",
-      this.validateGetAnnotations,
-      (payload: { [key: string]: any }) => {
-        this.getAnnotations(payload.identity, payload.timestamp, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getAnnotations",
+    //   this.validateGetAnnotations,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getAnnotations(payload.identity, payload.timestamp, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveAnnotations",
-      this.validateSaveAnnotations,
-      (payload: { [key: string]: any }) => {
-        this.saveAnnotations(payload.identity, payload.stmts, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveAnnotations",
+    //   this.validateSaveAnnotations,
+    //   (payload: { [key: string]: any }) => {
+    //     this.saveAnnotations(payload.identity, payload.stmts, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("getSharedAnnotations",
-      this.validateGetSharedAnnotations,
-      (payload: { [key: string]: any }) => {
-        this.getSharedAnnotations(payload.identity, payload.timestamp, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getSharedAnnotations",
+    //   this.validateGetSharedAnnotations,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getSharedAnnotations(payload.identity, payload.timestamp, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
-      this.validateSaveSharedAnnotations,
-      (payload: { [key: string]: any }) => {
-        this.saveSharedAnnotations(payload.identity, payload.stmts, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
+    //   this.validateSaveSharedAnnotations,
+    //   (payload: { [key: string]: any }) => {
+    //     this.saveSharedAnnotations(payload.identity, payload.stmts, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
-      this.validateDeleteAnnotation,
-      (payload: { [key: string]: any }) => {
-        this.deleteAnnotation(payload.identity, payload.xId, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
+    //   this.validateDeleteAnnotation,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteAnnotation(payload.identity, payload.xId, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
-      this.validateDeleteSharedAnnotation,
-      (payload: { [key: string]: any }) => {
-        this.deleteSharedAnnotation(payload.identity, payload.xId, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
+    //   this.validateDeleteSharedAnnotation,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteSharedAnnotation(payload.identity, payload.xId, payload.callback);
+    //   }));
   }
 
   validateGetAnnotations(payload: { [key: string]: any }): boolean {
@@ -86,7 +86,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   //Retrieve annotations made by the user across all books
   getAnnotations(identity: string, timestamp: number, callback: ((stmts: (Annotation | Voided)[]) => void)): void {
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:annotations:' + identity, timestamp, (data) => {
-      this.sessionData.getHashValuesForFields(generateUserAnnotationsKey(identity), data, (result) => {
+      this.sessionData.getHashMultiField(generateUserAnnotationsKey(identity), data, (result) => {
         callback(result.map(function(x) {
           let obj = JSON.parse(x);
           if (Annotation.is(obj))
@@ -119,7 +119,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   //Retrieve shared annotations visible to the user made across all books
   getSharedAnnotations(identity: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void {
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:sharedAnnotations', timestamp, (data) => {
-      this.sessionData.getHashValuesForFields('sharedAnnotations', data, (result) => {
+      this.sessionData.getHashMultiField('sharedAnnotations', data, (result) => {
         callback(result.map(function(x) {
           let obj = JSON.parse(x);
           if (SharedAnnotation.is(obj))

@@ -3,7 +3,6 @@ import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
-import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
@@ -12,23 +11,23 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getEvents",
-      this.validateGetEvents,
-      (payload: { [key: string]: any }) => {
-        this.getEvents(payload.identity, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getEvents",
+    //   this.validateGetEvents,
+    //   (payload: { [key: string]: any }) => {
+    //     this.getEvents(payload.identity, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("saveEvents",
-      this.validateSaveEvents,
-      (payload: { [key: string]: any }) => {
-        this.saveEvents(payload.identity, payload.stmts, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("saveEvents",
+    //   this.validateSaveEvents,
+    //   (payload: { [key: string]: any }) => {
+    //     this.saveEvents(payload.identity, payload.stmts, payload.callback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteEvent",
-      this.validateDeleteEvent,
-      (payload: { [key: string]: any }) => {
-        this.deleteEvent(payload.identity, payload.xId, payload.callback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteEvent",
+    //   this.validateDeleteEvent,
+    //   (payload: { [key: string]: any }) => {
+    //     this.deleteEvent(payload.identity, payload.xId, payload.callback);
+    //   }));
   }
 
   validateGetEvents(payload: { [key: string]: any }): boolean {
@@ -43,7 +42,6 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     return false;
   }
 
-
   // getEventsForBook(identity: string, book: string): XApiStatement[]; //Retrieve all events for this user made within the specific book
 
   //Retrieve all events for this user
@@ -56,9 +54,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
       });
   }
 
-
   // saveEventsForBook(identity: string, book: string, events: XApiStatement[]): void; // Store the events for this user made within the specific book
-
 
   // Store the events for this user
   saveEvents(identity: string, stmts: XApiStatement[], callback: ((success: boolean) => void)): void {

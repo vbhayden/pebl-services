@@ -46,16 +46,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (this.activeClient) {
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
-
-      session.save(() => {
-        if (this.activeClient) {
-          res.redirect(this.activeClient.authorizationUrl({
-            scope: this.config.authenticationScope,
-            code_challenge: codeChallenge,
-            code_challenge_method: 'S256'
-          }));
-        }
-      });
+      res.redirect(this.activeClient.authorizationUrl({
+        scope: this.config.authenticationScope,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256'
+      }));
     } else {
       res.status(503).end();
     }
@@ -73,16 +68,20 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  getProfile(session: Express.Session): void {
+  getProfile(session: Express.Session, callback?: () => void): void {
     if (this.activeClient) {
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
+          if (callback !== undefined) {
+            callback();
+          }
         });
     }
   }
 
   redirect(req: Request, session: Express.Session, res: Response): void {
+    let self = this;
     if (this.activeClient) {
       this.activeClient.callback(
         this.config.authenticationRedirectURIs[0],
@@ -91,7 +90,9 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then(function(tokenSet: TokenSet) {
           session.activeTokens = tokenSet;
           session.loggedIn = true;
-          res.send(tokenSet.id_token).status(200).end();
+          self.getProfile(session, () => {
+            res.send(tokenSet.id_token).status(200).end();
+          });
         }).catch(function(err) {
           console.log(err);
           res.status(401).end();

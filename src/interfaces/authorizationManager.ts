@@ -1,7 +1,11 @@
 
 export interface AuthorizationManager {
-  authorized(username: string,
-    data: { [key: string]: any },
-    successCallback: (() => void),
-    failureCallback: ((err: string) => void)): void;
+  authorize(username: string,
+    permissions: any,
+    payload: { [key: string]: any }): boolean;
+
+  assemblePermissionSet(identity: string,
+    permissionLastModified: Express.Session,
+    callback: () => void): void;
 }
+

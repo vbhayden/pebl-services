@@ -3,32 +3,48 @@ import { Group } from "../models/group";
 // import { GroupRole } from "../models/groupRole";
 import { PeBLPlugin } from "../models/peblPlugin";
 
-
 export interface GroupManager extends PeBLPlugin {
 
   validateAddGroup(payload: { [key: string]: any }): boolean;
   validateDeleteGroup(payload: { [key: string]: any }): boolean;
   validateUpdateGroup(payload: { [key: string]: any }): boolean;
 
-  validateAddGroupMember(payload: { [key: string]: any }): boolean;
-  validateDeleteGroupMember(payload: { [key: string]: any }): boolean;
-  validateUpdateGroupMember(payload: { [key: string]: any }): boolean;
+  validateAddGroupMemberUser(payload: { [key: string]: any }): boolean;
+  validateDeleteGroupMemberUser(payload: { [key: string]: any }): boolean;
+  validateUpdateGroupMemberUser(payload: { [key: string]: any }): boolean;
 
   validateGetGroups(payload: { [key: string]: any }): boolean;
 
-  addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
-  deleteGroup(id: string): void; //Delete the group with the specified Id
-  updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
+  authorizeAddGroup(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeDeleteGroup(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeUpdateGroup(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeAddGroupMemberUser(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeDeleteGroupMemberUser(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeUpdateGroupMemberUser(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeGetGroups(username: string, permissions: any, payload: { [key: string]: any }): boolean;
 
-  addGroupMember(id: string, userId: string, role: string): void; //Add the specified userId as a member of the specified group with the specified metadata
-  deleteGroupMember(id: string, userId: string): void; //Remove the specified userId from the specified group
-  updateGroupMember(id: string, userId: string, role: string): void; //Update specified user metadata in specified group
+  addGroup(groupId: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
+  deleteGroup(groupId: string): void; //Delete the group with the specified Id
+  updateGroup(groupId: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
+
+
+  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void
+  addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void
+
+  getGroupMemberUser(groupId: string, memberUserId: string, callback: (roleIds: string[]) => void): void
+  getGroupMemberUsers(groupId: string, callback: (userIds: string[]) => void): void
+
+  getGroupMemberGroup(groupId: string, memberGroupId: string, callback: (roleIds: string[]) => void): void
+  getGroupMemberGroups(groupId: string, callback: (groupIds: string[]) => void): void;
+
+  deleteGroupMemberUser(groupId: string, memberUserId: string): void; //Remove the specified userId from the specified group
+  deleteGroupMemberGroup(groupId: string, memberGroupId: string): void
+
+  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void;
+  updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void;
 
   getGroups(callback: ((groups: Group[]) => void)): void; //Get all existing groups
+  getGroupsGroups(groupId: string, callback: ((groupIds: string[]) => void)): void;
 
-  // createGroupRole(id: string, roleName: string, permissions: Role[]): void; //Create a role within a group
-  // updateGroupRole(id: string, roleName?: string, permissions?: Role[]): void; //Update a role within a group
-  // deleteGroupRole(id: string, roleName: string): void; //Delete a role within a group
-
-  // getGroupRoles(id: string, callback: ((groupRoles: GroupRole[]) => void)): void; // Get all roles within a group
+  getUsersGroups(userId: string, callback: ((groupIds: string[]) => void)): void;
 }

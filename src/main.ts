@@ -83,9 +83,9 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
-const groupManager: GroupManager = new DefaultGroupManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
-const roleManager: RoleManager = new DefaultRoleManager(redisCache);
+const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
+const roleManager: RoleManager = new DefaultRoleManager(redisCache, userManager);
 const activityManager: ActivityManager = new DefaultActivityManager(redisCache);
 const annotationManager: AnnotationManager = new DefaultAnnotationManager(redisCache);
 const eventManager: EventManager = new DefaultEventManager(redisCache);
@@ -104,7 +104,7 @@ const lrsManager: LRS = new LRSPlugin(new Endpoint({
   headers: config.lrsHeaders
 }));
 
-const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(groupManager, userManager, roleManager);
+const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(pluginManager, groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
 
 pluginManager.register(groupManager);
@@ -123,6 +123,13 @@ pluginManager.register(threadManager);
 pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
 pluginManager.register(sessionManager);
+
+roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()));
+
+let systemAdminRoles = ["systemAdmin"];
+for (let systemAdmin of config.systemAdmins) {
+  userManager.addUserRoles(systemAdmin, systemAdminRoles);
+}
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -193,7 +200,7 @@ expressApp.use(
     cookie: {
       secure: config.useSSL,
       httpOnly: true,
-      maxAge: config.sessionTTL,
+      maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
       sameSite: "lax"
     },
     name: "s",
@@ -214,6 +221,7 @@ expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
 expressApp.get('/', function(req: Request, res: Response) {
+  console.log(req.session?.id)
   res.send("Hello World!").end();
 });
 
@@ -243,6 +251,7 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
+    console.log(req.session.id, req.session.loggedIn)
     if (req.session.loggedIn) {
       authenticationManager.logout(req.session, res);
     } else {
@@ -269,54 +278,45 @@ expressApp.post('/validate', function(req: Request, res: Response) {
   authenticationManager.validate(req.body.token, res);
 });
 
-expressApp.ws('/', function(ws: WebSocket, req: Request) {
-  if (req.session) {
-    if (req.session.loggedIn) {
-      ws.on('message', function(msg: String) {
-        console.log(msg, req.session?.test);
-        if (req.session) {
-          // if (!req.session.test) {
-          //   req.session.test = 0;
-          // }
-          // req.session.test = req.session.test + 1;
-          // req.session.save(function(err) {
-          //   console.log(err);
-          // });
-        }
-      });
-      ws.send("ping");
-    } else {
-      ws.terminate();
-    }
-  }
-});
+// expressApp.ws('/', function(ws: WebSocket, req: Request) {
+//   if (req.session) {
+//     if (req.session.loggedIn) {
+//       ws.on('message', function(msg: String) {
+
+//       });
+//       ws.send("ping");
+//     } else {
+//       ws.terminate();
+//     }
+//   }
+// });
 
 expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
   ws.on('message', function(msg) {
     if (req.session) {
-      //TODO: Validate & Authorize
       if (typeof msg === 'string') {
-        console.log(req.session.activeTokens.id_token);
         let payload: any;
         try {
           payload = JSON.parse(msg);
-          console.log(validationManager.validate(payload));
-          // if (!validationManager.validate(payload)) {
-          //   ws.send("Invalid Message");
-          //   return;
-          // }
+          if (!validationManager.validate(payload)) {
+            ws.send("Invalid Message");
+            return;
+          }
         } catch (e) {
           ws.send("Invalid Message");
           return;
         }
 
-        authorizationManager.authorized("",
-          payload,
+        authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
+          req.session,
           () => {
-            console.log("test");
-          },
-          (err: any) => {
-            ws.send("Invalid Message");
+            if (req && req.session) {
+              console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
+                req.session.permissions,
+                payload));
+            } else {
+              console.log("invalid session");
+            }
           });
       }
     } else {

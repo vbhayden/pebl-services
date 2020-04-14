@@ -1,5 +1,4 @@
 import { UserProfile } from "../models/userProfile";
-import { Role } from "../models/role";
 import { PeBLPlugin } from "../models/peblPlugin";
 
 export interface UserManager extends PeBLPlugin {
@@ -10,10 +9,23 @@ export interface UserManager extends PeBLPlugin {
 
   validateGetUsers(payload: { [key: string]: any }): boolean;
 
-  addUserProfile(id: string, userName: string, userEmail?: string, roles?: Role[]): void; // Add a user with the specified metadata
+  authorizeAddUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeDeleteUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeUpdateUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeGetUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  authorizeGetUsers(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+
+  addUserProfile(id: string, userName: string, userEmail?: string): void; // Add a user with the specified metadata
   deleteUserProfile(id: string): void; // Delete a user with the specified id
   updateUserProfile(id: string, userName?: string, userEmail?: string): void; // Update user metadata
   getUserProfile(id: string, callback: ((user: UserProfile) => void)): void; //Get the specified users profile
 
+  addUserRoles(id: string, roleIds: string[]): void;
+  getUserRoles(id: string, callback: (roleIds: string[]) => void): void;
+  deleteUserRole(id: string, roleId: string): void;
+
   getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
+
+  setLastModifiedPermissions(identity: string, lastModified: string): void;
+  getLastModifiedPermissions(identity: string, callback: (lastModified: string) => void): void;
 }

@@ -10,6 +10,10 @@ export class DefaultPluginManager implements PluginManager {
 
   }
 
+  getMessageTemplates(): { [key: string]: MessageTemplate } {
+    return this.registeredTemplates;
+  }
+
   getMessageTemplate(verb: string): MessageTemplate | null {
     return this.registeredTemplates[verb];
   }
