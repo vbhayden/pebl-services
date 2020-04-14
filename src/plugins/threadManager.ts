@@ -87,18 +87,18 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   subscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.setHashValues('users:thread', [thread, userId]);
+    this.sessionData.setHashValues('users:thread:' + thread, [userId, userId]);
     callback(true);
   }
 
   unsubscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.deleteHashValue('users:thread', thread, (deleted) => { callback(deleted) });
+    this.sessionData.deleteHashValue('users:thread:' + thread, userId, (deleted) => { callback(deleted) });
   }
 
   private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
-    this.sessionData.getHashValues('users:thread', callback);
+    this.sessionData.getHashValues('users:thread:' + realThread, callback);
   }
 
   getGroupScopedThread(thread: string, groupId: string): string {
