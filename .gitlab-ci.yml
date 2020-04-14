@@ -26,7 +26,7 @@ build:
   artifacts:
     paths:
     - dist/
-    - node_modules/
+    - package.json
     
 ### DEPLOYMENTS
 
@@ -51,5 +51,6 @@ devDeploy:
 
    - ssh -p22 $USERNAME@$SERVER_IP "rm -rf /srv/devNode/*"
    - scp -P22 -r dist $USERNAME@$SERVER_IP:/srv/devNode/
-   - scp -P22 -r node_modules $USERNAME@$SERVER_IP:/srv/devNode/
+   - scp -P22 -r package.json $USERNAME@$SERVER_IP:/srv/devNode/
+   - ssh -p22 $USERNAME@$SERVER_IP "cd /srv/devNode && npm install --production"
    - ssh -p22 $USERNAME@$SERVER_IP "date > /srv/devNodeUpdated"

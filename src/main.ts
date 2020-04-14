@@ -190,7 +190,7 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
 expressApp.use(allowCrossDomain);
 
 redisClient.on("error", function(error) {
-  console.error(error);
+  console.error("Redis Client", error);
 });
 
 expressApp.use(
