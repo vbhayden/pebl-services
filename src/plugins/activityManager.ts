@@ -4,6 +4,8 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Activity } from "../models/activity";
 import { ProgramAction } from "../models/programAction";
 import { generateUserActivitiesKey, generateActivitiesKey, generateUserActivityEventsKey, generateActivityEventsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultActivityManager extends PeBLPlugin implements ActivityManager {
   private sessionData: SessionDataManager;
@@ -11,45 +13,55 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getActivities",
-    //   this.validateGetActivities,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getActivities(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getActivities",
+      this.validateGetActivities,
+      this.authorizeGetActivities,
+      (payload: { [key: string]: any }) => {
+        this.getActivities(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveActivities",
-    //   this.validateSaveActivities,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveActivities(payload.identity, payload.activities, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveActivities",
+      this.validateSaveActivities,
+      this.authorizeSaveActivities,
+      (payload: { [key: string]: any }) => {
+        this.saveActivities(payload.identity, payload.activities, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteActivity",
-    //   this.validateDeleteActivity,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteActivity(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteActivity",
+      this.validateDeleteActivity,
+      this.authorizeDeleteActivity,
+      (payload: { [key: string]: any }) => {
+        this.deleteActivity(payload.identity, payload.xId, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("getActivityEvents",
-    //   this.validateGetActivityEvents,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getActivityEvents(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getActivityEvents",
+      this.validateGetActivityEvents,
+      this.authorizeGetActivityEvents,
+      (payload: { [key: string]: any }) => {
+        this.getActivityEvents(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveActivityEvents",
-    //   this.validateSaveActivityEvents,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveActivityEvents(payload.identity, payload.events, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveActivityEvents",
+      this.validateSaveActivityEvents,
+      this.authorizeSaveActivityEvents,
+      (payload: { [key: string]: any }) => {
+        this.saveActivityEvents(payload.identity, payload.events, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
-    //   this.validateDeleteActivityEvent,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteActivityEvent(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
+      this.validateDeleteActivityEvent,
+      this.authorizeDeleteActivityEvent,
+      (payload: { [key: string]: any }) => {
+        this.deleteActivityEvent(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetActivities(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeGetActivities(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -58,8 +70,16 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     return false;
   }
 
+  authorizeSaveActivities(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteActivity(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeDeleteActivity(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -68,13 +88,25 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     return false;
   }
 
+  authorizeGetActivityEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateSaveActivityEvents(payload: { [key: string]: any }): boolean {
     //TODO
     return false;
   }
 
+  authorizeSaveActivityEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteActivityEvent(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeDeleteActivityEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

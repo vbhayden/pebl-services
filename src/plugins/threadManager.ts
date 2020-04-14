@@ -3,8 +3,9 @@ import { ThreadManager } from "../interfaces/threadManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { ServiceMessage } from "../models/serviceMessage";
-// import { MessageTemplate } from "../models/messageTemplate";
+import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -13,35 +14,40 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     super();
     this.sessionData = sessionData;
 
-    // this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
-    //   this.validateThreadWritePermission,
-    //   (payload: { [key: string]: any }) => {
-    //     this.storeMessage(payload.message, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
+      this.validateStoreThreadedMessage,
+      this.authorizeStoreThreadedMessage,
+      (payload: { [key: string]: any }) => {
+        this.storeMessage(payload.message, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
-    //   this.validateThreadReadPermission,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getMessages(payload.thread, payload.timestamp, payload.callback, payload.groupId);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
+      this.validateGetThreadedMessages,
+      this.authorizeGetThreadedMessages,
+      (payload: { [key: string]: any }) => {
+        this.getMessages(payload.thread, payload.timestamp, payload.callback, payload.groupId);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("subscribeThread",
-    //   this.validateThreadReadPermission,
-    //   (payload: { [key: string]: any }) => {
-    //     this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("subscribeThread",
+      this.validateSubscribeThread,
+      this.authorizeSubscribeThread,
+      (payload: { [key: string]: any }) => {
+        this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
-    //   this.validateThreadReadPermission,
-    //   (payload: { [key: string]: any }) => {
-    //     this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
+      this.validateUnsubscribeThread,
+      this.authorizeUnsubscribeThread,
+      (payload: { [key: string]: any }) => {
+        this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
-    //   this.validateMessageOwnership,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
+      this.validateDeleteThreadedMessage,
+      this.authorizeDeleteThreadedMessage,
+      (payload: { [key: string]: any }) => {
+        this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
+      }));
   }
 
   private validateThread(thread: string): boolean {
@@ -52,7 +58,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       return true;
   }
 
-  validateThreadReadPermission(payload: { [key: string]: any }): boolean {
+  validateGetThreadedMessages(payload: { [key: string]: any }): boolean {
     //TODO: Does the user have permission to read messages on this thread. If a group message, is the user in that group?
     if (!this.validateThread(payload.thread))
       return false;
@@ -65,7 +71,11 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return false;
   }
 
-  validateThreadWritePermission(payload: { [key: string]: any }): boolean {
+  authorizeGetThreadedMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateStoreThreadedMessage(payload: { [key: string]: any }): boolean {
     //TODO: Does the user have permission to post to this thread. If a group message, is the user in that group?
     if (!this.validateThread(payload.message.thread))
       return false;
@@ -78,27 +88,51 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return false;
   }
 
-  validateMessageOwnership(payload: { [key: string]: any }): boolean {
+  authorizeStoreThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateSubscribeThread(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeSubscribeThread(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateUnsubscribeThread(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeUnsubscribeThread(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
     //TODO: Does the user own the message they are trying to modify?
 
+    return false;
+  }
+
+  authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
   subscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.setHashValues('users:thread', [thread, userId]);
+    this.sessionData.setHashValues('users:thread:' + thread, [userId, userId]);
     callback(true);
   }
 
   unsubscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
-    this.sessionData.deleteHashValue('users:thread', thread, (deleted) => { callback(deleted) });
+    this.sessionData.deleteHashValue('users:thread:' + thread, userId, (deleted) => { callback(deleted) });
   }
 
   private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
-    this.sessionData.getHashValues('users:thread', callback);
+    this.sessionData.getHashValues('users:thread:' + realThread, callback);
   }
 
   getGroupScopedThread(thread: string, groupId: string): string {

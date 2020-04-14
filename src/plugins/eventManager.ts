@@ -3,6 +3,8 @@ import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
@@ -11,26 +13,33 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getEvents",
-    //   this.validateGetEvents,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getEvents(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getEvents",
+      this.validateGetEvents,
+      this.authorizeGetEvents,
+      (payload: { [key: string]: any }) => {
+        this.getEvents(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveEvents",
-    //   this.validateSaveEvents,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveEvents(payload.identity, payload.stmts, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveEvents",
+      this.validateSaveEvents,
+      this.authorizeSaveEvents,
+      (payload: { [key: string]: any }) => {
+        this.saveEvents(payload.identity, payload.stmts, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteEvent",
-    //   this.validateDeleteEvent,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteEvent(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteEvent",
+      this.validateDeleteEvent,
+      this.authorizeDeleteEvent,
+      (payload: { [key: string]: any }) => {
+        this.deleteEvent(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetEvents(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -38,7 +47,15 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     return false;
   }
 
+  authorizeSaveEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteEvent(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeDeleteEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

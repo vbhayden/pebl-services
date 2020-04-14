@@ -3,6 +3,8 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MembershipManager } from "../interfaces/membershipManager";
 import { Membership } from "../models/membership";
 import { generateUserMembershipKey, generateMembershipsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultMembershipManager extends PeBLPlugin implements MembershipManager {
   private sessionData: SessionDataManager;
@@ -10,26 +12,33 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getMemberships",
-    //   this.validateGetMemberships,
-    //   (payload) => {
-    //     this.getMemberships(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getMemberships",
+      this.validateGetMemberships,
+      this.authorizeGetMemberships,
+      (payload) => {
+        this.getMemberships(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveMemberships",
-    //   this.validateSaveMemberships,
-    //   (payload) => {
-    //     this.saveMemberships(payload.identity, payload.memberships, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveMemberships",
+      this.validateSaveMemberships,
+      this.authorizeSaveMemberships,
+      (payload) => {
+        this.saveMemberships(payload.identity, payload.memberships, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteMembership",
-    //   this.validateDeleteMembership,
-    //   (payload) => {
-    //     this.deleteMembership(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteMembership",
+      this.validateDeleteMembership,
+      this.authorizeDeleteMembership,
+      (payload) => {
+        this.deleteMembership(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetMemberships(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetMemberships(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -37,7 +46,15 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     return false;
   }
 
+  authorizeSaveMemberships(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteMembership(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeDeleteMembership(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
