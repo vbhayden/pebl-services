@@ -67,11 +67,15 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
   //Add a role based on a set of permissions
   addRole(id: string, name: string, permissions: string[]): void {
+    let p: { [key: string]: boolean } = {};
+    for (let permission of permissions) {
+      p[permission] = true;
+    }
     this.sessionData.setHashValue(SET_ALL_ROLES,
       id,
       JSON.stringify({
         name: name,
-        permissions: permissions
+        permissions: p
       }));
   }
 
@@ -100,6 +104,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     this.sessionData.getHashMultiField(SET_ALL_ROLES,
       ids,
       (data: string[]) => {
+        console.log(data);
         callback(data.map((role) => Role.convert(role)));
       });
   }
@@ -121,5 +126,9 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
       (data: string[]) => {
         callback(data.map((x) => Role.convert(x)));
       });
+  }
+
+  getUsersByRole(roleId: string, callback: (userIds: string[]) => void): void {
+    this.sessionData.getSetValues(roleId, callback);
   }
 }

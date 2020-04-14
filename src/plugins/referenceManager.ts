@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { MessageTemplate } from "../models/messageTemplate";
 import { Reference } from "../models/reference";
 import { generateUserReferencesKey, generateReferencesKey } from "../utils/constants";
 

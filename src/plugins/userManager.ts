@@ -4,7 +4,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
-import { SET_ALL_USERS, generateUserToRolesKey } from "../utils/constants";
+import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey } from "../utils/constants";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
@@ -107,6 +107,9 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   addUserRoles(userId: string, roleIds: string[]): void {
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
+    for (let roleId of roleIds) {
+      this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
+    }
   }
 
   getUserRoles(userId: string, callback: (roleIds: string[]) => void): void {
@@ -115,6 +118,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   deleteUserRole(userId: string, roleId: string): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId);
+    this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId);
   }
 
   // Update user metadata

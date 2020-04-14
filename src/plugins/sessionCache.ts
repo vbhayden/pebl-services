@@ -45,12 +45,16 @@ export class RedisSessionDataCache implements SessionDataManager {
   }
 
   getHashMultiField(key: string, field: string[], callback: (data: string[]) => void): void {
-    this.redis.hmget(key, ...field, (err, result) => {
-      if (err) {
-        console.log(err);
-      }
-      callback(result);
-    });
+    if (field.length != 0) {
+      this.redis.hmget(key, ...field, (err, result) => {
+        if (err) {
+          console.log(err);
+        }
+        callback(result);
+      });
+    } else {
+      callback([]);
+    }
   }
 
   getHashValue(key: string, field: string, callback: (data?: string) => void): void {

@@ -66,20 +66,20 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
   }
 
   validateAddGroup(payload: { [key: string]: any }): boolean {
-    if (!(payload.id instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupName instanceof String)) {
-      return false;
-    }
-    if (!(payload.groupDescription instanceof String)) {
-      return false;
-    }
-    if (payload.groupAvatar) {
-      if (!(payload.groupAvatar instanceof String)) {
-        return false;
-      }
-    }
+    // if (!(payload.id instanceof String)) {
+    //   return false;
+    // }
+    // if (!(payload.groupName instanceof String)) {
+    //   return false;
+    // }
+    // if (!(payload.groupDescription instanceof String)) {
+    //   return false;
+    // }
+    // if (payload.groupAvatar) {
+    //   if (!(payload.groupAvatar instanceof String)) {
+    //     return false;
+    //   }
+    // }
 
     return true;
   }

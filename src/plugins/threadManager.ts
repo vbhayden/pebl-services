@@ -3,7 +3,6 @@ import { ThreadManager } from "../interfaces/threadManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { ServiceMessage } from "../models/serviceMessage";
-import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;

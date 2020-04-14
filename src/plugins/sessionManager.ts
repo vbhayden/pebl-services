@@ -3,7 +3,6 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { generateUserSessionsKey, generateSessionsKey } from "../utils/constants";
-import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;

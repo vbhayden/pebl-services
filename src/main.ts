@@ -125,7 +125,7 @@ pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
 pluginManager.register(sessionManager);
 
-roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates));
+roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()));
 
 let systemAdminRoles = ["systemAdmin"];
 for (let systemAdmin of config.systemAdmins) {
@@ -308,15 +308,13 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
           return;
         }
 
-        authorizationManager.assemblePermissionSet(req.session.activeTokens.id_token.username,
+        authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
           req.session,
           (permissionSet?: PermissionSet) => {
-
+            // console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
+            //   req.session.permissions,
+            //   payload));
           });
-
-        console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
-          req.session.permissions,
-          payload));
       }
     } else {
       ws.terminate();

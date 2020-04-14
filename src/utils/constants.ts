@@ -102,6 +102,9 @@ export function generateUserToRolesKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_ROLES;
 }
 
+export function generateRoleToUsersKey(roleId: string): string {
+  return 'role:' + roleId + ':' + KEY_USERS;
+}
 
 //groups
 export function generateGroupToUserMembersKey(groupId: string): string {

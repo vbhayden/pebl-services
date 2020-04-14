@@ -27,19 +27,19 @@ export class DefaultAuthorizationManager {
 
         this.roleManager.getMultiRole(roleIds, (roles: Role[]) => {
           for (let role of roles) {
-            for (let permission in role.permissions) {
+            for (let permission of Object.keys(role.permissions)) {
               userPermissions[permission] = true;
             }
           }
 
-          //TODO implemenet nested group permission resolution
+          //TODO implement nested group permission resolution
           let getGroupRoles = (groupIds: string[]) => {
             let groupId = groupIds.pop();
             if (groupId !== undefined) {
               this.groupManager.getGroupMemberUser(groupId, identity, (roleIds: string[]) => {
                 this.roleManager.getMultiRole(roleIds, (roles: Role[]) => {
                   for (let role of roles) {
-                    for (let permission in role.permissions) {
+                    for (let permission of Object.keys(role.permissions)) {
                       if (groupId) {
                         groupPermissions[groupId][permission] = true;
                       }
@@ -61,7 +61,7 @@ export class DefaultAuthorizationManager {
   }
 
   authorize(username: string,
-    permissions: any,
+    permissions: PermissionSet,
     payload: { [key: string]: any }): boolean {
 
     let messageTemplate = this.pluginManager.getMessageTemplate(payload.requestType);
