@@ -14,7 +14,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     super();
     this.sessionData = sessionData;
     this.userManager = userManager;
-    console.log(this.sessionData);
+    // console.log(this.sessionData);
     // this.addMessageTemplate(new MessageTemplate("addRole",
     //   this.validateAddRole,
     //   (payload) => {

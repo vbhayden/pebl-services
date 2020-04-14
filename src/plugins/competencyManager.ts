@@ -4,12 +4,12 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 
 export class DefaultCompetencyManager extends PeBLPlugin implements CompetencyManager {
 
-  private sessionData: SessionDataManager;
+  // private sessionData: SessionDataManager;
 
   constructor(sessionData: SessionDataManager) {
     super();
-    this.sessionData = sessionData;
-    console.log(this.sessionData);
+    // this.sessionData = sessionData;
+
   }
 
   validateGetCompetencies(payload: { [key: string]: any }): boolean {

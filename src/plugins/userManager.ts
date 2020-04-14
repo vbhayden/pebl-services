@@ -13,7 +13,6 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   constructor(redisCache: SessionDataManager) {
     super();
     this.sessionData = redisCache;
-    console.log(this.sessionData);
     this.addMessageTemplate(new MessageTemplate("addUserProfile",
       this.validateAddUserProfile,
       this.authorizeAddUserProfile,
