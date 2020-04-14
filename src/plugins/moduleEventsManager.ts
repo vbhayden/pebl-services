@@ -3,6 +3,8 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { ModuleEventsManager } from "../interfaces/moduleEventsManager";
 import { ModuleEvent } from "../models/moduleEvent";
 import { generateUserModuleEventsKey, generateModuleEventsKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEventsManager {
   private sessionData: SessionDataManager;
@@ -11,26 +13,33 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     super();
     this.sessionData = sessionData;
 
-    // this.addMessageTemplate(new MessageTemplate("getModuleEvents",
-    //   this.validateGetModuleEvents,
-    //   (payload) => {
-    //     this.getModuleEvents(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getModuleEvents",
+      this.validateGetModuleEvents,
+      this.authorizeGetModuleEvents,
+      (payload) => {
+        this.getModuleEvents(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
-    //   this.validateSaveModuleEvents,
-    //   (payload) => {
-    //     this.saveModuleEvents(payload.identity, payload.events, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
+      this.validateSaveModuleEvents,
+      this.authorizeSaveModuleEvents,
+      (payload) => {
+        this.saveModuleEvents(payload.identity, payload.events, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
-    //   this.validateDeleteModuleEvent,
-    //   (payload) => {
-    //     this.deleteModuleEvent(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
+      this.validateDeleteModuleEvent,
+      this.authorizeDeleteModuleEvent,
+      (payload) => {
+        this.deleteModuleEvent(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetModuleEvents(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetModuleEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -38,7 +47,15 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     return false;
   }
 
+  authorizeSaveModuleEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteModuleEvent(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeDeleteModuleEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

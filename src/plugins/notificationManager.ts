@@ -4,6 +4,8 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement } from "../models/xapiStatement";
 import { generateUserNotificationsKey, generateNotificationsKey } from "../utils/constants";
 import { ServiceMessage } from "../models/serviceMessage";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
   private sessionData: SessionDataManager;
@@ -11,26 +13,33 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getNotifications",
-    //   this.validateGetNotifications,
-    //   (payload) => {
-    //     this.getNotifications(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getNotifications",
+      this.validateGetNotifications,
+      this.authorizeGetNotifications,
+      (payload) => {
+        this.getNotifications(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveNotifications",
-    //   this.validateSaveNotifications,
-    //   (payload) => {
-    //     this.saveNotifications(payload.identity, payload.notifications, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveNotifications",
+      this.validateSaveNotifications,
+      this.authorizeSaveNotifications,
+      (payload) => {
+        this.saveNotifications(payload.identity, payload.notifications, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteNotification",
-    //   this.validateDeleteNotification,
-    //   (payload) => {
-    //     this.deleteNotification(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteNotification",
+      this.validateDeleteNotification,
+      this.authorizeDeleteNotification,
+      (payload) => {
+        this.deleteNotification(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetNotifications(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetNotifications(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -38,7 +47,15 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     return false;
   }
 
+  authorizeSaveNotifications(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteNotification(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeDeleteNotification(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

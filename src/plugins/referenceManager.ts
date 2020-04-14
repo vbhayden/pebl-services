@@ -3,6 +3,8 @@ import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Reference } from "../models/reference";
 import { generateUserReferencesKey, generateReferencesKey } from "../utils/constants";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
@@ -10,27 +12,34 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getReferences",
-    //   this.validateGetReference,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getReferences(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getReferences",
+      this.validateGetReferences,
+      this.authorizeGetReferences,
+      (payload: { [key: string]: any }) => {
+        this.getReferences(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveReferences",
-    //   this.validateSaveReferences,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveReferences(payload.identity, payload.references, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveReferences",
+      this.validateSaveReferences,
+      this.authorizeSaveReferences,
+      (payload: { [key: string]: any }) => {
+        this.saveReferences(payload.identity, payload.references, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteReference",
-    //   this.validateDeleteReference,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteReference(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteReference",
+      this.validateDeleteReference,
+      this.authorizeDeleteReference,
+      (payload: { [key: string]: any }) => {
+        this.deleteReference(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
-  validateGetReference(payload: { [key: string]: any }): boolean {
+  validateGetReferences(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeGetReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -39,8 +48,16 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     return false;
   }
 
+  authorizeSaveReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteReference(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeDeleteReference(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

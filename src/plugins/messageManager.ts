@@ -3,6 +3,8 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { generateUserMessagesKey, generateMessagesKey } from "../utils/constants";
 import { MessageManager } from "../interfaces/messageManager";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultMessageManager extends PeBLPlugin implements MessageManager {
 
@@ -11,26 +13,33 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getMessages",
-    //   this.validateGetMessages,
-    //   (payload) => {
-    //     this.getMessages(payload.identity, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getMessages",
+      this.validateGetMessages,
+      this.authorizeGetMessages,
+      (payload) => {
+        this.getMessages(payload.identity, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveMessages",
-    //   this.validateSaveMessages,
-    //   (payload) => {
-    //     this.saveMessages(payload.identity, payload.messages, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveMessages",
+      this.validateSaveMessages,
+      this.authorizeSaveMessages,
+      (payload) => {
+        this.saveMessages(payload.identity, payload.messages, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteMessage",
-    //   this.validateDeleteMessages,
-    //   (payload) => {
-    //     this.deleteMessage(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteMessage",
+      this.validateDeleteMessages,
+      this.authorizeDeleteMessages,
+      (payload) => {
+        this.deleteMessage(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetMessages(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -38,10 +47,17 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
     return false;
   }
 
+  authorizeSaveMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteMessages(payload: { [key: string]: any }): boolean {
     return false;
   }
 
+  authorizeDeleteMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
 
   getMessages(identity: string, callback: ((messages: Message[]) => void)): void {
     this.sessionData.getHashValues(generateUserMessagesKey(identity),

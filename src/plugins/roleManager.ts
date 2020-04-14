@@ -4,6 +4,8 @@ import { Role } from "../models/role";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { SET_ALL_ROLES, generateRoleToUsersKey } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
+import { MessageTemplate } from "../models/messageTemplate";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
@@ -15,32 +17,40 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     this.sessionData = sessionData;
     this.userManager = userManager;
     console.log(this.sessionData);
-    // this.addMessageTemplate(new MessageTemplate("addRole",
-    //   this.validateAddRole,
-    //   (payload) => {
-    //     this.addRole(payload.id, payload.name, payload.permissions);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("addRole",
+      this.validateAddRole,
+      this.authorizeAddRole,
+      (payload) => {
+        this.addRole(payload.id, payload.name, payload.permissions);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteRole",
-    //   this.validateDeleteRole,
-    //   (payload) => {
-    //     this.deleteRole(payload.id);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteRole",
+      this.validateDeleteRole,
+      this.authorizeDeleteRole,
+      (payload) => {
+        this.deleteRole(payload.id);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("updateRole",
-    //   this.validateUpdateRole,
-    //   (payload) => {
-    //     this.updateRole(payload.id, payload.name, payload.permissions);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("updateRole",
+      this.validateUpdateRole,
+      this.authorizeUpdateRole,
+      (payload) => {
+        this.updateRole(payload.id, payload.name, payload.permissions);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("getRoles",
-    //   this.validateGetRoles,
-    //   (payload) => {
-    //     this.getRoles(payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getRoles",
+      this.validateGetRole,
+      this.authorizeGetRoles,
+      (payload) => {
+        this.getRoles(payload.callback);
+      }));
   }
 
   validateAddRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeAddRole(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -48,7 +58,15 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     return false;
   }
 
+  authorizeDeleteRole(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateUpdateRole(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeUpdateRole(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -56,7 +74,15 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     return false;
   }
 
+  authorizeGetRole(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateGetRoles(payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
+  authorizeGetRoles(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 

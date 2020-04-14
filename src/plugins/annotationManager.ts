@@ -4,8 +4,9 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
 import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey } from "../utils/constants";
-// import { MessageTemplate } from "../models/messageTemplate";
+import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
+import { PermissionSet } from "../models/permission";
 
 export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationManager {
 
@@ -14,45 +15,55 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    // this.addMessageTemplate(new MessageTemplate("getAnnotations",
-    //   this.validateGetAnnotations,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getAnnotations(payload.identity, payload.timestamp, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getAnnotations",
+      this.validateGetAnnotations,
+      this.authorizeGetAnnotations,
+      (payload: { [key: string]: any }) => {
+        this.getAnnotations(payload.identity, payload.timestamp, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveAnnotations",
-    //   this.validateSaveAnnotations,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveAnnotations(payload.identity, payload.stmts, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveAnnotations",
+      this.validateSaveAnnotations,
+      this.authorizeSaveAnnotations,
+      (payload: { [key: string]: any }) => {
+        this.saveAnnotations(payload.identity, payload.stmts, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("getSharedAnnotations",
-    //   this.validateGetSharedAnnotations,
-    //   (payload: { [key: string]: any }) => {
-    //     this.getSharedAnnotations(payload.identity, payload.timestamp, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("getSharedAnnotations",
+      this.validateGetSharedAnnotations,
+      this.authorizeGetSharedAnnotations,
+      (payload: { [key: string]: any }) => {
+        this.getSharedAnnotations(payload.identity, payload.timestamp, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
-    //   this.validateSaveSharedAnnotations,
-    //   (payload: { [key: string]: any }) => {
-    //     this.saveSharedAnnotations(payload.identity, payload.stmts, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
+      this.validateSaveSharedAnnotations,
+      this.authorizeSaveSharedAnnotations,
+      (payload: { [key: string]: any }) => {
+        this.saveSharedAnnotations(payload.identity, payload.stmts, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
-    //   this.validateDeleteAnnotation,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteAnnotation(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteAnnotation",
+      this.validateDeleteAnnotation,
+      this.authorizeDeleteAnnotation,
+      (payload: { [key: string]: any }) => {
+        this.deleteAnnotation(payload.identity, payload.xId, payload.callback);
+      }));
 
-    // this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
-    //   this.validateDeleteSharedAnnotation,
-    //   (payload: { [key: string]: any }) => {
-    //     this.deleteSharedAnnotation(payload.identity, payload.xId, payload.callback);
-    //   }));
+    this.addMessageTemplate(new MessageTemplate("deleteSharedAnnotation",
+      this.validateDeleteSharedAnnotation,
+      this.authorizeDeleteSharedAnnotation,
+      (payload: { [key: string]: any }) => {
+        this.deleteSharedAnnotation(payload.identity, payload.xId, payload.callback);
+      }));
   }
 
   validateGetAnnotations(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeGetAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -61,8 +72,16 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     return false;
   }
 
+  authorizeSaveAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateGetSharedAnnotations(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeGetSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
@@ -71,13 +90,25 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     return false;
   }
 
+  authorizeSaveSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteAnnotation(payload: { [key: string]: any }): boolean {
     //TODO
     return false;
   }
 
+  authorizeDeleteAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    return false;
+  }
+
   validateDeleteSharedAnnotation(payload: { [key: string]: any }): boolean {
     //TODO
+    return false;
+  }
+
+  authorizeDeleteSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     return false;
   }
 
