@@ -214,7 +214,7 @@ export class XApiStatement {
     extensions?: { [key: string]: any }
   };
   readonly attachments: Attachment[];
-  readonly stored: string;
+  stored: string;
   readonly timestamp: string;
 
   constructor(raw: { [key: string]: any }) {
@@ -246,7 +246,7 @@ export class XApiStatement {
         "id": this.id,
         "objectType": "StatementRef"
       },
-      "stored": this.stored,
+      "stored": new Date().toISOString(),
       "timestamp": this.timestamp,
       "id": "v-" + this.id
     };

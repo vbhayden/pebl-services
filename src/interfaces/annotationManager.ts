@@ -1,6 +1,7 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
+import { Voided } from "../models/xapiStatement";
 
 export interface AnnotationManager extends PeBLPlugin {
 
@@ -14,11 +15,11 @@ export interface AnnotationManager extends PeBLPlugin {
 
   //TODO: Are xAPI statements being stored in the cache or a different format for the data?
   // getAnnotationsForBook(identity: string, book: string): Annotation[]; //Retrieve annotations made by the user within a specific book
-  getAnnotations(identity: string, callback: ((stmts: Annotation[]) => void)): void; //Retrieve annotations made by the user across all books
+  getAnnotations(identity: string, timestamp: number, callback: ((stmts: (Annotation | Voided)[]) => void)): void; //Retrieve annotations made by the user across all books
   saveAnnotations(identity: string, stmts: Annotation[], callback: ((success: boolean) => void)): void; //Store annotations made by the user within the specific book
 
   // getSharedAnnotationsForBook(identity: string, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
-  getSharedAnnotations(identity: string, callback: ((stmts: SharedAnnotation[]) => void)): void; //Retrieve shared annotations visible to the user made across all books
+  getSharedAnnotations(identity: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void; //Retrieve shared annotations visible to the user made across all books
   saveSharedAnnotations(identity: string, stmts: SharedAnnotation[], callback: ((success: boolean) => void)): void; //Store shared annotations visible to the user made within the specific book
 
   deleteAnnotation(identity: string, id: string, callback: ((success: boolean) => void)): void; //Removes the annotation with the specific id
