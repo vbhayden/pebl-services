@@ -18,6 +18,8 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           redirect_uris: config.authenticationRedirectURIs,
           response_types: config.authenticationResponseTypes
         });
+      }).catch((err: any) => {
+        console.log(err);
       });
   }
 
