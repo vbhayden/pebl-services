@@ -56,6 +56,7 @@ import { DefaultSessionManager } from "./plugins/sessionManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
+import { PermissionSet } from "./models/permission";
 
 let express = require('express');
 
@@ -306,6 +307,12 @@ expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
           ws.send("Invalid Message");
           return;
         }
+
+        authorizationManager.assemblePermissionSet(req.session.activeTokens.id_token.username,
+          req.session,
+          (permissionSet?: PermissionSet) => {
+
+          });
 
         console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
           req.session.permissions,

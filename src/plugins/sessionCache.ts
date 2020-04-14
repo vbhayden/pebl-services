@@ -33,6 +33,26 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  getHashKeys(key: string, callback: (data: string[]) => void): void {
+    this.redis.hvals(key, (err, result) => {
+      if (err) {
+        console.log(err);
+        callback([]);
+      } else {
+        callback(result);
+      }
+    });
+  }
+
+  getHashMultiField(key: string, field: string[], callback: (data: string[]) => void): void {
+    this.redis.hmget(key, ...field, (err, result) => {
+      if (err) {
+        console.log(err);
+      }
+      callback(result);
+    });
+  }
+
   getHashValue(key: string, field: string, callback: (data?: string) => void): void {
     this.redis.hget(key, field, (err, result) => {
       if (err) {
@@ -98,19 +118,35 @@ export class RedisSessionDataCache implements SessionDataManager {
     })
   }
 
-  deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void {
-    this.redis.srem(key, value, (err) => {
-      if (err) {
-        console.log(err);
-        if (callback !== undefined) {
-          callback(false);
+  deleteSetValue(key: string, value: (string | string[]), callback?: (deleted: boolean) => void): void {
+    if (value instanceof Array) {
+      //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)          
+      this.redis.srem(key, ...value, (err) => {
+        if (err) {
+          console.log(err);
+          if (callback !== undefined) {
+            callback(false);
+          }
+        } else {
+          if (callback !== undefined) {
+            callback(true);
+          }
         }
-      } else {
-        if (callback !== undefined) {
-          callback(true);
+      });
+    } else {
+      this.redis.srem(key, value, (err) => {
+        if (err) {
+          console.log(err);
+          if (callback !== undefined) {
+            callback(false);
+          }
+        } else {
+          if (callback !== undefined) {
+            callback(true);
+          }
         }
-      }
-    })
+      });
+    }
   }
 
   queueForLrs(value: string): void {

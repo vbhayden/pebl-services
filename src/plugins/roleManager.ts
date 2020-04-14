@@ -96,6 +96,14 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
       }));
   }
 
+  getMultiRole(ids: string[], callback: ((roles: Role[]) => void)): void {
+    this.sessionData.getHashMultiField(SET_ALL_ROLES,
+      ids,
+      (data: string[]) => {
+        callback(data.map((role) => Role.convert(role)));
+      });
+  }
+
   //Get a role with the specified id
   getRole(id: string, callback: ((role: Role) => void)): void {
     this.sessionData.getHashValue(SET_ALL_ROLES,

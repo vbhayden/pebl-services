@@ -94,18 +94,26 @@ export function generateUserSessionsKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_SESSIONS;
 }
 
-export function generateUserGroupsKey(identity: string): string {
+export function generateUserToGroupMembershipKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_GROUPS;
 }
 
-export function generateUserRolesKey(identity: string): string {
+export function generateUserToRolesKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_ROLES;
 }
 
 
 //groups
-export function generateGroupMembersKey(groupId: string): string {
-  return 'group:' + groupId + ':' + KEY_MEMBERSHIP;
+export function generateGroupToUserMembersKey(groupId: string): string {
+  return 'group:' + groupId + ':user:membership';
+}
+
+export function generateGroupToGroupMembersKey(groupId: string): string {
+  return 'group:' + groupId + ':group:membership';
+}
+
+export function generateGroupToGroupMembershipKey(groupId: string): string {
+  return 'group:' + groupId + ':' + KEY_GROUPS;
 }
 
 // Type ids
