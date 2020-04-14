@@ -112,7 +112,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
   }
 
   authorizeAddGroup(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    return permissions.user[payload.requestType];
   }
 
   authorizeDeleteGroup(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {

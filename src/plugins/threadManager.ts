@@ -3,6 +3,8 @@ import { ThreadManager } from "../interfaces/threadManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { ServiceMessage } from "../models/serviceMessage";
+// import { MessageTemplate } from "../models/messageTemplate";
+import { Voided } from "../models/xapiStatement";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -20,7 +22,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     // this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
     //   this.validateThreadReadPermission,
     //   (payload: { [key: string]: any }) => {
-    //     this.getMessages(payload.thread, payload.callback, payload.groupId);
+    //     this.getMessages(payload.thread, payload.timestamp, payload.callback, payload.groupId);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("subscribeThread",
@@ -104,12 +106,19 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   storeMessage(message: Message, callback: ((success: boolean) => void)): void {
-    console.log(message);
     let thread = message.thread;
     if (message.groupId)
       thread = this.getGroupScopedThread(thread, message.groupId);
 
-    this.sessionData.setHashValues('threads:' + thread, [message.id, JSON.stringify(message)]);
+    let date = new Date();
+    message.stored = date.toISOString();
+
+    let messageStr = JSON.stringify(message);
+
+    this.sessionData.queueForLrs(messageStr);
+    this.sessionData.addTimestampValue('timestamp:threads:' + thread, date.getTime(), message.id);
+    this.sessionData.setHashValues('threads:' + thread, [message.id, messageStr]);
+
     this.getSubscribedUsers(thread, (users) => {
       for (let user of users) {
         if (user !== message.name) //Don't send the message to the sender
@@ -125,9 +134,21 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(thread: string, callback: ((messages: Message[]) => void), groupId?: string): void {
+  getMessages(thread: string, timestamp: number, callback: ((messages: (Message | Voided)[]) => void), groupId?: string): void {
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
+
+    this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
+      this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
+        callback(vals.map((val) => {
+          let obj = JSON.parse(val);
+          if (Message.is(obj))
+            return new Message(obj);
+          else
+            return new Voided(obj);
+        }));
+      });
+    });
     this.sessionData.getHashValues('threads:' + thread, (vals) => {
       callback(vals.map((val) => {
         return new Message(JSON.parse(val));
@@ -142,6 +163,20 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData.getHashValue('threads:' + thread, messageId, (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
+        let voided = new Message(JSON.parse(data)).toVoidRecord();
+        this.sessionData.addTimestampValue('timestamp:threads:' + thread, new Date(voided.stored).getTime(), voided.id);
+        this.sessionData.setHashValues('threads:' + thread, [voided.id, JSON.stringify(voided)]);
+        this.getSubscribedUsers(thread, (users) => {
+          for (let user of users) {
+            this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage({
+              identity: user,
+              payload: {
+                requestType: "newThreadedMessage",
+                data: voided
+              }
+            })));
+          }
+        });
       }
       this.sessionData.deleteHashValue('threads:' + thread,
         messageId, (result: boolean) => {

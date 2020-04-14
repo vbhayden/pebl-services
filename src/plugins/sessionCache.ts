@@ -68,22 +68,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  deleteHashValue(key: string, field: string, callback?: (deleted: boolean) => void): void {
-    this.redis.hdel(key, field, (err) => {
-      if (err) {
-        console.log(err);
-        if (callback !== undefined) {
-          callback(false);
-        }
-      } else {
-        if (callback !== undefined) {
-          callback(true);
-        }
-      }
-    });
-  }
-
-  deleteValue(key: string, callback?: (deleted: boolean) => void): void {
+  deleteValue(key: string, callback: (deleted: boolean) => void): void {
     this.redis.del(key, (err) => {
       if (err) {
         console.log(err);
@@ -151,6 +136,46 @@ export class RedisSessionDataCache implements SessionDataManager {
         }
       });
     }
+  }
+
+  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
+    this.redis.hdel(key, field, (err, result) => {
+      if (err) {
+        console.log(err);
+        if (callback !== undefined) {
+          callback(false);
+        }
+      } else {
+        if (callback !== undefined) {
+          callback(true);
+        }
+      }
+    });
+  }
+
+  getHashValuesForFields(key: string, fields: string[], callback: ((data: string[]) => void)): void {
+    this.redis.hmget(key, fields, (err, result) => {
+      if (err) {
+        console.log(err);
+        callback([]);
+      } else {
+        callback(result);
+      }
+    });
+  }
+
+  addTimestampValue(key: string, timestamp: number, value: string) {
+    this.redis.zadd(key, timestamp, value);
+  }
+
+  getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)) {
+    this.redis.zrangebyscore(key, timestamp, '+inf', (err, resp) => {
+      if (err) {
+        console.log(err);
+        callback([]);
+      } else
+        callback(resp);
+    });
   }
 
   queueForLrs(value: string): void {

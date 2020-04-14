@@ -102,7 +102,11 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   // Delete a user with the specified id
   deleteUserProfile(id: string): void {
-    this.sessionData.deleteHashValue(SET_ALL_USERS, id);
+    this.sessionData.deleteHashValue(SET_ALL_USERS, id, (deleted: boolean) => {
+      if (!deleted) {
+        console.log("failed to delete user profile", id);
+      }
+    });
   }
 
   addUserRoles(userId: string, roleIds: string[]): void {
@@ -118,9 +122,18 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   }
 
   deleteUserRole(userId: string, roleId: string): void {
-    this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId);
-    this.setLastModifiedPermissions(userId, Date.now() + "");
-    this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId);
+    this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
+      if (!deleted) {
+        console.log("failed to delete user role", userId, roleId);
+      }
+
+      this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId, (deleted: boolean) => {
+        if (!deleted) {
+          console.log("failed to delete user role 2", userId, roleId);
+        }
+        this.setLastModifiedPermissions(userId, Date.now() + "");
+      });
+    });
   }
 
   // Update user metadata

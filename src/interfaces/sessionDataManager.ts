@@ -8,12 +8,15 @@ export interface SessionDataManager {
   getHashValue(key: string, field: string, callback: (data?: string) => void): void;
   getHashMultiField(key: string, fields: string[], callback: (data: string[]) => void): void;
 
-  deleteHashValue(key: string, field: string, callback?: (deleted: boolean) => void): void;
+  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void;
   deleteValue(key: string, callback?: (deleted: boolean) => void): void;
 
   addSetValue(key: string, value: (string[] | string)): void;
   getSetValues(key: string, callback: (data: string[]) => void): void;
   deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void;
+
+  addTimestampValue(key: string, timestamp: number, value: string): void;
+  getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
 
   queueForLrs(value: string): void;
   queueForLrsVoid(value: string): void;
