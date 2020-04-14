@@ -1,6 +1,7 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
+import { MessageTemplate } from "../models/messageTemplate";
 import { Reference } from "../models/reference";
 import { generateUserReferencesKey, generateReferencesKey } from "../utils/constants";
 
@@ -75,6 +76,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
           if (!result) {
             console.log("failed to remove reference", id);
           }
+          callback(result);
         });
     });
   }

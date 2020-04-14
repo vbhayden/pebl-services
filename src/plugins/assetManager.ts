@@ -19,13 +19,13 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
     // this.addMessageTemplate(new MessageTemplate("saveAssets",
     //   this.validateSaveAssets,
     //   (payload: { [key: string]: any }) => {
-    //     this.saveAssets(payload.identity, payload.assets);
+    //     this.saveAssets(payload.identity, payload.assets, payload.callback);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteAsset",
     //   this.validateDeleteAsset,
     //   (payload: { [key: string]: any }) => {
-    //     this.deleteAsset(payload.identity, payload.xId);
+    //     this.deleteAsset(payload.identity, payload.xId, payload.callback);
     //   }));
   }
 
@@ -50,16 +50,17 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
       });
   }
 
-  saveAssets(identity: string, assets: Asset[]): void {
+  saveAssets(identity: string, assets: Asset[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let asset of assets) {
       arr.push(generateAssetsKey(asset.id));
       arr.push(JSON.stringify(asset));
     }
     this.sessionData.setHashValues(generateUserAssetKey(identity), arr);
+    callback(true);
   }
 
-  deleteAsset(identity: string, id: string): void {
+  deleteAsset(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserAssetKey(identity), generateAssetsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -69,6 +70,7 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
           if (!result) {
             console.log("failed to remove asset", id);
           }
+          callback(result);
         });
     });
   }

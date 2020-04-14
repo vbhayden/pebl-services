@@ -20,13 +20,13 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     // this.addMessageTemplate(new MessageTemplate("saveNotifications",
     //   this.validateSaveNotifications,
     //   (payload) => {
-    //     this.saveNotifications(payload.identity, payload.notifications);
+    //     this.saveNotifications(payload.identity, payload.notifications, payload.callback);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteNotification",
     //   this.validateDeleteNotification,
     //   (payload) => {
-    //     this.deleteNotification(payload.identity, payload.xId);
+    //     this.deleteNotification(payload.identity, payload.xId, payload.callback);
     //   }));
   }
 
@@ -52,7 +52,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       })
   }
 
-  saveNotifications(identity: string, notifications: XApiStatement[]): void {
+  saveNotifications(identity: string, notifications: XApiStatement[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let notification of notifications) {
       let notificationStr = JSON.stringify(notification);
@@ -68,9 +68,10 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
         data: notifications
       }
     })));
+    callback(true);
   }
 
-  deleteNotification(identity: string, id: string): void {
+  deleteNotification(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserNotificationsKey(identity), generateNotificationsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -80,6 +81,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
           if (!result) {
             console.log("failed to remove notification", id);
           }
+          callback(result);
         });
     });
   }

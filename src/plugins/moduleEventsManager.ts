@@ -20,13 +20,13 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     // this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
     //   this.validateSaveModuleEvents,
     //   (payload) => {
-    //     this.saveModuleEvents(payload.identity, payload.events);
+    //     this.saveModuleEvents(payload.identity, payload.events, payload.callback);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
     //   this.validateDeleteModuleEvent,
     //   (payload) => {
-    //     this.deleteModuleEvent(payload.identity, payload.xId);
+    //     this.deleteModuleEvent(payload.identity, payload.xId, payload.callback);
     //   }));
   }
 
@@ -51,7 +51,7 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
       });
   }
 
-  saveModuleEvents(identity: string, events: ModuleEvent[]): void {
+  saveModuleEvents(identity: string, events: ModuleEvent[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let event of events) {
       let eventStr = JSON.stringify(event);
@@ -60,9 +60,10 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
       this.sessionData.queueForLrs(eventStr);
     }
     this.sessionData.setHashValues(generateUserModuleEventsKey(identity), arr);
+    callback(true);
   }
 
-  deleteModuleEvent(identity: string, id: string): void {
+  deleteModuleEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserModuleEventsKey(identity), generateModuleEventsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -72,6 +73,7 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
           if (!result) {
             console.log("failed to remove module event", id);
           }
+          callback(result);
         });
     });
   }

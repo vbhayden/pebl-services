@@ -8,6 +8,6 @@ export interface AssetManager extends PeBLPlugin {
   validateDeleteAsset(payload: { [key: string]: any }): boolean;
 
   getAssets(identity: string, callback: ((assets: Asset[]) => void)): void;
-  saveAssets(identity: string, assets: Asset[]): void;
-  deleteAsset(identity: string, id: string): void;
+  saveAssets(identity: string, assets: Asset[], callback: ((success: boolean) => void)): void;
+  deleteAsset(identity: string, id: string, callback: ((success: boolean) => void)): void;
 }

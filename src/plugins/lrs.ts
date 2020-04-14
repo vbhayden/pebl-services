@@ -1,8 +1,7 @@
 import { LRS } from '../interfaces/lrsManager';
 import * as network from '../utils/network';
 import { Endpoint } from '../models/endpoint';
-import { XApiStatement } from '../models/xapiStatement';
-import { Voided } from '../models/voided';
+import { XApiStatement, Voided } from '../models/xapiStatement';
 import { XApiQuery } from '../models/xapiQuery';
 import { Activity } from '../models/activity';
 import { Profile } from '../models/profile';

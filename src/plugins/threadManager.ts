@@ -3,6 +3,7 @@ import { ThreadManager } from "../interfaces/threadManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
 import { ServiceMessage } from "../models/serviceMessage";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -116,7 +117,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage({
             identity: user,
             payload: {
-              requestType: "newMessage",
+              requestType: "newThreadedMessage",
               data: message
             }
           })));

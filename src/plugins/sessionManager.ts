@@ -3,7 +3,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { generateUserSessionsKey, generateSessionsKey } from "../utils/constants";
-// import { MessageTemplate } from "../models/messageTemplate";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
@@ -21,13 +21,13 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     // this.addMessageTemplate(new MessageTemplate("saveSessions",
     //   this.validateSaveSessions,
     //   (payload) => {
-    //     this.saveSessions(payload.identity, payload.sessions);
+    //     this.saveSessions(payload.identity, payload.sessions, payload.callback);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteSession",
     //   this.validateDeleteSession,
     //   (payload) => {
-    //     this.deleteSession(payload.identity, payload.xId);
+    //     this.deleteSession(payload.identity, payload.xId, payload.callback);
     //   }));
   }
 
@@ -52,7 +52,7 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
       });
   }
 
-  saveSessions(identity: string, sessions: Session[]): void {
+  saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let session of sessions) {
       let sessionStr = JSON.stringify(session);
@@ -61,9 +61,10 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
       this.sessionData.queueForLrs(sessionStr);
     }
     this.sessionData.setHashValues(generateUserSessionsKey(identity), arr);
+    callback(true);
   }
 
-  deleteSession(identity: string, id: string): void {
+  deleteSession(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserSessionsKey(identity), generateSessionsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -73,6 +74,7 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
           if (!result) {
             console.log("failed to remove membership", id);
           }
+          callback(result);
         });
     });
   }

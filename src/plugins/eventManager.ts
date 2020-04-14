@@ -20,13 +20,13 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     // this.addMessageTemplate(new MessageTemplate("saveEvents",
     //   this.validateSaveEvents,
     //   (payload: { [key: string]: any }) => {
-    //     this.saveEvents(payload.identity, payload.stmts);
+    //     this.saveEvents(payload.identity, payload.stmts, payload.callback);
     //   }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteEvent",
     //   this.validateDeleteEvent,
     //   (payload: { [key: string]: any }) => {
-    //     this.deleteEvent(payload.identity, payload.xId);
+    //     this.deleteEvent(payload.identity, payload.xId, payload.callback);
     //   }));
   }
 
@@ -57,7 +57,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   // saveEventsForBook(identity: string, book: string, events: XApiStatement[]): void; // Store the events for this user made within the specific book
 
   // Store the events for this user
-  saveEvents(identity: string, stmts: XApiStatement[]): void {
+  saveEvents(identity: string, stmts: XApiStatement[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let stmt of stmts) {
       let stmtStr = JSON.stringify(stmt);
@@ -66,10 +66,11 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
       this.sessionData.queueForLrs(stmtStr);
     }
     this.sessionData.setHashValues(generateUserEventsKey(identity), arr);
+    callback(true);
   }
 
   //Removes the event with the specified id
-  deleteEvent(identity: string, id: string): void {
+  deleteEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserEventsKey(identity), generateEventsKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
@@ -79,6 +80,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
           if (!result) {
             console.log("failed to remove event", id);
           }
+          callback(result);
         });
     });
   }
