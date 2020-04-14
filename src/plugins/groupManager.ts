@@ -7,14 +7,17 @@ import { Group } from "../models/group";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { PermissionSet } from "../models/permission";
 import { SET_ALL_GROUPS, generateGroupToGroupMembershipKey, generateUserToGroupMembershipKey, generateGroupToUserMembersKey, generateGroupToGroupMembersKey } from "../utils/constants";
+import { UserManager } from "../interfaces/userManager";
 
 export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
   private sessionData: SessionDataManager;
+  private userManager: UserManager;
 
-  constructor(sessionData: SessionDataManager) {
+  constructor(sessionData: SessionDataManager, userManager: UserManager) {
     super();
     this.sessionData = sessionData;
+    this.userManager = userManager;
     this.addMessageTemplate(new MessageTemplate("addGroup",
       this.validateAddGroup,
       this.authorizeAddGroup,
@@ -154,6 +157,8 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
           console.log("Failed to delete group", id);
         }
 
+        let modified = Date.now() + "";
+
         //TODO re-write using MULTI/EXEC
         this.getGroupMemberUsers(id, (userIds: string[]) => {
           this.getGroupMemberGroups(id, (groupIds: string[]) => {
@@ -163,6 +168,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
               if (userId === undefined) {
                 processGroups(groupIds);
               } else {
+                this.userManager.setLastModifiedPermissions(userId, modified);
                 this.deleteGroupMemberUser(id, userId);
               }
             }
@@ -218,11 +224,14 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
   addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void {
     this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
+    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
     this.sessionData.addSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
   }
 
   addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {
     this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
+    //TODO groups need to trigger for nested groups
+    //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
     this.sessionData.addSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
   }
 
@@ -276,6 +285,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
           console.log("failed to delete group member", groupId);
         }
       });
+    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
     this.sessionData.deleteSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
   }
 
@@ -287,6 +297,8 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
           console.log("failed to delete group member", groupId);
         }
       });
+    //TODO groups need to trigger for nested groups
+    //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
     this.sessionData.deleteSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
   }
 
@@ -294,10 +306,13 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
   updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void {
     this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
+    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
   }
 
   updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {
     this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
+    //TODO groups need to trigger for nested groups
+    //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
   }
 
 

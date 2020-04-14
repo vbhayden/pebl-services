@@ -25,4 +25,7 @@ export interface UserManager extends PeBLPlugin {
   deleteUserRole(id: string, roleId: string): void;
 
   getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
+
+  setLastModifiedPermissions(identity: string, lastModified: string): void;
+  getLastModifiedPermissions(identity: string, callback: (lastModified: string) => void): void;
 }

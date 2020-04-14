@@ -1,4 +1,3 @@
-import { PermissionSet } from "../models/permission";
 
 export interface AuthorizationManager {
   authorize(username: string,
@@ -6,7 +5,7 @@ export interface AuthorizationManager {
     payload: { [key: string]: any }): boolean;
 
   assemblePermissionSet(identity: string,
-    session: Express.Session,
-    callback: (permissions?: PermissionSet) => void): void;
+    permissionLastModified: Express.Session,
+    callback: () => void): void;
 }
 

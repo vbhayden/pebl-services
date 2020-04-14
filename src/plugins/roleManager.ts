@@ -2,15 +2,18 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { RoleManager } from "../interfaces/roleManager";
 import { Role } from "../models/role";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_ROLES } from "../utils/constants";
+import { SET_ALL_ROLES, generateRoleToUsersKey } from "../utils/constants";
+import { UserManager } from "../interfaces/userManager";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
   private sessionData: SessionDataManager;
+  private userManager: UserManager;
 
-  constructor(sessionData: SessionDataManager) {
+  constructor(sessionData: SessionDataManager, userManager: UserManager) {
     super();
     this.sessionData = sessionData;
+    this.userManager = userManager;
     console.log(this.sessionData);
     // this.addMessageTemplate(new MessageTemplate("addRole",
     //   this.validateAddRole,
@@ -88,6 +91,14 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
           console.log("Failed to delete role", id);
         }
       });
+    let modified = Date.now() + "";
+    this.sessionData.getHashValues(generateRoleToUsersKey(id),
+      (userIds: string[]) => {
+        for (let userId of userIds) {
+          this.userManager.setLastModifiedPermissions(userId, modified);
+        }
+        this.sessionData.deleteValue(generateRoleToUsersKey(id));
+      });
   }
 
   //Updates the permission set and/or name of a role    
@@ -98,13 +109,19 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
         name: name,
         permissions: permissions
       }));
+    let modified = Date.now() + "";
+    this.sessionData.getHashValues(generateRoleToUsersKey(id),
+      (userIds: string[]) => {
+        for (let userId of userIds) {
+          this.userManager.setLastModifiedPermissions(userId, modified);
+        }
+      });
   }
 
   getMultiRole(ids: string[], callback: ((roles: Role[]) => void)): void {
     this.sessionData.getHashMultiField(SET_ALL_ROLES,
       ids,
       (data: string[]) => {
-        console.log(data);
         callback(data.map((role) => Role.convert(role)));
       });
   }

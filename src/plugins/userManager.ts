@@ -4,7 +4,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
-import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey } from "../utils/constants";
+import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS } from "../utils/constants";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
@@ -107,6 +107,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   addUserRoles(userId: string, roleIds: string[]): void {
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
+    this.setLastModifiedPermissions(userId, Date.now() + "");
     for (let roleId of roleIds) {
       this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
     }
@@ -118,6 +119,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   deleteUserRole(userId: string, roleId: string): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId);
+    this.setLastModifiedPermissions(userId, Date.now() + "");
     this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId);
   }
 
@@ -148,5 +150,21 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
       (data: string[]) => {
         callback(data.map((x) => new UserProfile(JSON.parse(x))));
       });
+  }
+
+  getLastModifiedPermissions(identity: string, callback: (lastModified: string) => void): void {
+    this.sessionData.getHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS,
+      identity,
+      (lastModified?: string) => {
+        if (lastModified !== undefined) {
+          callback(lastModified);
+        } else {
+          callback("");
+        }
+      });
+  }
+
+  setLastModifiedPermissions(identity: string, lastModified: string): void {
+    this.sessionData.setHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity, lastModified);
   }
 }
