@@ -18,6 +18,8 @@
     "sessionSecret": "SVpgmRd9xtMaeZbr6zgS8Fsai9LQbkbTTp3528cFFjQkMhAj7x8huBMGuz7cYch72E7VyVjPaUo",
     "sessionTTL": 3600,
 
+    "cookieSameSite": "none",
+
     "port": 8080,
     "useSSL": false,
     "usesProxy": false,

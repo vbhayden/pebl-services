@@ -199,7 +199,7 @@ expressApp.use(
       secure: config.useSSL,
       httpOnly: true,
       maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
-      sameSite: "lax"
+      sameSite: config.cookieSameSite
     },
     name: "s",
     proxy: config.usesProxy,
