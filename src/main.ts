@@ -168,27 +168,13 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 
 // Potentially needed for CORS
 var allowCrossDomain = function(req: Request, res: Response, next: Function) {
-  // let slashIndex = req.path.indexOf("/", 1);
-  // if ((slashIndex != -1) && (slashIndex > 1)) {
-  //     let app = req.path.substr(1, slashIndex - 1);
-  //     let applicationParameters = lookupApplicationFromFile(app);
-  // let origin: string = <string>req.headers["origin"];
-  //     if (applicationParameters && origin) {
-  //         var domains = applicationParameters.domains
-  //         var isGood = false;
-  //         for (var i = 0; i < domains.length; i++) {
-  //             if (domains[i] == origin) {
-  //                 isGood = true;
-  //                 break
-  //             }
-  //         }
-  //         if (isGood) {
-  // res.header('Access-Control-Allow-Origin', origin);
-  // res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-  // res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  //         }
-  //     }
-  // }
+  let originUrl = <string>req.headers["origin"];
+  let origin = new URL(originUrl).hostname;
+  if (validRedirectDomainLookup[origin]) {
+    res.header('Access-Control-Allow-Origin', originUrl);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
   next();
 }
 
