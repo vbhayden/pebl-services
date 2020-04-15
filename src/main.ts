@@ -229,7 +229,8 @@ expressApp.get('/login', function(req: Request, res: Response) {
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      res.redirect(req.session.redirectUrl);
+      res.status(200).end();
+      // res.redirect(req.session.redirectUrl);
     }
   } else {
     res.status(503).end();
