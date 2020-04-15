@@ -168,31 +168,31 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(thread: string, timestamp: number, callback: ((messages: (Message | Voided)[]) => void), groupId?: string): void {
+  getMessages(baseThread: string, timestamp: number, callback: ((messages: (Message | Voided)[], additionalData: { [key: string]: any }) => void), groupId?: string): void {
+    let thread = baseThread;
     if (groupId)
       thread = this.getGroupScopedThread(thread, groupId);
 
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
       this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
         callback(vals.map((val) => {
-          let obj = JSON.parse(val);
-          if (Message.is(obj))
-            return new Message(obj);
-          else
-            return new Voided(obj);
-        }));
+            let obj = JSON.parse(val);
+            if (Message.is(obj))
+              return new Message(obj);
+            else
+              return new Voided(obj);
+        }), {
+          thread: baseThread,
+          groupId: groupId
+        });
       });
-    });
-    this.sessionData.getHashValues('threads:' + thread, (vals) => {
-      callback(vals.map((val) => {
-        return new Message(JSON.parse(val));
-      }));
     });
   }
 
-  deleteMessage(thread: string, messageId: string, callback: ((success: boolean) => void), groupId?: string): void {
+  deleteMessage(baseThread: string, messageId: string, callback: ((success: boolean) => void), groupId?: string): void {
+    let thread = baseThread;
     if (groupId)
-      thread = this.getGroupScopedThread(thread, groupId);
+      thread = this.getGroupScopedThread(baseThread, groupId);
 
     this.sessionData.getHashValue('threads:' + thread, messageId, (data) => {
       if (data) {
@@ -206,7 +206,11 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               identity: user,
               payload: {
                 requestType: "newThreadedMessage",
-                data: voided
+                data: voided,
+                additionalData: {
+                  thread: baseThread,
+                  groupId: groupId
+                }
               }
             })));
           }

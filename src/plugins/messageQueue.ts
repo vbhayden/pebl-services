@@ -238,10 +238,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchToCache(message: ServiceMessage): void {
-    message.payload.callback = (data: any) => {
+    message.payload.callback = (data: any, additionalData?: any) => {
       let payload = {
         requestType: message.payload.requestType,
-        data: data
+        data: data,
+        additionalData: additionalData
       }
       this.dispatchToClient(new ServiceMessage({
         sessionId: message.sessionId,
