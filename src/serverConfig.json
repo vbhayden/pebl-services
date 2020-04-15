@@ -1,7 +1,7 @@
 {
     "serverName": "localhost",
 
-    "homepage": "http://localhost:8080/",
+    "validRedirectDomains": ["localhost"],
 
     "privateKeyPath": "./privkey.pem",
     "certificatePath": "./cert.pem",

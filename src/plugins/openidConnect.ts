@@ -12,12 +12,15 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     this.config = config;
     OpenIDClient.Issuer.discover(config.authenticationUrl)
       .then((issued: Issuer<Client>) => {
+
         this.activeClient = new issued.Client({
           client_id: config.authenticationClientId,
           client_secret: config.authenticationClientSecret,
           redirect_uris: config.authenticationRedirectURIs,
           response_types: config.authenticationResponseTypes
         });
+      }).catch((err: any) => {
+        console.log("openid failed to discover endpoint", err);
       });
   }
 
@@ -44,6 +47,28 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   login(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
+      let redirectUrl = req.query.redirectUrl;
+
+      //force always having redirectUrl
+      if (redirectUrl) {
+        try {
+          let decodedRedirectUrl = decodeURIComponent(redirectUrl);
+          let hostname = new URL(decodedRedirectUrl).hostname;
+          if (this.config.validRedirectDomainLookup[hostname]) {
+            session.redirectUrl = decodedRedirectUrl;
+          } else {
+            res.status(400).end();
+            return;
+          }
+        } catch (e) {
+          res.status(400).end();
+          return;
+        }
+      } else {
+        res.status(400).end();
+        return;
+      }
+
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
       res.redirect(this.activeClient.authorizationUrl({
@@ -61,20 +86,29 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       session.loggedIn = false;
       res.redirect(this.activeClient.endSessionUrl({
         id_token_hint: session.activeTokens.id_token,
-        post_logout_redirect_uri: this.config.homepage
+        post_logout_redirect_uri: session.redirectUrl
       }));
     } else {
       res.status(503).end();
     }
   }
 
-  getProfile(session: Express.Session, callback?: () => void): void {
+  getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
-          if (callback !== undefined) {
-            callback();
+          if (callback instanceof Function) {
+            callback(true);
+          } else {
+            callback.send(userInfo).end();
+          }
+        }).catch((err) => {
+          console.log(err);
+          if (callback instanceof Function) {
+            callback(false);
+          } else {
+            callback.status(503).end();
           }
         });
     }
@@ -87,13 +121,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         this.config.authenticationRedirectURIs[0],
         this.activeClient.callbackParams(req),
         { code_verifier: session.codeVerifier })
-        .then(function(tokenSet: TokenSet) {
-          session.activeTokens = tokenSet;
-          session.loggedIn = true;
-          self.getProfile(session, () => {
-            res.send(tokenSet.id_token).status(200).end();
-          });
-        }).catch(function(err) {
+        .then((tokenSet: TokenSet) => {
+          if (Object.keys(tokenSet).length != 0) {
+            session.activeTokens = tokenSet;
+            session.loggedIn = true;
+            self.getProfile(session, (found) => {
+              res.redirect(session.redirectUrl);
+              // res.send(tokenSet.id_token).status(200).end();
+            });
+          } else {
+            res.status(401).end();
+          }
+        }).catch((err) => {
           console.log(err);
           res.status(401).end();
         });

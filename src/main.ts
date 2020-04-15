@@ -69,6 +69,11 @@ if (process.argv.length < 3) {
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 
+let validRedirectDomainLookup: { [key: string]: boolean } = {};
+for (let validDomain of config.validRedirectDomains) {
+  validRedirectDomainLookup[validDomain] = true;
+}
+config.validRedirectDomainLookup = validRedirectDomainLookup;
 let privKey;
 let cert;
 let credentials: { [key: string]: any } = {};
@@ -163,27 +168,20 @@ expressApp = require('express-ws')(expressApp, httpsServer).app;
 
 // Potentially needed for CORS
 var allowCrossDomain = function(req: Request, res: Response, next: Function) {
-  // let slashIndex = req.path.indexOf("/", 1);
-  // if ((slashIndex != -1) && (slashIndex > 1)) {
-  //     let app = req.path.substr(1, slashIndex - 1);
-  //     let applicationParameters = lookupApplicationFromFile(app);
-  // let origin: string = <string>req.headers["origin"];
-  //     if (applicationParameters && origin) {
-  //         var domains = applicationParameters.domains
-  //         var isGood = false;
-  //         for (var i = 0; i < domains.length; i++) {
-  //             if (domains[i] == origin) {
-  //                 isGood = true;
-  //                 break
-  //             }
-  //         }
-  //         if (isGood) {
-  // res.header('Access-Control-Allow-Origin', origin);
-  // res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-  // res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  //         }
-  //     }
-  // }
+  let originUrl = <string>req.headers["origin"];
+  try {
+    if (originUrl) {
+      console.log(originUrl);
+      let origin = new URL(originUrl).hostname;
+      if (validRedirectDomainLookup[origin]) {
+        res.header('Access-Control-Allow-Origin', originUrl);
+        res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      }
+    }
+  } catch (e) {
+    console.log(e);
+  }
   next();
 }
 
@@ -230,7 +228,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      authenticationManager.refresh(req.session, res);
+      res.redirect(req.session.redirectUrl);
     }
   } else {
     res.status(503).end();
@@ -256,6 +254,18 @@ expressApp.get('/logout', function(req: Request, res: Response) {
       authenticationManager.logout(req.session, res);
     } else {
       res.status(200).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+});
+
+expressApp.get('/user/profile', function(req: Request, res: Response) {
+  if (req.session) {
+    if (req.session.loggedIn) {
+      authenticationManager.getProfile(req.session, res);
+    } else {
+      res.status(401).end();
     }
   } else {
     res.status(503).end();
