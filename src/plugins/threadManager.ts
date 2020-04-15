@@ -160,7 +160,11 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             identity: user,
             payload: {
               requestType: "newThreadedMessage",
-              data: message
+              data: message,
+              additionalData: {
+                thread: message.thread,
+                groupId: message.groupId
+              }
             }
           })));
       }

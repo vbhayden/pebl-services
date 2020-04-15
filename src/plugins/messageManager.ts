@@ -5,6 +5,8 @@ import { generateUserMessagesKey, generateMessagesKey } from "../utils/constants
 import { MessageManager } from "../interfaces/messageManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { Voided } from "../models/xapiStatement";
+import { ServiceMessage } from "../models/serviceMessage";
 
 export class DefaultMessageManager extends PeBLPlugin implements MessageManager {
 
@@ -17,7 +19,7 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
       this.validateGetMessages,
       this.authorizeGetMessages,
       (payload) => {
-        this.getMessages(payload.identity, payload.callback);
+        this.getMessages(payload.identity, payload.timestamp, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveMessages",
@@ -59,22 +61,37 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
     return false;
   }
 
-  getMessages(identity: string, callback: ((messages: Message[]) => void)): void {
-    this.sessionData.getHashValues(generateUserMessagesKey(identity),
-      (result: string[]) => {
+  getMessages(identity: string, timestamp: number, callback: ((messages: (Message | Voided)[]) => void)): void {
+    this.sessionData.getValuesGreaterThanTimestamp('timestamp:messages:user:' + identity, timestamp, (data) => {
+      this.sessionData.getHashMultiField(generateUserMessagesKey(identity), data, (result) => {
         callback(result.map(function(x) {
-          return new Message(JSON.parse(x));
-        }))
-      })
+          let obj = JSON.parse(x);
+          if (Message.is(obj))
+            return new Message(obj);
+          else
+            return new Voided(obj);
+        }));
+      });
+    });
   }
 
   saveMessages(identity: string, messages: Message[], callback: ((success: boolean) => void)): void {
     let arr = [];
+    let date = new Date();
     for (let message of messages) {
+      message.stored = date.toISOString();
       let messageStr = JSON.stringify(message);
       arr.push(generateMessagesKey(message.id));
       arr.push(messageStr);
       this.sessionData.queueForLrs(messageStr);
+      this.sessionData.addTimestampValue('timestamp:messages:user:' + identity, date.getTime(), message.id);
+      this.sessionData.broadcast('realtime:userid:' + identity, JSON.stringify(new ServiceMessage({
+        identity: identity,
+        payload: {
+          requestType: "newMessage",
+          data: message
+        }
+      })));
     }
     this.sessionData.setHashValues(generateUserMessagesKey(identity), arr);
     callback(true);
@@ -84,6 +101,16 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
     this.sessionData.getHashValue(generateUserMessagesKey(identity), generateMessagesKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
+        let voided = new Message(JSON.parse(data)).toVoidRecord();
+        this.sessionData.addTimestampValue('timestamp:messages:user:' + identity, new Date(voided.stored).getTime(), voided.id);
+        this.sessionData.setHashValues(generateUserMessagesKey(identity), [voided.id, JSON.stringify(voided)]);
+        this.sessionData.broadcast('realtime:userid:' + identity, JSON.stringify(new ServiceMessage({
+          identity: identity,
+          payload: {
+            requestType: "newMessage",
+            data: voided
+          }
+        })));
       }
       this.sessionData.deleteHashValue(generateUserMessagesKey(identity),
         generateMessagesKey(id), (result: boolean) => {
