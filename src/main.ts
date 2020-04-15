@@ -171,16 +171,17 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
   let originUrl = <string>req.headers["origin"];
   try {
     if (originUrl) {
-      console.log(originUrl);
+      console.log("debugging", originUrl);
       let origin = new URL(originUrl).hostname;
       if (validRedirectDomainLookup[origin]) {
         res.header('Access-Control-Allow-Origin', originUrl);
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.header('Access-Control-Allow-Credentials', 'true');
       }
     }
   } catch (e) {
-    console.log(e);
+    console.log("bad origin url", e);
   }
   next();
 }
@@ -199,7 +200,7 @@ expressApp.use(
       secure: config.useSSL,
       httpOnly: true,
       maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
-      sameSite: "lax"
+      sameSite: config.cookieSameSite
     },
     name: "s",
     proxy: config.usesProxy,
@@ -225,6 +226,7 @@ expressApp.get('/', function(req: Request, res: Response) {
 
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
+    console.log("logging in", req.session.id, req.session.loggedIn);
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
@@ -249,7 +251,7 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
-    console.log(req.session.id, req.session.loggedIn)
+    console.log("logging out", req.session.id, req.session.loggedIn)
     if (req.session.loggedIn) {
       authenticationManager.logout(req.session, res);
     } else {
@@ -262,6 +264,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 
 expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
+    console.log("user profile", req.session.id, req.session.loggedIn);
     if (req.session.loggedIn) {
       authenticationManager.getProfile(req.session, res);
     } else {
