@@ -95,6 +95,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
+      console.log(session.activeTokens);
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
