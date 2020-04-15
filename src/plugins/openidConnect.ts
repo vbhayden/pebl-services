@@ -50,10 +50,21 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       let redirectUrl = req.query.redirectUrl;
 
       //force always having redirectUrl
-      if (redirectUrl && this.config.validRedirectDomainLookup[new URL(redirectUrl).hostname]) {
-        session.redirectUrl = redirectUrl;
+      if (redirectUrl) {
+        try {
+          let hostname = new URL(redirectUrl).hostname;
+          if (this.config.validRedirectDomainLookup[hostname]) {
+            session.redirectUrl = redirectUrl;
+          } else {
+            res.status(400).end();
+            return;
+          }
+        } catch (e) {
+          res.status(400).end();
+          return;
+        }
       } else {
-        res.status(403).end();
+        res.status(400).end();
         return;
       }
 
