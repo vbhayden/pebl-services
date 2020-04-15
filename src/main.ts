@@ -225,12 +225,11 @@ expressApp.get('/', function(req: Request, res: Response) {
 
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
-    console.log(req.session.id, req.session.loggedIn);
+    console.log("logging in", req.session.id, req.session.loggedIn);
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      res.status(200).end();
-      // res.redirect(req.session.redirectUrl);
+      res.redirect(req.session.redirectUrl);
     }
   } else {
     res.status(503).end();
@@ -251,7 +250,7 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
-    console.log(req.session.id, req.session.loggedIn)
+    console.log("logging out", req.session.id, req.session.loggedIn)
     if (req.session.loggedIn) {
       authenticationManager.logout(req.session, res);
     } else {
@@ -264,7 +263,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 
 expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
-    console.log(req.session.id, req.session.loggedIn);
+    console.log("user profile", req.session.id, req.session.loggedIn);
     if (req.session.loggedIn) {
       authenticationManager.getProfile(req.session, res);
     } else {
