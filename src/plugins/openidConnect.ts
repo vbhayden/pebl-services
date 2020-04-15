@@ -47,6 +47,16 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   login(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
+      let redirectUrl = req.query.redirectUrl;
+
+      //force always having redirectUrl
+      if (redirectUrl && this.config.validRedirectDomainLookup[new URL(redirectUrl).hostname]) {
+        session.redirectUrl = redirectUrl;
+      } else {
+        res.status(403).end();
+        return;
+      }
+
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
       res.redirect(this.activeClient.authorizationUrl({
@@ -64,20 +74,22 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       session.loggedIn = false;
       res.redirect(this.activeClient.endSessionUrl({
         id_token_hint: session.activeTokens.id_token,
-        post_logout_redirect_uri: this.config.homepage
+        post_logout_redirect_uri: session.redirectUrl
       }));
     } else {
       res.status(503).end();
     }
   }
 
-  getProfile(session: Express.Session, callback?: () => void): void {
+  getProfile(session: Express.Session, callback: ((() => void) | Response)): void {
     if (this.activeClient) {
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
-          if (callback !== undefined) {
+          if (callback instanceof Function) {
             callback();
+          } else {
+            callback.send(userInfo).end();
           }
         });
     }
@@ -94,7 +106,8 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           session.activeTokens = tokenSet;
           session.loggedIn = true;
           self.getProfile(session, () => {
-            res.send(tokenSet.id_token).status(200).end();
+            res.redirect(session.redirectUrl);
+            // res.send(tokenSet.id_token).status(200).end();
           });
         }).catch(function(err) {
           console.log(err);

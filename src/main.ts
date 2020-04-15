@@ -69,6 +69,11 @@ if (process.argv.length < 3) {
 
 const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 
+let validRedirectDomainLookup: { [key: string]: boolean } = {};
+for (let validDomain of config.validRedirectDomains) {
+  validRedirectDomainLookup[validDomain] = true;
+}
+config.validRedirectDomainLookup = validRedirectDomainLookup;
 let privKey;
 let cert;
 let credentials: { [key: string]: any } = {};
@@ -230,7 +235,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      authenticationManager.refresh(req.session, res);
+      res.redirect(req.session.redirectUrl);
     }
   } else {
     res.status(503).end();
@@ -256,6 +261,18 @@ expressApp.get('/logout', function(req: Request, res: Response) {
       authenticationManager.logout(req.session, res);
     } else {
       res.status(200).end();
+    }
+  } else {
+    res.status(503).end();
+  }
+});
+
+expressApp.get('/user/profile', function(req: Request, res: Response) {
+  if (req.session) {
+    if (req.session.loggedIn) {
+      authenticationManager.getProfile(req.session, res);
+    } else {
+      res.status(401).end();
     }
   } else {
     res.status(503).end();
