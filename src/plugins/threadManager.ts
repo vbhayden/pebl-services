@@ -176,11 +176,11 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
       this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
         callback(vals.map((val) => {
-            let obj = JSON.parse(val);
-            if (Message.is(obj))
-              return new Message(obj);
-            else
-              return new Voided(obj);
+          let obj = JSON.parse(val);
+          if (Message.is(obj))
+            return new Message(obj);
+          else
+            return new Voided(obj);
         }), {
           thread: baseThread,
           groupId: groupId
