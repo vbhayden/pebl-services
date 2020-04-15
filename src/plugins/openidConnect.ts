@@ -81,15 +81,22 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  getProfile(session: Express.Session, callback: ((() => void) | Response)): void {
+  getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
           if (callback instanceof Function) {
-            callback();
+            callback(true);
           } else {
             callback.send(userInfo).end();
+          }
+        }).catch((err) => {
+          console.log(err);
+          if (callback instanceof Function) {
+            callback(false);
+          } else {
+            callback.status(503).end();
           }
         });
     }
@@ -102,14 +109,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         this.config.authenticationRedirectURIs[0],
         this.activeClient.callbackParams(req),
         { code_verifier: session.codeVerifier })
-        .then(function(tokenSet: TokenSet) {
-          session.activeTokens = tokenSet;
-          session.loggedIn = true;
-          self.getProfile(session, () => {
-            res.redirect(session.redirectUrl);
-            // res.send(tokenSet.id_token).status(200).end();
-          });
-        }).catch(function(err) {
+        .then((tokenSet: TokenSet) => {
+          if (Object.keys(tokenSet).length != 0) {
+            session.activeTokens = tokenSet;
+            session.loggedIn = true;
+            self.getProfile(session, (found) => {
+              res.redirect(session.redirectUrl);
+              // res.send(tokenSet.id_token).status(200).end();
+            });
+          } else {
+            res.status(401).end();
+          }
+        }).catch((err) => {
           console.log(err);
           res.status(401).end();
         });
