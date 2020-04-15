@@ -12,6 +12,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     this.config = config;
     OpenIDClient.Issuer.discover(config.authenticationUrl)
       .then((issued: Issuer<Client>) => {
+
         this.activeClient = new issued.Client({
           client_id: config.authenticationClientId,
           client_secret: config.authenticationClientSecret,
@@ -19,7 +20,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           response_types: config.authenticationResponseTypes
         });
       }).catch((err: any) => {
-        console.log(err);
+        console.log("openid failed to discover endpoint", err);
       });
   }
 
