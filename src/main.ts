@@ -275,7 +275,6 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
     if (req.session.loggedIn) {
       if (authenticationManager.isAccessTokenExpired(req.session)) {
         if (authenticationManager.isRefreshTokenExpired(req.session)) {
-          req.session.loggedIn = false;
           res.status(401).end();
         } else {
           authenticationManager.refresh(req.session, (refreshed: boolean) => {
@@ -285,7 +284,6 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
               }
             } else {
               if (req.session) {
-                req.session.loggedIn = false;
                 res.status(401).end();
               }
             }
@@ -405,7 +403,6 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   processIncomingMessages(req, payload);
                 } else {
                   if (req.session) {
-                    req.session.loggedIn = false;
                     ws.send(JSON.stringify({
                       requestType: "loggedOut"
                     }));

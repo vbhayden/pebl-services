@@ -50,13 +50,16 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               callback(true);
             } else {
               console.log("No expiration date set on access token");
+              session.loggedIn = false;
               callback(false);
             }
           } else {
+            session.loggedIn = false;
             callback(false);
           }
         }).catch((e) => {
           console.log("failed to refresh token", e);
+          session.loggedIn = false;
           callback(false);
         });
     }
@@ -122,6 +125,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           }
         }).catch((err) => {
           console.log(err);
+          session.loggedIn = false;
           if (callback instanceof Function) {
             callback(false);
           } else {
@@ -132,11 +136,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   }
 
   isAccessTokenExpired(session: Express.Session): boolean {
-    return ((session.accessTokenExpiration - Date.now()) < (3 * 60 * 1000));
+    return ((session.accessTokenExpiration - Date.now()) <= 0);
   }
 
   isRefreshTokenExpired(session: Express.Session): boolean {
-    return ((session.refreshTokenExpiration - Date.now()) < (5 * 60 * 1000));
+    return ((session.refreshTokenExpiration - Date.now()) <= 0);
   }
 
   redirect(req: Request, session: Express.Session, res: Response): void {
