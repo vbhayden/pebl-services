@@ -29,18 +29,35 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       this.activeClient.introspect(token)
         .then(function(result) {
           res.send(result).end();
+        }).catch((e) => {
+          res.send(503).end();
         });
     } else {
       res.status(503).end();
     }
   }
 
-  refresh(session: Express.Session, res: Response): void {
+  refresh(session: Express.Session, callback: (refreshed: boolean) => void): void {
     if (this.activeClient) {
       this.activeClient.refresh(session.activeTokens.refresh_token)
-        .then(function(tokenSet) {
+        .then((tokenSet) => {
           session.tokenSet = tokenSet;
-          res.send(tokenSet.id_token).end();
+          if (Object.keys(tokenSet).length != 0) {
+            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+              session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
+              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+              session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              callback(true);
+            } else {
+              console.log("No expiration date set on access token");
+              callback(false);
+            }
+          } else {
+            callback(false);
+          }
+        }).catch((e) => {
+          console.log("failed to refresh token", e);
+          callback(false);
         });
     }
   }
@@ -95,7 +112,6 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
-      console.log(session.activeTokens);
       this.activeClient.userinfo(session.activeTokens.access_token)
         .then(function(userInfo) {
           session.identity = userInfo;
@@ -115,6 +131,14 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
+  isAccessTokenExpired(session: Express.Session): boolean {
+    return ((session.accessTokenExpiration - Date.now()) < (3 * 60 * 1000));
+  }
+
+  isRefreshTokenExpired(session: Express.Session): boolean {
+    return ((session.refreshTokenExpiration - Date.now()) < (5 * 60 * 1000));
+  }
+
   redirect(req: Request, session: Express.Session, res: Response): void {
     let self = this;
     if (this.activeClient) {
@@ -125,11 +149,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then((tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
-            session.loggedIn = true;
-            self.getProfile(session, (found) => {
-              res.redirect(session.redirectUrl);
-              // res.send(tokenSet.id_token).status(200).end();
-            });
+            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+              session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
+              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+              session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              session.loggedIn = true;
+              self.getProfile(session, (found) => {
+                res.redirect(session.redirectUrl);
+              });
+            } else {
+              console.log("No expiration date set on access token");
+              res.status(503).end();
+            }
           } else {
             res.status(401).end();
           }

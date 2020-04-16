@@ -171,7 +171,6 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
   let originUrl = <string>req.headers["origin"];
   try {
     if (originUrl) {
-      console.log("debugging", originUrl);
       let origin = new URL(originUrl).hostname;
       if (validRedirectDomainLookup[origin]) {
         res.header('Access-Control-Allow-Origin', originUrl);
@@ -181,7 +180,7 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
       }
     }
   } catch (e) {
-    console.log("bad origin url", e);
+    // console.log("bad origin url", e);
   }
   next();
 }
@@ -219,6 +218,8 @@ expressApp.use(
 expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
+expressApp.disable('x-powered-by');
+
 expressApp.get('/', function(req: Request, res: Response) {
   console.log(req.session?.id)
   res.send("Hello World!").end();
@@ -230,10 +231,16 @@ expressApp.get('/login', function(req: Request, res: Response) {
     if (!req.session.loggedIn) {
       authenticationManager.login(req, req.session, res);
     } else {
-      res.redirect(req.session.redirectUrl);
+      let redirectUrl = req.query["redirectUrl"];
+      if (redirectUrl) {
+        let origin = new URL(redirectUrl).hostname;
+        if (validRedirectDomainLookup[origin]) {
+          res.redirect(redirectUrl);
+        }
+      } else {
+        res.redirect(req.session.redirectUrl);
+      }
     }
-  } else {
-    res.status(503).end();
   }
 });
 
@@ -266,7 +273,27 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
     console.log("user profile", req.session.id, req.session.loggedIn);
     if (req.session.loggedIn) {
-      authenticationManager.getProfile(req.session, res);
+      if (authenticationManager.isAccessTokenExpired(req.session)) {
+        if (authenticationManager.isRefreshTokenExpired(req.session)) {
+          req.session.loggedIn = false;
+          res.status(401).end();
+        } else {
+          authenticationManager.refresh(req.session, (refreshed: boolean) => {
+            if (refreshed) {
+              if (req.session) {
+                authenticationManager.getProfile(req.session, res);
+              }
+            } else {
+              if (req.session) {
+                req.session.loggedIn = false;
+                res.status(401).end();
+              }
+            }
+          });
+        }
+      } else {
+        authenticationManager.getProfile(req.session, res);
+      }
     } else {
       res.status(401).end();
     }
@@ -275,17 +302,17 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
   }
 });
 
-expressApp.get('/refresh', function(req: Request, res: Response) {
-  if (req.session) {
-    if (req.session.loggedIn) {
-      authenticationManager.refresh(req.session, res);
-    } else {
-      res.status(401).end();
-    }
-  } else {
-    res.status(503).end();
-  }
-});
+// expressApp.get('/refresh', function(req: Request, res: Response) {
+//   if (req.session) {
+//     if (req.session.loggedIn) {
+//       authenticationManager.refresh(req.session, res);
+//     } else {
+//       res.status(401).end();
+//     }
+//   } else {
+//     res.status(503).end();
+//   }
+// });
 
 expressApp.post('/validate', function(req: Request, res: Response) {
   authenticationManager.validate(req.body.token, res);
@@ -304,38 +331,104 @@ expressApp.post('/validate', function(req: Request, res: Response) {
 //   }
 // });
 
-expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
-  ws.on('message', function(msg) {
+let processIncomingMessages = (req: Request, payload: { [key: string]: any }): void => {
+  if (req && req.session) {
+    authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
+      req.session,
+      () => {
+        if (req.session) {
+          let authorized = authorizationManager.authorize(req.session.activeTokens.id_token.username,
+            req.session.permissions,
+            payload);
+          console.log("isAuthorized", authorized);
+          if (authorized) {
+            // let serviceMessage = new ServiceMessage({
+            //   sessionId: req.session.id,
+            //   identity: "learner",
+            //   payload: payload
+            // });
+
+            // messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
+
+          } else {
+            console.log("Not authorized", req.session.activeTokens.id_token.username, payload);
+          }
+        } else {
+          console.log("invalid session");
+        }
+      });
+  }
+};
+
+expressApp.ws('/', function(ws: WebSocket, req: Request) {
+  let originUrl = <string>req.headers["origin"];
+
+  let origin;
+  try {
+    origin = new URL(originUrl).hostname;
+  } catch (e) {
+    origin = "null";
+  }
+  if (!validRedirectDomainLookup[origin]) {
+    ws.terminate();
+  } else {
+
     if (req.session) {
-      if (typeof msg === 'string') {
-        let payload: any;
-        try {
-          payload = JSON.parse(msg);
-          if (!validationManager.validate(payload)) {
+      // messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) { });
+      // messageQueue.subscribeNotifications("learner", req.session.id, ws, function(success: boolean) { });
+    }
+
+    ws.on('message', function(msg) {
+      if (req.session) {
+        if (typeof msg === 'string') {
+          let payload: any;
+          try {
+            payload = JSON.parse(msg);
+            if (!validationManager.validate(payload)) {
+              ws.send("Invalid Message");
+              return;
+            }
+          } catch (e) {
             ws.send("Invalid Message");
             return;
           }
-        } catch (e) {
-          ws.send("Invalid Message");
-          return;
-        }
 
-        authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
-          req.session,
-          () => {
-            if (req && req.session) {
-              console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
-                req.session.permissions,
-                payload));
+          if (authenticationManager.isAccessTokenExpired(req.session)) {
+            if (authenticationManager.isRefreshTokenExpired(req.session)) {
+              req.session.loggedIn = false;
+              ws.send(JSON.stringify({
+                requestType: "loggedOut"
+              }));
             } else {
-              console.log("invalid session");
+              authenticationManager.refresh(req.session, (refreshed: boolean) => {
+                if (refreshed) {
+                  processIncomingMessages(req, payload);
+                } else {
+                  if (req.session) {
+                    req.session.loggedIn = false;
+                    ws.send(JSON.stringify({
+                      requestType: "loggedOut"
+                    }));
+                  }
+                }
+              })
             }
-          });
+          } else {
+            processIncomingMessages(req, payload);
+          }
+        }
+      } else {
+        ws.terminate();
       }
-    } else {
-      ws.terminate();
-    }
-  });
+    });
+
+    ws.on('close', function() {
+      if (req.session) {
+        // messageQueue.removeOutgoingQueue(req.session.id);
+        // messageQueue.unsubscribeNotifications(req.session.activeTokens.id_token.username);
+      }
+    })
+  }
 });
 
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {
