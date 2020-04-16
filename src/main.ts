@@ -233,9 +233,13 @@ expressApp.get('/login', function(req: Request, res: Response) {
     } else {
       let redirectUrl = req.query["redirectUrl"];
       if (redirectUrl) {
-        let origin = new URL(redirectUrl).hostname;
-        if (validRedirectDomainLookup[origin]) {
-          res.redirect(redirectUrl);
+        try {
+          let origin = new URL(redirectUrl).hostname;
+          if (validRedirectDomainLookup[origin]) {
+            res.redirect(redirectUrl);
+          }
+        } catch (e) {
+          res.status(401).end();
         }
       } else {
         res.redirect(req.session.redirectUrl);
@@ -260,9 +264,21 @@ expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
     console.log("logging out", req.session.id, req.session.loggedIn)
     if (req.session.loggedIn) {
-      authenticationManager.logout(req.session, res);
+      authenticationManager.logout(req, req.session, res);
     } else {
-      res.status(200).end();
+      let redirectUrl = req.query["redirectUrl"];
+      if (redirectUrl) {
+        try {
+          let origin = new URL(redirectUrl).hostname;
+          if (validRedirectDomainLookup[origin]) {
+            res.redirect(redirectUrl);
+          }
+        } catch (e) {
+          res.status(401).end();
+        }
+      } else {
+        res.redirect(req.session.redirectUrl);
+      }
     }
   } else {
     res.status(503).end();

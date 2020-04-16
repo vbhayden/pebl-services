@@ -72,10 +72,9 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       //force always having redirectUrl
       if (redirectUrl) {
         try {
-          let decodedRedirectUrl = decodeURIComponent(redirectUrl);
-          let hostname = new URL(decodedRedirectUrl).hostname;
+          let hostname = new URL(redirectUrl).hostname;
           if (this.config.validRedirectDomainLookup[hostname]) {
-            session.redirectUrl = decodedRedirectUrl;
+            session.redirectUrl = redirectUrl;
           } else {
             res.status(400).end();
             return;
@@ -101,13 +100,34 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  logout(session: Express.Session, res: Response): void {
+  logout(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
       session.loggedIn = false;
-      res.redirect(this.activeClient.endSessionUrl({
-        id_token_hint: session.activeTokens.id_token,
-        post_logout_redirect_uri: session.redirectUrl
-      }));
+
+      let redirectUrl = req.query.redirectUrl;
+      if (redirectUrl) {
+        try {
+          let hostname = new URL(redirectUrl).hostname;
+          if (!this.config.validRedirectDomainLookup[hostname]) {
+            res.status(400).end();
+            return;
+          }
+        } catch (e) {
+          res.status(400).end();
+          return;
+        }
+
+        res.redirect(this.activeClient.endSessionUrl({
+          id_token_hint: session.activeTokens.id_token,
+          post_logout_redirect_uri: redirectUrl
+        }));
+      } else {
+        res.redirect(this.activeClient.endSessionUrl({
+          id_token_hint: session.activeTokens.id_token,
+          post_logout_redirect_uri: session.redirectUrl
+        }));
+      }
+
     } else {
       res.status(503).end();
     }
