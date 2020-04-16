@@ -225,36 +225,57 @@ expressApp.get('/', function(req: Request, res: Response) {
   res.send("Hello World!").end();
 });
 
+let validateAndRedirectUrl = (session: Express.Session, res: Response, url?: string): void => {
+  if (url) {
+    try {
+      let origin = new URL(url).hostname;
+      if (validRedirectDomainLookup[origin]) {
+        res.redirect(url);
+      }
+    } catch (e) {
+      res.status(401).end();
+    }
+  } else {
+    res.redirect(session.redirectUrl);
+  }
+}
+
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("logging in", req.session.id, req.session.loggedIn);
-    if (!req.session.loggedIn) {
-      authenticationManager.login(req, req.session, res);
-    } else {
-      let redirectUrl = req.query["redirectUrl"];
-      if (redirectUrl) {
-        try {
-          let origin = new URL(redirectUrl).hostname;
-          if (validRedirectDomainLookup[origin]) {
-            res.redirect(redirectUrl);
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("logging in", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            validateAndRedirectUrl(req.session, res, req.query["redirectUrl"]);
+          } else {
+            authenticationManager.login(req, req.session, res);
           }
-        } catch (e) {
-          res.status(401).end();
+        } else {
+          res.status(503).end();
         }
-      } else {
-        res.redirect(req.session.redirectUrl);
-      }
-    }
+      });
+  } else {
+    res.status(503).end();
   }
 });
 
 expressApp.get('/redirect', function(req: Request, res: Response) {
   if (req.session) {
-    if (!req.session.loggedIn) {
-      authenticationManager.redirect(req, req.session, res);
-    } else {
-      res.status(200).end();
-    }
+
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("redirect", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            res.status(200).end();
+          } else {
+            authenticationManager.redirect(req, req.session, res);
+          }
+        } else {
+          res.status(503).end();
+        }
+      });
   } else {
     res.status(503).end();
   }
@@ -263,23 +284,19 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
     console.log("logging out", req.session.id, req.session.loggedIn)
-    if (req.session.loggedIn) {
-      authenticationManager.logout(req, req.session, res);
-    } else {
-      let redirectUrl = req.query["redirectUrl"];
-      if (redirectUrl) {
-        try {
-          let origin = new URL(redirectUrl).hostname;
-          if (validRedirectDomainLookup[origin]) {
-            res.redirect(redirectUrl);
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("logging out", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            authenticationManager.logout(req, req.session, res);
+          } else {
+            validateAndRedirectUrl(req.session, res, req.query["redirectUrl"]);
           }
-        } catch (e) {
-          res.status(401).end();
+        } else {
+          res.status(503).end();
         }
-      } else {
-        res.redirect(req.session.redirectUrl);
-      }
-    }
+      });
   } else {
     res.status(503).end();
   }
@@ -288,84 +305,47 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
     console.log("user profile", req.session.id, req.session.loggedIn);
-    if (req.session.loggedIn) {
-      if (authenticationManager.isAccessTokenExpired(req.session)) {
-        if (authenticationManager.isRefreshTokenExpired(req.session)) {
-          res.status(401).end();
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (isLoggedIn && req.session) {
+          authenticationManager.getProfile(req.session, res);
         } else {
-          authenticationManager.refresh(req.session, (refreshed: boolean) => {
-            if (refreshed) {
-              if (req.session) {
-                authenticationManager.getProfile(req.session, res);
-              }
-            } else {
-              if (req.session) {
-                res.status(401).end();
-              }
-            }
-          });
+          res.status(401).end();
         }
-      } else {
-        authenticationManager.getProfile(req.session, res);
-      }
-    } else {
-      res.status(401).end();
-    }
+      });
   } else {
     res.status(503).end();
   }
 });
 
-// expressApp.get('/refresh', function(req: Request, res: Response) {
-//   if (req.session) {
-//     if (req.session.loggedIn) {
-//       authenticationManager.refresh(req.session, res);
-//     } else {
-//       res.status(401).end();
-//     }
-//   } else {
-//     res.status(503).end();
-//   }
-// });
-
 expressApp.post('/validate', function(req: Request, res: Response) {
   authenticationManager.validate(req.body.token, res);
 });
 
-// expressApp.ws('/', function(ws: WebSocket, req: Request) {
-//   if (req.session) {
-//     if (req.session.loggedIn) {
-//       ws.on('message', function(msg: String) {
-
-//       });
-//       ws.send("ping");
-//     } else {
-//       ws.terminate();
-//     }
-//   }
-// });
-
-let processIncomingMessages = (req: Request, payload: { [key: string]: any }): void => {
+let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
   if (req && req.session) {
     authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
       req.session,
       () => {
         if (req.session) {
-          let authorized = authorizationManager.authorize(req.session.activeTokens.id_token.username,
+          let authorized = authorizationManager.authorize(req.session.identity.preferred_username,
             req.session.permissions,
             payload);
           console.log("isAuthorized", authorized);
           if (authorized) {
-            // let serviceMessage = new ServiceMessage({
-            //   sessionId: req.session.id,
-            //   identity: "learner",
-            //   payload: payload
-            // });
+            let serviceMessage = new ServiceMessage({
+              sessionId: req.session.id,
+              identity: "learner",
+              payload: payload
+            });
 
-            // messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
-
+            messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
           } else {
-            console.log("Not authorized", req.session.activeTokens.id_token.username, payload);
+            console.log("Not authorized", req.session.identity.preferred_username, payload);
+            ws.send(JSON.stringify({
+              requestType: "error",
+              payload: "Unauthorized message"
+            }))
           }
         } else {
           console.log("invalid session");
@@ -383,64 +363,85 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
   } catch (e) {
     origin = "null";
   }
+
   if (!validRedirectDomainLookup[origin]) {
     ws.terminate();
+    return;
   } else {
-
     if (req.session) {
-      // messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) { });
-      // messageQueue.subscribeNotifications("learner", req.session.id, ws, function(success: boolean) { });
-    }
+      if (!req.session.loggedIn) {
+        ws.terminate();
+        return;
+      } else {
 
-    ws.on('message', function(msg) {
-      if (req.session) {
-        if (typeof msg === 'string') {
-          let payload: any;
-          try {
-            payload = JSON.parse(msg);
-            if (!validationManager.validate(payload)) {
-              ws.send("Invalid Message");
-              return;
-            }
-          } catch (e) {
-            ws.send("Invalid Message");
-            return;
-          }
+        authenticationManager.isLoggedIn(req.session,
+          (isLoggedIn: boolean) => {
+            if (isLoggedIn && req.session) {
+              let sessionId = req.session.id
+              let username = req.session.identity.preferred_username;
 
-          if (authenticationManager.isAccessTokenExpired(req.session)) {
-            if (authenticationManager.isRefreshTokenExpired(req.session)) {
-              req.session.loggedIn = false;
+              messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
+              messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
+
+              ws.on('message', function(msg) {
+                if (req.session) {
+                  if (typeof msg === 'string') {
+                    let payload: any;
+                    try {
+                      payload = JSON.parse(msg);
+                      if (!validationManager.validate(payload)) {
+                        ws.send(JSON.stringify({
+                          requestType: "error",
+                          payload: {
+                            description: "Invalid Message",
+                            target: payload.id
+                          }
+                        }));
+                        return;
+                      }
+                    } catch (e) {
+                      ws.send(JSON.stringify({
+                        requestType: "error",
+                        payload: {
+                          description: "Bad Message",
+                          target: msg
+                        }
+                      }));
+                      return;
+                    }
+
+                    authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
+                      if (isLoggedIn) {
+                        processIncomingMessages(ws, req, payload);
+                      } else {
+                        ws.send(JSON.stringify({
+                          requestType: "loggedOut"
+                        }));
+                        ws.close();
+                      }
+                    });
+                  }
+                } else {
+                  ws.close();
+                }
+              });
+
+              ws.on('close', function() {
+                messageQueue.removeOutgoingQueue(sessionId);
+                messageQueue.unsubscribeNotifications(username);
+              });
+            } else {
               ws.send(JSON.stringify({
                 requestType: "loggedOut"
               }));
-            } else {
-              authenticationManager.refresh(req.session, (refreshed: boolean) => {
-                if (refreshed) {
-                  processIncomingMessages(req, payload);
-                } else {
-                  if (req.session) {
-                    ws.send(JSON.stringify({
-                      requestType: "loggedOut"
-                    }));
-                  }
-                }
-              })
+              ws.close();
             }
-          } else {
-            processIncomingMessages(req, payload);
-          }
-        }
-      } else {
-        ws.terminate();
-      }
-    });
+          });
 
-    ws.on('close', function() {
-      if (req.session) {
-        // messageQueue.removeOutgoingQueue(req.session.id);
-        // messageQueue.unsubscribeNotifications(req.session.activeTokens.id_token.username);
       }
-    })
+    } else {
+      ws.terminate();
+    }
   }
 });
 

@@ -8,11 +8,13 @@ export class DefaultValidationManager {
     this.pluginManager = pluginManager;
   }
 
-  validate(obj: { [key: string]: any }): boolean {
-    if (obj.requestType) {
-      let messageTemplate = this.pluginManager.getMessageTemplate(obj.requestType);
-      if (messageTemplate) {
-        return messageTemplate.validate(obj);
+  validate(obj: any): boolean {
+    if (obj instanceof Object) {
+      if (obj.requestType) {
+        let messageTemplate = this.pluginManager.getMessageTemplate(obj.requestType);
+        if (messageTemplate) {
+          return messageTemplate.validate(obj);
+        }
       }
     }
 
