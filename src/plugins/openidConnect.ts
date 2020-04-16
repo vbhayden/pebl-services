@@ -176,22 +176,26 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   }
 
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
-    if (this.isAccessTokenExpired(session)) {
-      if (this.isRefreshTokenExpired(session)) {
-        this.clearActiveTokens(session, callback);
-      } else {
-        this.refresh(session, (refreshed: boolean) => {
-          session.save(() => {
-            if (refreshed) {
-              callback(true);
-            } else {
-              this.clearActiveTokens(session, callback);
-            }
+    if (session.activeTokens) {
+      if (this.isAccessTokenExpired(session)) {
+        if (this.isRefreshTokenExpired(session)) {
+          this.clearActiveTokens(session, callback);
+        } else {
+          this.refresh(session, (refreshed: boolean) => {
+            session.save(() => {
+              if (refreshed) {
+                callback(true);
+              } else {
+                this.clearActiveTokens(session, callback);
+              }
+            });
           });
-        });
+        }
+      } else {
+        callback(true);
       }
     } else {
-      callback(true);
+      callback(false);
     }
   }
 
