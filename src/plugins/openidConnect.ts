@@ -107,32 +107,34 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   logout(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
 
-      let redirectUrl = req.query.redirectUrl;
-      if (redirectUrl) {
-        try {
-          let hostname = new URL(redirectUrl).hostname;
-          if (!this.config.validRedirectDomainLookup[hostname]) {
+      if (session.activeTokens) {
+        let redirectUrl = req.query.redirectUrl;
+        if (redirectUrl) {
+          try {
+            let hostname = new URL(redirectUrl).hostname;
+            if (!this.config.validRedirectDomainLookup[hostname]) {
+              res.status(400).end();
+              return;
+            }
+          } catch (e) {
             res.status(400).end();
             return;
           }
-        } catch (e) {
-          res.status(400).end();
-          return;
+
+          res.redirect(this.activeClient.endSessionUrl({
+            id_token_hint: session.activeTokens.id_token,
+            post_logout_redirect_uri: redirectUrl
+          }));
+        } else {
+          res.redirect(this.activeClient.endSessionUrl({
+            id_token_hint: session.activeTokens.id_token,
+            post_logout_redirect_uri: session.redirectUrl
+          }));
         }
-
         delete session.activeTokens;
-        res.redirect(this.activeClient.endSessionUrl({
-          id_token_hint: session.activeTokens.id_token,
-          post_logout_redirect_uri: redirectUrl
-        }));
       } else {
-        delete session.activeTokens;
-        res.redirect(this.activeClient.endSessionUrl({
-          id_token_hint: session.activeTokens.id_token,
-          post_logout_redirect_uri: session.redirectUrl
-        }));
+        res.status(200).end();
       }
-
     } else {
       res.status(503).end();
     }
@@ -140,22 +142,30 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
-      this.activeClient.userinfo(session.activeTokens.access_token)
-        .then(function(userInfo) {
-          session.identity = userInfo;
-          if (callback instanceof Function) {
-            callback(true);
-          } else {
-            callback.send(userInfo).end();
-          }
-        }).catch((err) => {
-          console.log(err);
-          if (callback instanceof Function) {
-            callback(false);
-          } else {
-            callback.status(503).end();
-          }
-        });
+      if (session.activeTokens) {
+        this.activeClient.userinfo(session.activeTokens.access_token)
+          .then(function(userInfo) {
+            session.identity = userInfo;
+            if (callback instanceof Function) {
+              callback(true);
+            } else {
+              callback.send(userInfo).end();
+            }
+          }).catch((err) => {
+            console.log(err);
+            if (callback instanceof Function) {
+              callback(false);
+            } else {
+              callback.status(503).end();
+            }
+          });
+      } else {
+        if (callback instanceof Function) {
+          callback(false);
+        } else {
+          callback.status(401).end();
+        }
+      }
     }
   }
 
