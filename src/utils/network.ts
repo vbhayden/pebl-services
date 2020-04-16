@@ -1,5 +1,5 @@
-import { IncomingMessage } from 'http';
 import * as https from 'https';
+import { Response } from 'express';
 
 export function postData(
   host: string,
@@ -117,4 +117,23 @@ export function deleteData(
       failCallback(e);
     }
   });
+}
+
+export function validateAndRedirectUrl(validRedirectDomainLookup: { [key: string]: boolean },
+  session: Express.Session,
+  res: Response,
+  url?: string): void {
+
+  if (url) {
+    try {
+      let origin = new URL(url).hostname;
+      if (validRedirectDomainLookup[origin]) {
+        res.redirect(url);
+      }
+    } catch (e) {
+      res.status(400).end();
+    }
+  } else {
+    res.redirect(session.redirectUrl);
+  }
 }

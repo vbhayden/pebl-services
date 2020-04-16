@@ -2,6 +2,7 @@ import { AuthenticationManager } from '../interfaces/authenticationManager'
 
 import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client"
+import { validateAndRedirectUrl } from '../utils/network';
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
@@ -133,7 +134,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         }
         delete session.activeTokens;
       } else {
-        res.status(200).end();
+        res.redirect(session.redirectUrl);
       }
     } else {
       res.status(503).end();
@@ -152,11 +153,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               callback.send(userInfo).end();
             }
           }).catch((err) => {
-            console.log(err);
+            console.log("Get Profiled failed", err);
+            delete session.activeTokens;
             if (callback instanceof Function) {
               callback(false);
             } else {
-              callback.status(503).end();
+              callback.status(401).end();
             }
           });
       } else {
@@ -172,6 +174,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
     if (this.isAccessTokenExpired(session)) {
       if (this.isRefreshTokenExpired(session)) {
+        delete session.activeTokens;
         callback(false);
       } else {
         this.refresh(session, (refreshed: boolean) => {
@@ -224,7 +227,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             res.status(401).end();
           }
         }).catch((err) => {
-          console.log(err);
+          console.log("redirect failed", err);
           res.status(401).end();
         });
     } else {

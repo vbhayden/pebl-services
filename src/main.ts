@@ -56,6 +56,7 @@ import { DefaultSessionManager } from "./plugins/sessionManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
+import { validateAndRedirectUrl } from "./utils/network";
 
 let express = require('express');
 
@@ -225,21 +226,6 @@ expressApp.get('/', function(req: Request, res: Response) {
   res.send("Hello World!").end();
 });
 
-let validateAndRedirectUrl = (session: Express.Session, res: Response, url?: string): void => {
-  if (url) {
-    try {
-      let origin = new URL(url).hostname;
-      if (validRedirectDomainLookup[origin]) {
-        res.redirect(url);
-      }
-    } catch (e) {
-      res.status(401).end();
-    }
-  } else {
-    res.redirect(session.redirectUrl);
-  }
-}
-
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
     authenticationManager.isLoggedIn(req.session,
@@ -247,7 +233,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
         if (req.session) {
           console.log("logging in", req.session.id, isLoggedIn);
           if (isLoggedIn) {
-            validateAndRedirectUrl(req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
           } else {
             authenticationManager.login(req, req.session, res);
           }
@@ -289,7 +275,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
           if (isLoggedIn) {
             authenticationManager.logout(req, req.session, res);
           } else {
-            validateAndRedirectUrl(req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
           }
         } else {
           res.status(503).end();
