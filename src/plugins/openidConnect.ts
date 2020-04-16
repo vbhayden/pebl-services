@@ -50,13 +50,16 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               session.refreshTokenExpiration = Date.now() + refreshExpiration;
               callback(true);
             } else {
+              delete session.activeTokens;
               console.log("No expiration date set on access token");
               callback(false);
             }
           } else {
+            delete session.activeTokens;
             callback(false);
           }
         }).catch((e) => {
+          delete session.activeTokens;
           console.log("failed to refresh token", e);
           callback(false);
         });
@@ -66,8 +69,6 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   login(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
       let redirectUrl = req.query.redirectUrl;
-
-      //force always having redirectUrl
       if (redirectUrl) {
         try {
           let hostname = new URL(redirectUrl).hostname;
@@ -114,11 +115,13 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           return;
         }
 
+        delete session.activeTokens;
         res.redirect(this.activeClient.endSessionUrl({
           id_token_hint: session.activeTokens.id_token,
           post_logout_redirect_uri: redirectUrl
         }));
       } else {
+        delete session.activeTokens;
         res.redirect(this.activeClient.endSessionUrl({
           id_token_hint: session.activeTokens.id_token,
           post_logout_redirect_uri: session.redirectUrl
@@ -156,7 +159,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       if (this.isRefreshTokenExpired(session)) {
         callback(false);
       } else {
-        this.refresh(session, callback);
+        this.refresh(session, (refreshed: boolean) => {
+          session.save(() => {
+            callback(refreshed);
+          });
+        });
       }
     } else {
       callback(true);
