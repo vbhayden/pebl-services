@@ -262,7 +262,6 @@ expressApp.get('/login', function(req: Request, res: Response) {
 
 expressApp.get('/redirect', function(req: Request, res: Response) {
   if (req.session) {
-
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
@@ -283,7 +282,6 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("logging out", req.session.id, req.session.loggedIn)
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
@@ -304,13 +302,17 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 
 expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("user profile", req.session.id, req.session.loggedIn);
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
-        if (isLoggedIn && req.session) {
-          authenticationManager.getProfile(req.session, res);
+        if (req.session) {
+          console.log("user profile", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            authenticationManager.getProfile(req.session, res);
+          } else {
+            res.status(401).end();
+          }
         } else {
-          res.status(401).end();
+          res.status(503).end();
         }
       });
   } else {
@@ -369,76 +371,69 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     return;
   } else {
     if (req.session) {
-      if (!req.session.loggedIn) {
-        ws.terminate();
-        return;
-      } else {
+      authenticationManager.isLoggedIn(req.session,
+        (isLoggedIn: boolean) => {
+          if (isLoggedIn && req.session) {
+            let sessionId = req.session.id
+            let username = req.session.identity.preferred_username;
 
-        authenticationManager.isLoggedIn(req.session,
-          (isLoggedIn: boolean) => {
-            if (isLoggedIn && req.session) {
-              let sessionId = req.session.id
-              let username = req.session.identity.preferred_username;
+            messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
+            messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
 
-              messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
-              messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
-
-              ws.on('message', function(msg) {
-                if (req.session) {
-                  if (typeof msg === 'string') {
-                    let payload: any;
-                    try {
-                      payload = JSON.parse(msg);
-                      if (!validationManager.validate(payload)) {
-                        ws.send(JSON.stringify({
-                          requestType: "error",
-                          payload: {
-                            description: "Invalid Message",
-                            target: payload.id
-                          }
-                        }));
-                        return;
-                      }
-                    } catch (e) {
+            ws.on('message', function(msg) {
+              if (req.session) {
+                if (typeof msg === 'string') {
+                  let payload: any;
+                  try {
+                    payload = JSON.parse(msg);
+                    if (!validationManager.validate(payload)) {
                       ws.send(JSON.stringify({
                         requestType: "error",
                         payload: {
-                          description: "Bad Message",
-                          target: msg
+                          description: "Invalid Message",
+                          target: payload.id
                         }
                       }));
                       return;
                     }
-
-                    authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
-                      if (isLoggedIn) {
-                        processIncomingMessages(ws, req, payload);
-                      } else {
-                        ws.send(JSON.stringify({
-                          requestType: "loggedOut"
-                        }));
-                        ws.close();
+                  } catch (e) {
+                    ws.send(JSON.stringify({
+                      requestType: "error",
+                      payload: {
+                        description: "Bad Message",
+                        target: msg
                       }
-                    });
+                    }));
+                    return;
                   }
-                } else {
-                  ws.close();
+
+                  authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
+                    if (isLoggedIn) {
+                      processIncomingMessages(ws, req, payload);
+                    } else {
+                      ws.send(JSON.stringify({
+                        requestType: "loggedOut"
+                      }));
+                      ws.close();
+                    }
+                  });
                 }
-              });
+              } else {
+                ws.close();
+              }
+            });
 
-              ws.on('close', function() {
-                messageQueue.removeOutgoingQueue(sessionId);
-                messageQueue.unsubscribeNotifications(username);
-              });
-            } else {
-              ws.send(JSON.stringify({
-                requestType: "loggedOut"
-              }));
-              ws.close();
-            }
-          });
-
-      }
+            ws.on('close', function() {
+              messageQueue.removeOutgoingQueue(sessionId);
+              messageQueue.unsubscribeNotifications(username);
+            });
+          } else {
+            ws.send(JSON.stringify({
+              requestType: "loggedOut"
+            }));
+            ws.close();
+          }
+        });
     } else {
       ws.terminate();
     }
