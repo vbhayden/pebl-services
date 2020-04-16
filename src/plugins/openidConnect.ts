@@ -43,7 +43,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       if (session.activeTokens) {
         this.activeClient.refresh(session.activeTokens.refresh_token)
           .then((tokenSet) => {
-            session.tokenSet = tokenSet;
+            session.activeTokens = tokenSet;
             if (Object.keys(tokenSet).length != 0) {
               if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
                 session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
