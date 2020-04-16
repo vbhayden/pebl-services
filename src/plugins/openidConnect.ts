@@ -40,29 +40,34 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
 
   refresh(session: Express.Session, callback: (refreshed: boolean) => void): void {
     if (this.activeClient) {
-      this.activeClient.refresh(session.activeTokens.refresh_token)
-        .then((tokenSet) => {
-          session.tokenSet = tokenSet;
-          if (Object.keys(tokenSet).length != 0) {
-            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
-              session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-              session.refreshTokenExpiration = Date.now() + refreshExpiration;
-              callback(true);
+      if (session.activeTokens) {
+        this.activeClient.refresh(session.activeTokens.refresh_token)
+          .then((tokenSet) => {
+            session.tokenSet = tokenSet;
+            if (Object.keys(tokenSet).length != 0) {
+              if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+                session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
+                let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                callback(true);
+              } else {
+                delete session.activeTokens;
+                console.log("No expiration date set on access token");
+                callback(false);
+              }
             } else {
               delete session.activeTokens;
-              console.log("No expiration date set on access token");
               callback(false);
             }
-          } else {
+          }).catch((e) => {
             delete session.activeTokens;
+            console.log("failed to refresh token", e);
             callback(false);
-          }
-        }).catch((e) => {
-          delete session.activeTokens;
-          console.log("failed to refresh token", e);
-          callback(false);
-        });
+          });
+      } else {
+        console.log("failed to refresh token, none stored");
+        callback(false);
+      }
     }
   }
 
