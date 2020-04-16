@@ -43,26 +43,23 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       if (session.activeTokens) {
         this.activeClient.refresh(session.activeTokens.refresh_token)
           .then((tokenSet) => {
-            session.activeTokens = tokenSet;
             if (Object.keys(tokenSet).length != 0) {
+              session.activeTokens = tokenSet;
               if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
                 session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
                 let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
                 session.refreshTokenExpiration = Date.now() + refreshExpiration;
                 callback(true);
               } else {
-                delete session.activeTokens;
                 console.log("No expiration date set on access token");
-                callback(false);
+                this.clearActiveTokens(session, callback);
               }
             } else {
-              delete session.activeTokens;
-              callback(false);
+              this.clearActiveTokens(session, callback);
             }
           }).catch((e) => {
-            delete session.activeTokens;
             console.log("failed to refresh token", e);
-            callback(false);
+            this.clearActiveTokens(session, callback);
           });
       } else {
         console.log("failed to refresh token, none stored");
@@ -131,7 +128,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             post_logout_redirect_uri: session.redirectUrl
           }));
         }
-        delete session.activeTokens;
+        this.clearActiveTokens(session);
       } else {
         res.redirect(session.redirectUrl);
       }
@@ -153,11 +150,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           }).catch((err) => {
             console.log("Get Profiled failed", err);
-            delete session.activeTokens;
             if (callback instanceof Function) {
-              callback(false);
+              this.clearActiveTokens(session, callback);
             } else {
-              callback.status(401).end();
+              this.clearActiveTokens(session, () => {
+                callback.status(401).end();
+              });
             }
           });
       } else {
@@ -170,15 +168,25 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
+  private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: boolean) => void): void {
+    delete session.activeTokens;
+    delete session.accessTokenExpiration;
+    delete session.refreshTokenExpiration;
+    session.save(() => { if (callback) callback(false); });
+  }
+
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
     if (this.isAccessTokenExpired(session)) {
       if (this.isRefreshTokenExpired(session)) {
-        delete session.activeTokens;
-        callback(false);
+        this.clearActiveTokens(session, callback);
       } else {
         this.refresh(session, (refreshed: boolean) => {
           session.save(() => {
-            callback(refreshed);
+            if (refreshed) {
+              callback(true);
+            } else {
+              this.clearActiveTokens(session, callback);
+            }
           });
         });
       }
