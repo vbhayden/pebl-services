@@ -42,7 +42,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   authorizeGetNotifications(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
 
     let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity][payload.requestType]
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
 
     return canUser || canGroup;
   }
