@@ -59,12 +59,14 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   validateGetAnnotations(payload: { [key: string]: any }): boolean {
-    //TODO
-    return false;
+    return true;
   }
 
   authorizeGetAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveAnnotations(payload: { [key: string]: any }): boolean {
@@ -77,12 +79,14 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   validateGetSharedAnnotations(payload: { [key: string]: any }): boolean {
-    //TODO
-    return false;
+    return true;
   }
 
   authorizeGetSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveSharedAnnotations(payload: { [key: string]: any }): boolean {

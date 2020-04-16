@@ -49,7 +49,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                 session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
                 let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
                 session.refreshTokenExpiration = Date.now() + refreshExpiration;
-                callback(true);
+                this.getProfile(session, callback);
               } else {
                 console.log("No expiration date set on access token");
                 this.clearActiveTokens(session, callback);
