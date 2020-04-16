@@ -1,5 +1,6 @@
 import * as https from 'https';
 import { Response } from 'express';
+import { IncomingMessage } from 'http';
 
 export function postData(
   host: string,

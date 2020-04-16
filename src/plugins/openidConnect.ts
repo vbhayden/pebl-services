@@ -1,8 +1,7 @@
 import { AuthenticationManager } from '../interfaces/authenticationManager'
 
 import { Request, Response } from 'express';
-import { Issuer, Client, TokenSet } from "openid-client"
-import { validateAndRedirectUrl } from '../utils/network';
+import { Issuer, Client, TokenSet } from "openid-client";
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
