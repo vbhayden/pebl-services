@@ -14,22 +14,22 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getMessages",
-      this.validateGetMessages,
-      this.authorizeGetMessages,
+      this.validateGetMessages.bind(this),
+      this.authorizeGetMessages.bind(this),
       (payload) => {
         this.getMessages(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveMessages",
-      this.validateSaveMessages,
-      this.authorizeSaveMessages,
+      this.validateSaveMessages.bind(this),
+      this.authorizeSaveMessages.bind(this),
       (payload) => {
         this.saveMessages(payload.identity, payload.messages, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteMessage",
-      this.validateDeleteMessages,
-      this.authorizeDeleteMessages,
+      this.validateDeleteMessages.bind(this),
+      this.authorizeDeleteMessages.bind(this),
       (payload) => {
         this.deleteMessage(payload.identity, payload.xId, payload.callback);
       }));

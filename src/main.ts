@@ -404,6 +404,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       return;
                     }
                   } catch (e) {
+                    console.log("Bad message", e);
                     ws.send(JSON.stringify({
                       identity: username,
                       requestType: "error",

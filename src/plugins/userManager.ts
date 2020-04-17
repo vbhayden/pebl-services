@@ -14,36 +14,36 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     super();
     this.sessionData = redisCache;
     this.addMessageTemplate(new MessageTemplate("addUserProfile",
-      this.validateAddUserProfile,
-      this.authorizeAddUserProfile,
+      this.validateAddUserProfile.bind(this),
+      this.authorizeAddUserProfile.bind(this),
       (payload) => {
         this.addUserProfile(payload.id, payload.userName, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
-      this.validateDeleteUserProfile,
-      this.authorizeDeleteUserProfile,
+      this.validateDeleteUserProfile.bind(this),
+      this.authorizeDeleteUserProfile.bind(this),
       (payload) => {
         this.deleteUserProfile(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateUserProfile",
-      this.validateUpdateUserProfile,
-      this.authorizeUpdateUserProfile,
+      this.validateUpdateUserProfile.bind(this),
+      this.authorizeUpdateUserProfile.bind(this),
       (payload) => {
         this.updateUserProfile(payload.id, payload.userName, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUserProfile",
-      this.validateGetUserProfile,
-      this.authorizeGetUserProfile,
+      this.validateGetUserProfile.bind(this),
+      this.authorizeGetUserProfile.bind(this),
       (payload) => {
         this.getUserProfile(payload.id, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUsers",
-      this.validateGetUsers,
-      this.authorizeGetUsers,
+      this.validateGetUsers.bind(this),
+      this.authorizeGetUsers.bind(this),
       (payload) => {
         this.getUsers(payload.callback);
       }));

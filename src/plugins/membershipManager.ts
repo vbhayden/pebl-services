@@ -13,22 +13,22 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getMemberships",
-      this.validateGetMemberships,
-      this.authorizeGetMemberships,
+      this.validateGetMemberships.bind(this),
+      this.authorizeGetMemberships.bind(this),
       (payload) => {
         this.getMemberships(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveMemberships",
-      this.validateSaveMemberships,
-      this.authorizeSaveMemberships,
+      this.validateSaveMemberships.bind(this),
+      this.authorizeSaveMemberships.bind(this),
       (payload) => {
         this.saveMemberships(payload.identity, payload.memberships, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteMembership",
-      this.validateDeleteMembership,
-      this.authorizeDeleteMembership,
+      this.validateDeleteMembership.bind(this),
+      this.authorizeDeleteMembership.bind(this),
       (payload) => {
         this.deleteMembership(payload.identity, payload.xId, payload.callback);
       }));

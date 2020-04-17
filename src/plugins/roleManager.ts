@@ -17,29 +17,29 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     this.sessionData = sessionData;
     this.userManager = userManager;
     this.addMessageTemplate(new MessageTemplate("addRole",
-      this.validateAddRole,
-      this.authorizeAddRole,
+      this.validateAddRole.bind(this),
+      this.authorizeAddRole.bind(this),
       (payload) => {
         this.addRole(payload.id, payload.name, payload.permissions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteRole",
-      this.validateDeleteRole,
-      this.authorizeDeleteRole,
+      this.validateDeleteRole.bind(this),
+      this.authorizeDeleteRole.bind(this),
       (payload) => {
         this.deleteRole(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateRole",
-      this.validateUpdateRole,
-      this.authorizeUpdateRole,
+      this.validateUpdateRole.bind(this),
+      this.authorizeUpdateRole.bind(this),
       (payload) => {
         this.updateRole(payload.id, payload.name, payload.permissions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getRoles",
-      this.validateGetRole,
-      this.authorizeGetRoles,
+      this.validateGetRole.bind(this),
+      this.authorizeGetRoles.bind(this),
       (payload) => {
         this.getRoles(payload.callback);
       }));

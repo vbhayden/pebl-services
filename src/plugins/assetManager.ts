@@ -13,22 +13,22 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getAssets",
-      this.validateGetAssets,
-      this.authorizeGetAssets,
+      this.validateGetAssets.bind(this),
+      this.authorizeGetAssets.bind(this),
       (payload: { [key: string]: any }) => {
         this.getAssets(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveAssets",
-      this.validateSaveAssets,
-      this.authorizeSaveAssets,
+      this.validateSaveAssets.bind(this),
+      this.authorizeSaveAssets.bind(this),
       (payload: { [key: string]: any }) => {
         this.saveAssets(payload.identity, payload.assets, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteAsset",
-      this.validateDeleteAsset,
-      this.authorizeDeleteAsset,
+      this.validateDeleteAsset.bind(this),
+      this.authorizeDeleteAsset.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteAsset(payload.identity, payload.xId, payload.callback);
       }));

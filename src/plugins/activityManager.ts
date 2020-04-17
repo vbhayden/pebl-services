@@ -14,43 +14,43 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getActivities",
-      this.validateGetActivities,
-      this.authorizeGetActivities,
+      this.validateGetActivities.bind(this),
+      this.authorizeGetActivities.bind(this),
       (payload: { [key: string]: any }) => {
         this.getActivities(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveActivities",
-      this.validateSaveActivities,
-      this.authorizeSaveActivities,
+      this.validateSaveActivities.bind(this),
+      this.authorizeSaveActivities.bind(this),
       (payload: { [key: string]: any }) => {
         this.saveActivities(payload.identity, payload.activities, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivity",
-      this.validateDeleteActivity,
-      this.authorizeDeleteActivity,
+      this.validateDeleteActivity.bind(this),
+      this.authorizeDeleteActivity.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteActivity(payload.identity, payload.xId, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getActivityEvents",
-      this.validateGetActivityEvents,
-      this.authorizeGetActivityEvents,
+      this.validateGetActivityEvents.bind(this),
+      this.authorizeGetActivityEvents.bind(this),
       (payload: { [key: string]: any }) => {
         this.getActivityEvents(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveActivityEvents",
-      this.validateSaveActivityEvents,
-      this.authorizeSaveActivityEvents,
+      this.validateSaveActivityEvents.bind(this),
+      this.authorizeSaveActivityEvents.bind(this),
       (payload: { [key: string]: any }) => {
         this.saveActivityEvents(payload.identity, payload.events, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
-      this.validateDeleteActivityEvent,
-      this.authorizeDeleteActivityEvent,
+      this.validateDeleteActivityEvent.bind(this),
+      this.authorizeDeleteActivityEvent.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteActivityEvent(payload.identity, payload.xId, payload.callback);
       }));

@@ -14,22 +14,22 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     this.sessionData = sessionData;
 
     this.addMessageTemplate(new MessageTemplate("getModuleEvents",
-      this.validateGetModuleEvents,
-      this.authorizeGetModuleEvents,
+      this.validateGetModuleEvents.bind(this),
+      this.authorizeGetModuleEvents.bind(this),
       (payload) => {
         this.getModuleEvents(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
-      this.validateSaveModuleEvents,
-      this.authorizeSaveModuleEvents,
+      this.validateSaveModuleEvents.bind(this),
+      this.authorizeSaveModuleEvents.bind(this),
       (payload) => {
         this.saveModuleEvents(payload.identity, payload.events, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
-      this.validateDeleteModuleEvent,
-      this.authorizeDeleteModuleEvent,
+      this.validateDeleteModuleEvent.bind(this),
+      this.authorizeDeleteModuleEvent.bind(this),
       (payload) => {
         this.deleteModuleEvent(payload.identity, payload.xId, payload.callback);
       }));

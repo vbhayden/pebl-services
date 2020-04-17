@@ -19,50 +19,50 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     this.sessionData = sessionData;
     this.userManager = userManager;
     this.addMessageTemplate(new MessageTemplate("addGroup",
-      this.validateAddGroup,
-      this.authorizeAddGroup,
+      this.validateAddGroup.bind(this),
+      this.authorizeAddGroup.bind(this),
       (payload) => {
         this.addGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroup",
-      this.validateDeleteGroup,
-      this.authorizeDeleteGroup,
+      this.validateDeleteGroup.bind(this),
+      this.authorizeDeleteGroup.bind(this),
       (payload) => {
         this.deleteGroup(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroup",
-      this.validateUpdateGroup,
-      this.authorizeUpdateGroup,
+      this.validateUpdateGroup.bind(this),
+      this.authorizeUpdateGroup.bind(this),
       (payload) => {
         this.updateGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("addGroupMemberUser",
-      this.validateAddGroupMemberUser,
-      this.authorizeAddGroupMemberUser,
+      this.validateAddGroupMemberUser.bind(this),
+      this.authorizeAddGroupMemberUser.bind(this),
       (payload) => {
         this.addGroupMemberUser(payload.id, payload.userId, payload.roles);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroupMemberUser",
-      this.validateDeleteGroupMemberUser,
-      this.authorizeDeleteGroupMemberUser,
+      this.validateDeleteGroupMemberUser.bind(this),
+      this.authorizeDeleteGroupMemberUser.bind(this),
       (payload) => {
         this.deleteGroupMemberUser(payload.id, payload.userId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroupMemberUser",
-      this.validateUpdateGroupMemberUser,
-      this.authorizeUpdateGroupMemberUser,
+      this.validateUpdateGroupMemberUser.bind(this),
+      this.authorizeUpdateGroupMemberUser.bind(this),
       (payload) => {
         this.updateGroupMemberUser(payload.id, payload.userId, payload.roles);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getGroups",
-      this.validateGetGroups,
-      this.authorizeGetGroups,
+      this.validateGetGroups.bind(this),
+      this.authorizeGetGroups.bind(this),
       (payload) => {
         this.getGroups(payload.callback);
       }));
