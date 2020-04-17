@@ -23,12 +23,12 @@ export interface GroupManager extends PeBLPlugin {
   authorizeUpdateGroupMemberUser(username: string, permissions: any, payload: { [key: string]: any }): boolean;
   authorizeGetGroups(username: string, permissions: any, payload: { [key: string]: any }): boolean;
 
-  addGroup(groupId: string, groupName: string, groupDescription: string, groupAvatar?: string): void; //Add a group with the specified data to the system
-  deleteGroup(groupId: string): void; //Delete the group with the specified Id
-  updateGroup(groupId: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
+  addGroup(groupId: string, groupName: string, groupDescription: string, callback: (data: any) => void, groupAvatar?: string): void; //Add a group with the specified data to the system
+  deleteGroup(groupId: string, callback: (data: any) => void): void; //Delete the group with the specified Id
+  updateGroup(groupId: string, callback: (data: any) => void, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
 
 
-  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void
+  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void
   addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void
 
   getGroupMemberUser(groupId: string, memberUserId: string, callback: (roleIds: string[]) => void): void
@@ -37,10 +37,10 @@ export interface GroupManager extends PeBLPlugin {
   getGroupMemberGroup(groupId: string, memberGroupId: string, callback: (roleIds: string[]) => void): void
   getGroupMemberGroups(groupId: string, callback: (groupIds: string[]) => void): void;
 
-  deleteGroupMemberUser(groupId: string, memberUserId: string): void; //Remove the specified userId from the specified group
-  deleteGroupMemberGroup(groupId: string, memberGroupId: string): void
+  deleteGroupMemberUser(groupId: string, memberUserId: string, callback: (data: any) => void): void; //Remove the specified userId from the specified group
+  deleteGroupMemberGroup(groupId: string, memberGroupId: string, callback: (data: any) => void): void
 
-  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void;
+  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void;
   updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void;
 
   getGroups(callback: ((groups: Group[]) => void)): void; //Get all existing groups

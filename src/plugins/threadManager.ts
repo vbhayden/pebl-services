@@ -6,6 +6,7 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
+import { generateBroadcastQueueForUserId } from "../utils/constants";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -17,36 +18,36 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
       this.authorizeStoreThreadedMessage.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.storeMessage(payload.identity, payload.message, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.storeMessage(payload.identity, payload.message, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
       this.validateGetThreadedMessages.bind(this),
       this.authorizeGetThreadedMessages.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.getMessages(payload.identity, payload.thread, payload.timestamp, payload.callback, payload.groupId);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getMessages(payload.identity, payload.thread, payload.timestamp, dispatchCallback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("subscribeThread",
       this.validateSubscribeThread.bind(this),
       this.authorizeSubscribeThread.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.subscribeThread(payload.identity, payload.thread, dispatchCallback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
       this.validateUnsubscribeThread.bind(this),
       this.authorizeUnsubscribeThread.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.unsubscribeThread(payload.identity, payload.thread, dispatchCallback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
       this.validateDeleteThreadedMessage.bind(this),
       this.authorizeDeleteThreadedMessage.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.deleteMessage(payload.identity, payload.thread, payload.xId, payload.callback, payload.groupId);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.groupId);
       }));
   }
 
@@ -164,19 +165,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.getSubscribedUsers(thread, (users) => {
       for (let user of users) {
-        if (user !== message.name) //Don't send the message to the sender
-          this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage({
-            identity: user,
-            payload: {
-              requestType: "newThreadedMessage",
-              data: message,
-              additionalData: {
-                thread: message.thread,
-                groupId: message.groupId,
-                isPrivate: message.isPrivate
-              }
-            }
+        if (user !== message.name) {//Don't send the message to the sender
+          this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+            requestType: "newThreadedMessage",
+            data: message,
+            thread: message.thread,
+            groupId: message.groupId,
+            isPrivate: message.isPrivate
           })));
+        }
       }
     });
     callback(true);
@@ -221,17 +218,12 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.sessionData.setHashValues('threads:' + thread, [voided.id, JSON.stringify(voided)]);
         this.getSubscribedUsers(thread, (users) => {
           for (let user of users) {
-            this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage({
-              identity: user,
-              payload: {
-                requestType: "newThreadedMessage",
-                data: voided,
-                additionalData: {
-                  thread: baseThread,
-                  groupId: options ? options.groupId : undefined,
-                  isPrivate: options ? options.isPrivate : undefined
-                }
-              }
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: voided,
+              thread: baseThread,
+              groupId: options ? options.groupId : undefined,
+              isPrivate: options ? options.isPrivate : undefined
             })));
           }
         });

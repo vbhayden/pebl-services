@@ -16,43 +16,43 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
     this.addMessageTemplate(new MessageTemplate("getActivities",
       this.validateGetActivities.bind(this),
       this.authorizeGetActivities.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.getActivities(payload.identity, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getActivities(payload.identity, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveActivities",
       this.validateSaveActivities.bind(this),
       this.authorizeSaveActivities.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.saveActivities(payload.identity, payload.activities, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.saveActivities(payload.identity, payload.activities, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivity",
       this.validateDeleteActivity.bind(this),
       this.authorizeDeleteActivity.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.deleteActivity(payload.identity, payload.xId, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteActivity(payload.identity, payload.xId, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getActivityEvents",
       this.validateGetActivityEvents.bind(this),
       this.authorizeGetActivityEvents.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.getActivityEvents(payload.identity, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getActivityEvents(payload.identity, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveActivityEvents",
       this.validateSaveActivityEvents.bind(this),
       this.authorizeSaveActivityEvents.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.saveActivityEvents(payload.identity, payload.events, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.saveActivityEvents(payload.identity, payload.events, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteActivityEvent",
       this.validateDeleteActivityEvent.bind(this),
       this.authorizeDeleteActivityEvent.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.deleteActivityEvent(payload.identity, payload.xId, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteActivityEvent(payload.identity, payload.xId, dispatchCallback);
       }));
   }
 

@@ -16,22 +16,22 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     this.addMessageTemplate(new MessageTemplate("getEvents",
       this.validateGetEvents.bind(this),
       this.authorizeGetEvents.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.getEvents(payload.identity, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getEvents(payload.identity, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveEvents",
       this.validateSaveEvents.bind(this),
       this.authorizeSaveEvents.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.saveEvents(payload.identity, payload.stmts, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.saveEvents(payload.identity, payload.stmts, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteEvent",
       this.validateDeleteEvent.bind(this),
       this.authorizeDeleteEvent.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.deleteEvent(payload.identity, payload.xId, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteEvent(payload.identity, payload.xId, dispatchCallback);
       }));
   }
 

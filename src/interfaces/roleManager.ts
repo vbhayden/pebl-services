@@ -13,9 +13,9 @@ export interface RoleManager extends PeBLPlugin {
 
   // copyRole(id: string, newName: string): void;
 
-  addRole(id: string, name: string, permissions: string[]): void; //Add a role based on a set of permissions
-  deleteRole(id: string): void; //Remove a role
-  updateRole(id: string, name?: string, permissions?: string[]): void; //Updates the permission set and/or name of a role
+  addRole(id: string, name: string, permissions: string[], callback: (data: any) => void): void; //Add a role based on a set of permissions
+  deleteRole(id: string, callback: (data: any) => void): void; //Remove a role
+  updateRole(id: string, callback: (data: any) => void, name?: string, permissions?: string[]): void; //Updates the permission set and/or name of a role
 
   getMultiRole(ids: string[], callback: ((roles: Role[]) => void)): void;
   getRole(id: string, callback: ((role: Role) => void)): void; //Get a role with the specified id

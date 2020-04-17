@@ -1,21 +1,32 @@
 
 export class ServiceMessage {
   //TODO
-  readonly identity?: string;
+  readonly identity: string;
   readonly sessionId?: string;
-  payload: {
-    requestType: string,
-    identity?: string,
+
+  readonly payload: {
     [key: string]: any
   };
   messageId?: string;
-  messageTimeout?: number;
 
-  constructor(raw: { [key: string]: any }) {
-    this.identity = raw.identity;
-    this.sessionId = raw.sessionId;
-    this.payload = raw.payload;
-    this.messageId = raw.messageId;
-    this.messageTimeout = raw.messageTimeout;
+  constructor(identity: string,
+    payload: { [key: string]: any },
+    sessionId?: string,
+    messageId?: string) {
+
+    this.identity = identity;
+    this.payload = payload;
+    this.sessionId = sessionId;
+    this.messageId = messageId;
   }
+
+  getRequestType(): string {
+    return this.payload.requestType;
+  }
+
+  static parse(data: string): ServiceMessage {
+    let o = JSON.parse(data);
+    return new ServiceMessage(o.identity, o.payload, o.sessionId, o.messageId);
+  }
+
 }

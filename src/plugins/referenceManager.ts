@@ -15,22 +15,22 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     this.addMessageTemplate(new MessageTemplate("getReferences",
       this.validateGetReferences.bind(this),
       this.authorizeGetReferences.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.getReferences(payload.identity, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getReferences(payload.identity, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveReferences",
       this.validateSaveReferences.bind(this),
       this.authorizeSaveReferences.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.saveReferences(payload.identity, payload.references, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.saveReferences(payload.identity, payload.references, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteReference",
       this.validateDeleteReference.bind(this),
       this.authorizeDeleteReference.bind(this),
-      (payload: { [key: string]: any }) => {
-        this.deleteReference(payload.identity, payload.xId, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteReference(payload.identity, payload.xId, dispatchCallback);
       }));
   }
 

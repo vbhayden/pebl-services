@@ -15,10 +15,14 @@ export interface UserManager extends PeBLPlugin {
   authorizeGetUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
   authorizeGetUsers(username: string, permissions: any, payload: { [key: string]: any }): boolean;
 
-  addUserProfile(id: string, userName: string, userEmail?: string): void; // Add a user with the specified metadata
-  deleteUserProfile(id: string): void; // Delete a user with the specified id
-  updateUserProfile(id: string, userName?: string, userEmail?: string): void; // Update user metadata
-  getUserProfile(id: string, callback: ((user: UserProfile) => void)): void; //Get the specified users profile
+  // Add a user with the specified metadata
+  addUserProfile(id: string, userName: string, callback: (data: any) => void, userEmail?: string): void;
+  // Delete a user with the specified id
+  deleteUserProfile(id: string, callback: (data: any) => void): void;
+  // Update user metadata
+  updateUserProfile(id: string, callback: (data: any) => void, userName?: string, userEmail?: string): void;
+  //Get the specified users profile
+  getUserProfile(id: string, callback: ((user: UserProfile) => void)): void;
 
   addUserRoles(id: string, roleIds: string[]): void;
   getUserRoles(id: string, callback: (roleIds: string[]) => void): void;

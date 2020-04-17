@@ -19,29 +19,29 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     this.addMessageTemplate(new MessageTemplate("addRole",
       this.validateAddRole.bind(this),
       this.authorizeAddRole.bind(this),
-      (payload) => {
-        this.addRole(payload.id, payload.name, payload.permissions);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.addRole(payload.id, payload.name, payload.permissions, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteRole",
       this.validateDeleteRole.bind(this),
       this.authorizeDeleteRole.bind(this),
-      (payload) => {
-        this.deleteRole(payload.id);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteRole(payload.id, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateRole",
       this.validateUpdateRole.bind(this),
       this.authorizeUpdateRole.bind(this),
-      (payload) => {
-        this.updateRole(payload.id, payload.name, payload.permissions);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.updateRole(payload.id, dispatchCallback, payload.name, payload.permissions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getRoles",
       this.validateGetRole.bind(this),
       this.authorizeGetRoles.bind(this),
-      (payload) => {
-        this.getRoles(payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getRoles(dispatchCallback);
       }));
   }
 
@@ -94,7 +94,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
   // }
 
   //Add a role based on a set of permissions
-  addRole(id: string, name: string, permissions: string[]): void {
+  addRole(id: string, name: string, permissions: string[], callback: (data: any) => void): void {
     let p: { [key: string]: boolean } = {};
     for (let permission of permissions) {
       p[permission] = true;
@@ -105,16 +105,18 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
         name: name,
         permissions: p
       }));
+    callback(true);
   }
 
   //Remove a role    
-  deleteRole(id: string): void {
+  deleteRole(id: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(SET_ALL_ROLES,
       id,
       (deleted: boolean) => {
         if (!deleted) {
           console.log("Failed to delete role", id);
         }
+        callback(deleted);
       });
     let modified = Date.now() + "";
     this.sessionData.getHashValues(generateRoleToUsersKey(id),
@@ -127,7 +129,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
   }
 
   //Updates the permission set and/or name of a role    
-  updateRole(id: string, name?: string, permissions?: string[]): void {
+  updateRole(id: string, callback: (data: any) => void, name?: string, permissions?: string[]): void {
     this.sessionData.setHashValue(SET_ALL_ROLES,
       id,
       JSON.stringify({
@@ -141,6 +143,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
           this.userManager.setLastModifiedPermissions(userId, modified);
         }
       });
+    callback(true);
   }
 
   getMultiRole(ids: string[], callback: ((roles: Role[]) => void)): void {

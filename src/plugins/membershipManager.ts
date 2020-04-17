@@ -15,22 +15,22 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
     this.addMessageTemplate(new MessageTemplate("getMemberships",
       this.validateGetMemberships.bind(this),
       this.authorizeGetMemberships.bind(this),
-      (payload) => {
-        this.getMemberships(payload.identity, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getMemberships(payload.identity, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveMemberships",
       this.validateSaveMemberships.bind(this),
       this.authorizeSaveMemberships.bind(this),
-      (payload) => {
-        this.saveMemberships(payload.identity, payload.memberships, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.saveMemberships(payload.identity, payload.memberships, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteMembership",
       this.validateDeleteMembership.bind(this),
       this.authorizeDeleteMembership.bind(this),
-      (payload) => {
-        this.deleteMembership(payload.identity, payload.xId, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteMembership(payload.identity, payload.xId, dispatchCallback);
       }));
   }
 

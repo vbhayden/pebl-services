@@ -1,7 +1,7 @@
 {
     "serverName": "localhost",
 
-    "validRedirectDomains": ["localhost"],
+    "validRedirectDomains": ["localhost", "eduweb.vedbyte.com"],
 
     "privateKeyPath": "./localhost.key",
     "certificatePath": "./localhost.crt",

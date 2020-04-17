@@ -21,50 +21,50 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     this.addMessageTemplate(new MessageTemplate("addGroup",
       this.validateAddGroup.bind(this),
       this.authorizeAddGroup.bind(this),
-      (payload) => {
-        this.addGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.addGroup(payload.id, payload.groupName, payload.groupDescription, dispatchCallback, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroup",
       this.validateDeleteGroup.bind(this),
       this.authorizeDeleteGroup.bind(this),
-      (payload) => {
-        this.deleteGroup(payload.id);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteGroup(payload.id, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroup",
       this.validateUpdateGroup.bind(this),
       this.authorizeUpdateGroup.bind(this),
-      (payload) => {
-        this.updateGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.updateGroup(payload.id, dispatchCallback, payload.groupName, payload.groupDescription, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("addGroupMemberUser",
       this.validateAddGroupMemberUser.bind(this),
       this.authorizeAddGroupMemberUser.bind(this),
-      (payload) => {
-        this.addGroupMemberUser(payload.id, payload.userId, payload.roles);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.addGroupMemberUser(payload.id, payload.userId, payload.roles, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroupMemberUser",
       this.validateDeleteGroupMemberUser.bind(this),
       this.authorizeDeleteGroupMemberUser.bind(this),
-      (payload) => {
-        this.deleteGroupMemberUser(payload.id, payload.userId);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteGroupMemberUser(payload.id, payload.userId, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroupMemberUser",
       this.validateUpdateGroupMemberUser.bind(this),
       this.authorizeUpdateGroupMemberUser.bind(this),
-      (payload) => {
-        this.updateGroupMemberUser(payload.id, payload.userId, payload.roles);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.updateGroupMemberUser(payload.id, payload.userId, payload.roles, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getGroups",
       this.validateGetGroups.bind(this),
       this.authorizeGetGroups.bind(this),
-      (payload) => {
-        this.getGroups(payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getGroups(dispatchCallback);
       }));
   }
 
@@ -139,7 +139,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     return false;
   }
 
-  addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): void {
+  addGroup(id: string, groupName: string, groupDescription: string, callback: (data: any) => void, groupAvatar?: string): void {
     this.sessionData.setHashValue(SET_ALL_GROUPS,
       id,
       JSON.stringify({
@@ -147,15 +147,17 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
         description: groupDescription,
         avatar: groupAvatar
       }));
+    callback(true);
   }
 
-  deleteGroup(id: string): void {
+  deleteGroup(id: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(SET_ALL_GROUPS,
       id,
       (deleted: boolean) => {
         if (!deleted) {
           console.log("Failed to delete group", id);
         }
+        callback(deleted);
 
         let modified = Date.now() + "";
 
@@ -169,7 +171,9 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
                 processGroups(groupIds);
               } else {
                 this.userManager.setLastModifiedPermissions(userId, modified);
-                this.deleteGroupMemberUser(id, userId);
+                this.deleteGroupMemberUser(id, userId, () => {
+                  processUsers(userIds);
+                });
               }
             }
 
@@ -189,7 +193,9 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
                       });
                   });
               } else {
-                this.deleteGroupMemberGroup(id, groupId);
+                this.deleteGroupMemberGroup(id, groupId, () => {
+                  processGroups(groupIds);
+                });
               }
             }
 
@@ -211,7 +217,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       });
   }
 
-  updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): void {
+  updateGroup(id: string, callback: (data: any) => void, groupName?: string, groupDescription?: string, groupAvatar?: string): void {
     this.sessionData.setHashValue(SET_ALL_GROUPS,
       id,
       JSON.stringify({
@@ -219,13 +225,15 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
         description: groupDescription,
         avatar: groupAvatar
       }));
+    callback(true);
   }
 
 
-  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void {
+  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void {
     this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
     this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
     this.sessionData.addSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
+    callback(true);
   }
 
   addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {
@@ -277,25 +285,27 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
 
 
-  deleteGroupMemberUser(groupId: string, memberUserId: string): void {
+  deleteGroupMemberUser(groupId: string, memberUserId: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(generateGroupToUserMembersKey(groupId),
       memberUserId,
       (deleted: boolean) => {
         if (!deleted) {
           console.log("failed to delete group member", groupId);
         }
+        callback(deleted);
       });
     this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    this.sessionData.deleteSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
+    this.sessionData.deleteSetValue(generateUserToGroupMembershipKey(memberUserId), groupId)
   }
 
-  deleteGroupMemberGroup(groupId: string, memberGroupId: string): void {
+  deleteGroupMemberGroup(groupId: string, memberGroupId: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(generateGroupToGroupMembersKey(groupId),
       memberGroupId,
       (deleted: boolean) => {
         if (!deleted) {
           console.log("failed to delete group member", groupId);
         }
+        callback(deleted);
       });
     //TODO groups need to trigger for nested groups
     //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
@@ -304,9 +314,10 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
 
 
-  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): void {
+  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void {
     this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
     this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
+    callback(true);
   }
 
   updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {

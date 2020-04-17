@@ -130,26 +130,27 @@ pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
 pluginManager.register(sessionManager);
 
-roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()));
-
-roleManager.getUsersByRole("systemAdmin",
-  (userIds) => {
-    console.log(userIds);
-    let processor = (userIds: string[]) => {
-      let userId = userIds.pop();
-      if (userId) {
-        userManager.deleteUserRole(userId, "systemAdmin", () => {
-          console.log("Removing", userId);
-          processor(userIds);
-        });
-      } else {
-        let systemAdminRoles = ["systemAdmin"];
-        for (let systemAdmin of config.systemAdmins) {
-          userManager.addUserRoles(systemAdmin, systemAdminRoles);
+roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()),
+  () => {
+    roleManager.getUsersByRole("systemAdmin",
+      (userIds) => {
+        console.log(userIds);
+        let processor = (userIds: string[]) => {
+          let userId = userIds.pop();
+          if (userId) {
+            userManager.deleteUserRole(userId, "systemAdmin", () => {
+              console.log("Removing", userId);
+              processor(userIds);
+            });
+          } else {
+            let systemAdminRoles = ["systemAdmin"];
+            for (let systemAdmin of config.systemAdmins) {
+              userManager.addUserRoles(systemAdmin, systemAdminRoles);
+            }
+          }
         }
-      }
-    }
-    processor(userIds);
+        processor(userIds);
+      });
   });
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
@@ -337,12 +338,7 @@ let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: str
             payload);
           console.log("isAuthorized", authorized);
           if (authorized) {
-            let serviceMessage = new ServiceMessage({
-              sessionId: req.session.id,
-              identity: username,
-              payload: payload
-            });
-
+            let serviceMessage = new ServiceMessage(username, payload, req.session.id);
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
           } else {
             console.log("Not authorized", username, payload);
@@ -450,47 +446,6 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
       ws.terminate();
     }
   }
-});
-
-expressApp.ws('/message', function(ws: WebSocket, req: Request) {
-  if (req.session) {
-    messageQueue.createOutgoingQueue(req.session.id, ws, function(success: boolean) { });
-    messageQueue.subscribeNotifications("learner", req.session.id, ws, function(success: boolean) { });
-  }
-
-  ws.on('message', function(msg) {
-    console.log('message');
-    if (req.session) {
-      //TODO: Validate & Authorize
-      if (typeof msg === 'string') {
-        let payload;
-        try {
-          payload = JSON.parse(msg);
-        } catch (e) {
-          ws.send("Invalid Message");
-          return;
-        }
-
-        let serviceMessage = new ServiceMessage({
-          sessionId: req.session.id,
-          identity: "learner",
-          payload: payload
-        });
-
-
-        messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
-      }
-    } else {
-      ws.terminate();
-    }
-  });
-
-  ws.on('close', function() {
-    if (req.session) {
-      messageQueue.removeOutgoingQueue(req.session.id);
-      messageQueue.unsubscribeNotifications(req.session.activeTokens.id_token.username);
-    }
-  })
 });
 
 httpsServer.listen(config.port, function() {

@@ -40,6 +40,15 @@ export const JOB_BUFFER_TIMEOUT = 30000;
 export const LRS_SYNC_LIMIT = 500;
 
 
+export const QUEUE_REALTIME_BROADCAST_PREFIX = "realtime:userid:";
+export const QUEUE_OUTGOING_MESSAGE_PREFIX = 'rsmq:rt:';
+export const QUEUE_JOBS = 'rsmq:rt:jobs';
+export const QUEUE_INCOMING_MESSAGE = 'rsmq:rt:incomingMessages';
+export const QUEUE_ACTIVE_JOBS = 'activeJobs';
+
+export const MESSAGE_QUEUE_JOBS = 'jobs';
+export const MESSAGE_QUEUE_INCOMING_MESSAGES = 'incomingMessages';
+
 // Store ids
 
 // user
@@ -172,4 +181,17 @@ export function generateActionsKey(id: string): string {
 
 export function generateSessionsKey(id: string): string {
   return 'session:' + id;
+}
+
+
+export function generateBroadcastQueueForUserId(id: string): string {
+  return QUEUE_REALTIME_BROADCAST_PREFIX + id;
+}
+
+export function generateOutgoingQueueForId(id: string): string {
+  return QUEUE_REALTIME_BROADCAST_PREFIX + id;
+}
+
+export function generateTimestampForUserId(id: string): string {
+  return 'timestamp:messages:user:' + id;
 }

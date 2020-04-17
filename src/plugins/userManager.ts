@@ -16,36 +16,36 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     this.addMessageTemplate(new MessageTemplate("addUserProfile",
       this.validateAddUserProfile.bind(this),
       this.authorizeAddUserProfile.bind(this),
-      (payload) => {
-        this.addUserProfile(payload.id, payload.userName, payload.userEmail);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.addUserProfile(payload.id, payload.userName, dispatchCallback, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
       this.validateDeleteUserProfile.bind(this),
       this.authorizeDeleteUserProfile.bind(this),
-      (payload) => {
-        this.deleteUserProfile(payload.id);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.deleteUserProfile(payload.id, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateUserProfile",
       this.validateUpdateUserProfile.bind(this),
       this.authorizeUpdateUserProfile.bind(this),
-      (payload) => {
-        this.updateUserProfile(payload.id, payload.userName, payload.userEmail);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.updateUserProfile(payload.id, dispatchCallback, payload.userName, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUserProfile",
       this.validateGetUserProfile.bind(this),
       this.authorizeGetUserProfile.bind(this),
-      (payload) => {
-        this.getUserProfile(payload.id, payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getUserProfile(payload.id, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUsers",
       this.validateGetUsers.bind(this),
       this.authorizeGetUsers.bind(this),
-      (payload) => {
-        this.getUsers(payload.callback);
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getUsers(dispatchCallback);
       }));
   }
 
@@ -90,21 +90,23 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   }
 
   // Add a user with the specified metadata
-  addUserProfile(id: string, userName: string, userEmail?: string): void {
+  addUserProfile(id: string, userName: string, callback: (data: any) => void, userEmail?: string): void {
     this.sessionData.setHashValue(SET_ALL_USERS,
       id,
       JSON.stringify({
         name: userName,
         email: userEmail
       }));
+    callback(true);
   }
 
   // Delete a user with the specified id
-  deleteUserProfile(id: string): void {
+  deleteUserProfile(id: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(SET_ALL_USERS, id, (deleted: boolean) => {
       if (!deleted) {
         console.log("failed to delete user profile", id);
       }
+      callback(deleted);
     });
   }
 
@@ -138,13 +140,14 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   }
 
   // Update user metadata
-  updateUserProfile(id: string, userName?: string, userEmail?: string): void {
+  updateUserProfile(id: string, callback: (data: any) => void, userName?: string, userEmail?: string): void {
     this.sessionData.setHashValue(SET_ALL_USERS,
       id,
       JSON.stringify({
         name: userName,
         email: userEmail
       }));
+    callback(true);
   }
 
   //Get the specified users profile
