@@ -195,3 +195,27 @@ export function generateOutgoingQueueForId(id: string): string {
 export function generateTimestampForUserId(id: string): string {
   return 'timestamp:messages:user:' + id;
 }
+
+export function generateTimestampForThread(thread: string): string {
+  return 'timestamp:threads:' + thread;
+}
+
+export function generateThreadKey(thread: string): string {
+  return 'threads:' + thread;
+}
+
+export function generateUserThreadsKey(id: string): string {
+  return 'user:' + id + ':threads';
+}
+
+export function generateUserPrivateThreadsKey(id: string): string {
+  return 'user:' + id + ':privateThreads';
+}
+
+export function generateUserGroupThreadsKey(id: string, groupId: string): string {
+  return 'user:' + id + ':groupThreads:' + groupId;
+}
+
+export function generateSubscribedUsersKey(thread: string): string {
+  return 'users:thread:' + thread;
+}

@@ -6,7 +6,7 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
-import { generateBroadcastQueueForUserId } from "../utils/constants";
+import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
@@ -180,14 +180,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     let thread = baseThread;
     if (options && options.groupId) {
       thread = this.getGroupScopedThread(thread, options.groupId);
-      this.sessionData.setHashValue('user:' + userId + ':groupThreads:' + options.groupId, baseThread, baseThread);
+      this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, baseThread);
     } else if (options && options.isPrivate) {
       thread = this.getPrivateScopedThread(thread, userId);
-      this.sessionData.setHashValue('user:' + userId + ':privateThreads', baseThread, baseThread);
+      this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), baseThread, baseThread);
     } else {
-      this.sessionData.setHashValue('user:' + userId + ':threads', baseThread, baseThread);
+      this.sessionData.setHashValue(generateUserThreadsKey(userId), baseThread, baseThread);
     }
-    this.sessionData.setHashValues('users:thread:' + thread, [userId, userId]);
+    this.sessionData.setHashValues(generateSubscribedUsersKey(thread), [userId, userId]);
 
     callback(true);
   }
@@ -196,18 +196,18 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     let thread = baseThread;
     if (options && options.groupId) {
       thread = this.getGroupScopedThread(thread, options.groupId);
-      this.sessionData.deleteHashValue('user:' + userId + ':groupThreads:' + options.groupId, baseThread, (deleted) => { });
+      this.sessionData.deleteHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, (deleted) => { });
     } else if (options && options.isPrivate) {
       thread = this.getPrivateScopedThread(thread, userId);
-      this.sessionData.deleteHashValue('user:' + userId + ':privateThreads', baseThread, (deleted) => { });
+      this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), baseThread, (deleted) => { });
     } else {
-      this.sessionData.deleteHashValue('user:' + userId + ':threads', baseThread, (deleted) => { });
+      this.sessionData.deleteHashValue(generateUserThreadsKey(userId), baseThread, (deleted) => { });
     }
-    this.sessionData.deleteHashValue('users:thread:' + thread, userId, (deleted) => { callback(deleted) });
+    this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, (deleted) => { callback(deleted) });
   }
 
   private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
-    this.sessionData.getHashValues('users:thread:' + realThread, callback);
+    this.sessionData.getHashValues(generateSubscribedUsersKey(realThread), callback);
   }
 
   getSubscribedThreads(userId: string, callback: (data: { [key: string]: any }) => void): void {
@@ -217,11 +217,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       groupThreads: {} as { [key: string]: string[] }
     };
     this.groupManager.getUsersGroups(userId, (groupIds) => {
-      this.sessionData.getHashMultiKeys(groupIds, (groupThreads) => {
+      let groupKeys = groupIds.map((groupId) => {
+        return generateUserGroupThreadsKey(userId, groupId);
+      });
+      this.sessionData.getHashMultiKeys(groupKeys, (groupThreads) => {
         threadsObject.groupThreads = groupThreads;
-        this.sessionData.getHashKeys('user:' + userId + ':threads', (threads) => {
+        this.sessionData.getHashKeys(generateUserThreadsKey(userId), (threads) => {
           threadsObject.threads = threads;
-          this.sessionData.getHashKeys('user:' + userId + ':privateThreads', (privateThreads) => {
+          this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId), (privateThreads) => {
             threadsObject.privateThreads = privateThreads;
             callback(threadsObject);
           });
@@ -251,13 +254,13 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     let messageStr = JSON.stringify(message);
 
     this.sessionData.queueForLrs(messageStr);
-    this.sessionData.addTimestampValue('timestamp:threads:' + thread, date.getTime(), message.id);
-    this.sessionData.setHashValues('threads:' + thread, [message.id, messageStr]);
+    this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+    this.sessionData.setHashValues(generateThreadKey(thread), [message.id, messageStr]);
 
     this.getSubscribedUsers(thread, (users) => {
       for (let user of users) {
         if (user !== message.name) //Don't send the message to the sender
-          this.sessionData.broadcast('realtime:userid:' + user, JSON.stringify(new ServiceMessage(user, {
+          this.sessionData.broadcast(generateBroadcastQueueForUserId(userId), JSON.stringify(new ServiceMessage(user, {
             requestType: "newThreadedMessage",
             data: message,
             thread: message.thread,
@@ -269,17 +272,17 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: { messages: (Message | Voided)[], thread: string, groupId?: string, isPrivate?: boolean }) => void), options?: { [key: string]: any }): void {
+  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: { data: (Message | Voided)[], thread: string, groupId?: string, isPrivate?: boolean }) => void), options?: { [key: string]: any }): void {
     let thread = baseThread;
     if (options && options.groupId)
       thread = this.getGroupScopedThread(thread, options.groupId);
     else if (options && options.isPrivate)
       thread = this.getPrivateScopedThread(thread, userId);
 
-    this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
-      this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
+    this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp, (data) => {
+      this.sessionData.getHashMultiField(generateThreadKey(thread), data, (vals) => {
         callback({
-          messages: vals.map((val) => {
+          data: vals.map((val) => {
             let obj = JSON.parse(val);
             if (Message.is(obj))
               return new Message(obj);
@@ -301,11 +304,11 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     else if (options && options.isPrivate)
       thread = this.getPrivateScopedThread(baseThread, userId)
 
-    this.sessionData.getHashValue('threads:' + thread, messageId, (data) => {
+    this.sessionData.getHashValue(generateThreadKey(thread), messageId, (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
         let voided = new Message(JSON.parse(data)).toVoidRecord();
-        this.sessionData.addTimestampValue('timestamp:threads:' + thread, new Date(voided.stored).getTime(), voided.id);
+        this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
         this.sessionData.setHashValues('threads:' + thread, [voided.id, JSON.stringify(voided)]);
         this.getSubscribedUsers(thread, (users) => {
           for (let user of users) {
@@ -319,7 +322,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           }
         });
       }
-      this.sessionData.deleteHashValue('threads:' + thread,
+      this.sessionData.deleteHashValue(generateThreadKey(thread),
         messageId, (result: boolean) => {
           callback(result);
         });
