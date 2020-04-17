@@ -9,6 +9,7 @@ export class Message extends XApiStatement {
   readonly name: string;
   readonly direct: boolean;
   readonly groupId?: string;
+  readonly isPrivate?: boolean;
   readonly access?: "private" | "team" | "class" | "all";
   readonly type?: "written" | "table" | "checkboxes" | "radioboxes" | "buttons";
   readonly replyThread?: string;
@@ -39,6 +40,7 @@ export class Message extends XApiStatement {
       this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
       this.replyThread = extensions[PREFIX_PEBL_EXTENSION + "replyThread"];
       this.groupId = extensions[PREFIX_PEBL_EXTENSION + "groupId"];
+      this.isPrivate = extensions[PREFIX_PEBL_EXTENSION + "isPrivate"];
     }
   }
 

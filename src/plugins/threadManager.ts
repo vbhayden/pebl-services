@@ -18,14 +18,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.validateStoreThreadedMessage.bind(this),
       this.authorizeStoreThreadedMessage.bind(this),
       (payload: { [key: string]: any }) => {
-        this.storeMessage(payload.message, payload.callback);
+        this.storeMessage(payload.identity, payload.message, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
       this.validateGetThreadedMessages.bind(this),
       this.authorizeGetThreadedMessages.bind(this),
       (payload: { [key: string]: any }) => {
-        this.getMessages(payload.thread, payload.timestamp, payload.callback, payload.groupId);
+        this.getMessages(payload.identity, payload.thread, payload.timestamp, payload.callback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("subscribeThread",
@@ -46,50 +46,49 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.validateDeleteThreadedMessage.bind(this),
       this.authorizeDeleteThreadedMessage.bind(this),
       (payload: { [key: string]: any }) => {
-        this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
+        this.deleteMessage(payload.identity, payload.thread, payload.xId, payload.callback, payload.groupId);
       }));
   }
 
   private validateThread(thread: string): boolean {
     //Validates the base thread to make sure its not pretending to be a group thread
-    if (thread.includes('_group-'))
+    if (thread.includes('_group-') || thread.includes('_private-'))
       return false;
     else
       return true;
   }
 
   validateGetThreadedMessages(payload: { [key: string]: any }): boolean {
-    //TODO: Does the user have permission to read messages on this thread. If a group message, is the user in that group?
-    if (!this.validateThread(payload.thread))
-      return false;
+    if (payload.message && Message.is(payload.message)) {
+      if (!this.validateThread(payload.message.thread))
+        return false;
 
-    if (payload.groupId) {
-      //TODO
-      return false;
+      payload.message = new Message(payload.message);
+      return true;
     }
-
     return false;
   }
 
   authorizeGetThreadedMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   validateStoreThreadedMessage(payload: { [key: string]: any }): boolean {
-    //TODO: Does the user have permission to post to this thread. If a group message, is the user in that group?
-    if (!this.validateThread(payload.message.thread))
-      return false;
+    if (payload.message && Message.is(payload.message)) {
+      if (!this.validateThread(payload.message.thread))
+        return false;
 
-    if (payload.message.groupId) {
-      //TODO
-      return false;
+      payload.message = new Message(payload.message);
+      return true;
     }
-
     return false;
   }
 
   authorizeStoreThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+
+    return canUser || canGroup;
   }
 
   validateSubscribeThread(payload: { [key: string]: any }): boolean {
@@ -118,16 +117,20 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return false;
   }
 
-  subscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
-    if (groupId)
-      thread = this.getGroupScopedThread(thread, groupId);
+  subscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), options?: { [key: string]: any }): void {
+    if (options && options.groupId)
+      thread = this.getGroupScopedThread(thread, options.groupId);
+    else if (options && options.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
     this.sessionData.setHashValues('users:thread:' + thread, [userId, userId]);
     callback(true);
   }
 
-  unsubscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), groupId?: string): void {
-    if (groupId)
-      thread = this.getGroupScopedThread(thread, groupId);
+  unsubscribeThread(userId: string, thread: string, callback: ((success: boolean) => void), options?: { [key: string]: any }): void {
+    if (options && options.groupId)
+      thread = this.getGroupScopedThread(thread, options.groupId);
+    else if (options && options.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
     this.sessionData.deleteHashValue('users:thread:' + thread, userId, (deleted) => { callback(deleted) });
   }
 
@@ -139,10 +142,16 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return thread + '_group-' + groupId;
   }
 
-  storeMessage(message: Message, callback: ((success: boolean) => void)): void {
+  getPrivateScopedThread(thread: string, username: string): string {
+    return thread + '_user-' + username;
+  }
+
+  storeMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
     let thread = message.thread;
     if (message.groupId)
       thread = this.getGroupScopedThread(thread, message.groupId);
+    else if (message.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
 
     let date = new Date();
     message.stored = date.toISOString();
@@ -163,7 +172,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               data: message,
               additionalData: {
                 thread: message.thread,
-                groupId: message.groupId
+                groupId: message.groupId,
+                isPrivate: message.isPrivate
               }
             }
           })));
@@ -172,10 +182,12 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(baseThread: string, timestamp: number, callback: ((messages: (Message | Voided)[], additionalData: { [key: string]: any }) => void), groupId?: string): void {
+  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((messages: (Message | Voided)[], additionalData: { [key: string]: any }) => void), options?: { [key: string]: any }): void {
     let thread = baseThread;
-    if (groupId)
-      thread = this.getGroupScopedThread(thread, groupId);
+    if (options && options.groupId)
+      thread = this.getGroupScopedThread(thread, options.groupId);
+    else if (options && options.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
 
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
       this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
@@ -187,16 +199,19 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             return new Voided(obj);
         }), {
           thread: baseThread,
-          groupId: groupId
+          groupId: options ? options.groupId : undefined,
+          isPrivate: options ? options.isPrivate : undefined
         });
       });
     });
   }
 
-  deleteMessage(baseThread: string, messageId: string, callback: ((success: boolean) => void), groupId?: string): void {
+  deleteMessage(userId: string, baseThread: string, messageId: string, callback: ((success: boolean) => void), options?: { [key: string]: any }): void {
     let thread = baseThread;
-    if (groupId)
-      thread = this.getGroupScopedThread(baseThread, groupId);
+    if (options && options.groupId)
+      thread = this.getGroupScopedThread(baseThread, options.groupId);
+    else if (options && options.isPrivate)
+      thread = this.getPrivateScopedThread(baseThread, userId)
 
     this.sessionData.getHashValue('threads:' + thread, messageId, (data) => {
       if (data) {
@@ -213,7 +228,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
                 data: voided,
                 additionalData: {
                   thread: baseThread,
-                  groupId: groupId
+                  groupId: options ? options.groupId : undefined,
+                  isPrivate: options ? options.isPrivate : undefined
                 }
               }
             })));
