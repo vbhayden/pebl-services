@@ -12,6 +12,6 @@ export class JobMessage {
 
   static parse(data: string): JobMessage {
     let o = JSON.parse(data);
-    return new JobMessage(o.id, o.jobType, o.timeout);
+    return new JobMessage(o.jobType, o.timeout, o.id);
   }
 }

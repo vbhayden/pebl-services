@@ -40,7 +40,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       } else if (channel === QUEUE_JOBS) {
         this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_JOBS }, (err, resp: RedisSMQ.QueueMessage | {}) => {
           if (this.isQueueMessage(resp)) {
-            let payload = JSON.parse(resp.message);
+            let payload = JobMessage.parse(resp.message);
             this.dispatchJobMessage(new JobMessage(payload.jobType, payload.timeout, resp.id));
 
             this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(new JobMessage('jobStarted', payload.timeout, resp.id)));
@@ -64,12 +64,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           console.log("Active Job is missing id", jobMessage);
         }
       } else if (channel.startsWith(QUEUE_REALTIME_BROADCAST_PREFIX)) {
-        //Message should already be a stringified ServiceMessage
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
         let socket = this.useridSocketMap[userid];
         if (socket && socket.readyState === 1) {
-          let sm = ServiceMessage.parse(message);
-          socket.send(sm.payload);
+          socket.send(ServiceMessage.parse(message).payload);
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
@@ -196,7 +194,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     } else if (message.jobType === 'lrsSync') {
       this.dispatchToLrs(message);
     } else {
-      console.log("unknown dispatch target", message.jobType);
+      console.log("unknown dispatch target", message);
     }
   }
 
@@ -228,7 +226,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         message.sessionId,
         message.messageId));
     }
-    console.log(message);
     let messageTemplate = this.pluginManager.getMessageTemplate(message.getRequestType());
     if (messageTemplate) {
       messageTemplate.action(message.payload, dispatchCallback);
