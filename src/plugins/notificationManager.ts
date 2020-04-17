@@ -36,11 +36,15 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   }
 
   validateGetNotifications(payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   authorizeGetNotifications(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveNotifications(payload: { [key: string]: any }): boolean {
@@ -63,9 +67,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   getNotifications(identity: string, callback: ((notifications: XApiStatement[]) => void)): void {
     this.sessionData.getHashValues(generateUserNotificationsKey(identity),
       (result: string[]) => {
-        callback(result.map(function(x) {
-          return new XApiStatement(JSON.parse(x));
-        }));
+        callback(result.map((x) => new XApiStatement(JSON.parse(x))));
       })
   }
 

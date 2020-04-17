@@ -56,6 +56,7 @@ import { DefaultSessionManager } from "./plugins/sessionManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
+import { validateAndRedirectUrl } from "./utils/network";
 
 let express = require('express');
 
@@ -171,7 +172,6 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
   let originUrl = <string>req.headers["origin"];
   try {
     if (originUrl) {
-      console.log("debugging", originUrl);
       let origin = new URL(originUrl).hostname;
       if (validRedirectDomainLookup[origin]) {
         res.header('Access-Control-Allow-Origin', originUrl);
@@ -181,7 +181,7 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
       }
     }
   } catch (e) {
-    console.log("bad origin url", e);
+    // console.log("bad origin url", e);
   }
   next();
 }
@@ -219,6 +219,8 @@ expressApp.use(
 expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
 
+expressApp.disable('x-powered-by');
+
 expressApp.get('/', function(req: Request, res: Response) {
   console.log(req.session?.id)
   res.send("Hello World!").end();
@@ -226,12 +228,19 @@ expressApp.get('/', function(req: Request, res: Response) {
 
 expressApp.get('/login', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("logging in", req.session.id, req.session.loggedIn);
-    if (!req.session.loggedIn) {
-      authenticationManager.login(req, req.session, res);
-    } else {
-      res.redirect(req.session.redirectUrl);
-    }
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("logging in", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+          } else {
+            authenticationManager.login(req, req.session, res);
+          }
+        } else {
+          res.status(503).end();
+        }
+      });
   } else {
     res.status(503).end();
   }
@@ -239,11 +248,19 @@ expressApp.get('/login', function(req: Request, res: Response) {
 
 expressApp.get('/redirect', function(req: Request, res: Response) {
   if (req.session) {
-    if (!req.session.loggedIn) {
-      authenticationManager.redirect(req, req.session, res);
-    } else {
-      res.status(200).end();
-    }
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("redirect", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            res.status(200).end();
+          } else {
+            authenticationManager.redirect(req, req.session, res);
+          }
+        } else {
+          res.status(503).end();
+        }
+      });
   } else {
     res.status(503).end();
   }
@@ -251,12 +268,19 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
 
 expressApp.get('/logout', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("logging out", req.session.id, req.session.loggedIn)
-    if (req.session.loggedIn) {
-      authenticationManager.logout(req.session, res);
-    } else {
-      res.status(200).end();
-    }
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("logging out", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            authenticationManager.logout(req, req.session, res);
+          } else {
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+          }
+        } else {
+          res.status(503).end();
+        }
+      });
   } else {
     res.status(503).end();
   }
@@ -264,24 +288,19 @@ expressApp.get('/logout', function(req: Request, res: Response) {
 
 expressApp.get('/user/profile', function(req: Request, res: Response) {
   if (req.session) {
-    console.log("user profile", req.session.id, req.session.loggedIn);
-    if (req.session.loggedIn) {
-      authenticationManager.getProfile(req.session, res);
-    } else {
-      res.status(401).end();
-    }
-  } else {
-    res.status(503).end();
-  }
-});
-
-expressApp.get('/refresh', function(req: Request, res: Response) {
-  if (req.session) {
-    if (req.session.loggedIn) {
-      authenticationManager.refresh(req.session, res);
-    } else {
-      res.status(401).end();
-    }
+    authenticationManager.isLoggedIn(req.session,
+      (isLoggedIn: boolean) => {
+        if (req.session) {
+          console.log("user profile", req.session.id, isLoggedIn);
+          if (isLoggedIn) {
+            authenticationManager.getProfile(req.session, res);
+          } else {
+            res.status(401).end();
+          }
+        } else {
+          res.status(503).end();
+        }
+      });
   } else {
     res.status(503).end();
   }
@@ -291,51 +310,120 @@ expressApp.post('/validate', function(req: Request, res: Response) {
   authenticationManager.validate(req.body.token, res);
 });
 
-// expressApp.ws('/', function(ws: WebSocket, req: Request) {
-//   if (req.session) {
-//     if (req.session.loggedIn) {
-//       ws.on('message', function(msg: String) {
+let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
+  if (req && req.session) {
+    authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
+      req.session,
+      () => {
+        if (req.session) {
+          let authorized = authorizationManager.authorize(req.session.identity.preferred_username,
+            req.session.permissions,
+            payload);
+          console.log("isAuthorized", authorized);
+          if (authorized) {
+            let serviceMessage = new ServiceMessage({
+              sessionId: req.session.id,
+              identity: "learner",
+              payload: payload
+            });
 
-//       });
-//       ws.send("ping");
-//     } else {
-//       ws.terminate();
-//     }
-//   }
-// });
-
-expressApp.ws('/validmessage', function(ws: WebSocket, req: Request) {
-  ws.on('message', function(msg) {
-    if (req.session) {
-      if (typeof msg === 'string') {
-        let payload: any;
-        try {
-          payload = JSON.parse(msg);
-          if (!validationManager.validate(payload)) {
-            ws.send("Invalid Message");
-            return;
+            messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
+          } else {
+            console.log("Not authorized", req.session.identity.preferred_username, payload);
+            ws.send(JSON.stringify({
+              requestType: "error",
+              payload: "Unauthorized message"
+            }))
           }
-        } catch (e) {
-          ws.send("Invalid Message");
-          return;
+        } else {
+          console.log("invalid session");
         }
+      });
+  }
+};
 
-        authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
-          req.session,
-          () => {
-            if (req && req.session) {
-              console.log("isAuthorized", authorizationManager.authorize(req.session.activeTokens.id_token.username,
-                req.session.permissions,
-                payload));
-            } else {
-              console.log("invalid session");
-            }
-          });
-      }
+expressApp.ws('/', function(ws: WebSocket, req: Request) {
+  let originUrl = <string>req.headers["origin"];
+
+  let origin;
+  try {
+    origin = new URL(originUrl).hostname;
+  } catch (e) {
+    origin = "null";
+  }
+
+  if (!validRedirectDomainLookup[origin]) {
+    ws.terminate();
+    return;
+  } else {
+    if (req.session) {
+      authenticationManager.isLoggedIn(req.session,
+        (isLoggedIn: boolean) => {
+          if (isLoggedIn && req.session) {
+            let sessionId = req.session.id
+            let username = req.session.identity.preferred_username;
+
+            messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
+            messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
+
+            ws.on('message', function(msg) {
+              if (req.session) {
+                if (typeof msg === 'string') {
+                  let payload: any;
+                  try {
+                    payload = JSON.parse(msg);
+                    if (!validationManager.validate(payload)) {
+                      ws.send(JSON.stringify({
+                        requestType: "error",
+                        payload: {
+                          description: "Invalid Message",
+                          target: payload.id
+                        }
+                      }));
+                      return;
+                    }
+                  } catch (e) {
+                    ws.send(JSON.stringify({
+                      requestType: "error",
+                      payload: {
+                        description: "Bad Message",
+                        target: msg
+                      }
+                    }));
+                    return;
+                  }
+
+                  authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
+                    if (isLoggedIn) {
+                      processIncomingMessages(ws, req, payload);
+                    } else {
+                      ws.send(JSON.stringify({
+                        requestType: "loggedOut"
+                      }));
+                      ws.close();
+                    }
+                  });
+                }
+              } else {
+                ws.close();
+              }
+            });
+
+            ws.on('close', function() {
+              messageQueue.removeOutgoingQueue(sessionId);
+              messageQueue.unsubscribeNotifications(username);
+            });
+          } else {
+            ws.send(JSON.stringify({
+              requestType: "loggedOut"
+            }));
+            ws.close();
+          }
+        });
     } else {
       ws.terminate();
     }
-  });
+  }
 });
 
 expressApp.ws('/message', function(ws: WebSocket, req: Request) {

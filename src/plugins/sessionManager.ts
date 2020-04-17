@@ -44,11 +44,27 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   }
 
   validateSaveSessions(payload: { [key: string]: any }): boolean {
+    if (payload.sessions && (payload.sessions instanceof Array) && (payload.sessions.length > 0)) {
+      for (let sessionIndex in payload.sessions) {
+        let session = payload.sessions[sessionIndex];
+        if (Session.is(session)) {
+          payload.sessions[sessionIndex] = new Session(session);
+        } else {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
     return false;
   }
 
   authorizeSaveSessions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteSession(payload: { [key: string]: any }): boolean {
