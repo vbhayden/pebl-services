@@ -260,8 +260,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             identity: user,
             requestType: "newThreadedMessage",
             payload: {
-              data: message,
-              additionalData: {
+              data: {
+                message: message,
                 thread: message.thread,
                 groupId: message.groupId,
                 isPrivate: message.isPrivate
@@ -273,7 +273,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((messages: (Message | Voided)[], additionalData: { [key: string]: any }) => void), options?: { [key: string]: any }): void {
+  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: { messages: (Message | Voided)[], thread: string, groupId?: string, isPrivate?: boolean }) => void), options?: { [key: string]: any }): void {
     let thread = baseThread;
     if (options && options.groupId)
       thread = this.getGroupScopedThread(thread, options.groupId);
@@ -282,13 +282,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.sessionData.getValuesGreaterThanTimestamp('timestamp:threads:' + thread, timestamp, (data) => {
       this.sessionData.getHashMultiField('threads:' + thread, data, (vals) => {
-        callback(vals.map((val) => {
-          let obj = JSON.parse(val);
-          if (Message.is(obj))
-            return new Message(obj);
-          else
-            return new Voided(obj);
-        }), {
+        callback({
+          messages: vals.map((val) => {
+            let obj = JSON.parse(val);
+            if (Message.is(obj))
+              return new Message(obj);
+            else
+              return new Voided(obj);
+          }),
           thread: baseThread,
           groupId: options ? options.groupId : undefined,
           isPrivate: options ? options.isPrivate : undefined
@@ -316,8 +317,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               identity: user,
               requestType: "newThreadedMessage",
               payload: {
-                data: voided,
-                additionalData: {
+                data: {
+                  message: voided,
                   thread: baseThread,
                   groupId: options ? options.groupId : undefined,
                   isPrivate: options ? options.isPrivate : undefined
