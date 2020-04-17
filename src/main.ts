@@ -347,9 +347,13 @@ let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: str
           } else {
             console.log("Not authorized", username, payload);
             ws.send(JSON.stringify({
+              identity: username,
               requestType: "error",
-              payload: "Unauthorized message"
-            }))
+              payload: {
+                description: "Unauthorized message",
+                target: payload
+              }
+            }));
           }
         } else {
           console.log("invalid session");
@@ -390,6 +394,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     payload = JSON.parse(msg);
                     if (!validationManager.validate(payload)) {
                       ws.send(JSON.stringify({
+                        identity: username,
                         requestType: "error",
                         payload: {
                           description: "Invalid Message",
@@ -400,6 +405,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     }
                   } catch (e) {
                     ws.send(JSON.stringify({
+                      identity: username,
                       requestType: "error",
                       payload: {
                         description: "Bad Message",
@@ -414,6 +420,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       processIncomingMessages(ws, req, payload);
                     } else {
                       ws.send(JSON.stringify({
+                        identity: username,
                         requestType: "loggedOut"
                       }));
                       ws.close();
@@ -421,6 +428,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   });
                 }
               } else {
+                console.log("Invalid Session, closing socket", username, sessionId);
                 ws.close();
               }
             });
@@ -431,6 +439,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
             });
           } else {
             ws.send(JSON.stringify({
+              identity: "guest",
               requestType: "loggedOut"
             }));
             ws.close();
