@@ -171,6 +171,6 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
   }
 
   getUsersByRole(roleId: string, callback: (userIds: string[]) => void): void {
-    this.sessionData.getSetValues(roleId, callback);
+    this.sessionData.getSetValues(generateRoleToUsersKey(roleId), callback);
   }
 }

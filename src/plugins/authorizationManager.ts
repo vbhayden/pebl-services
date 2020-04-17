@@ -21,7 +21,7 @@ export class DefaultAuthorizationManager {
 
   assemblePermissionSet(identity: string, session: Express.Session, callback: () => void): void {
     this.userManager.getLastModifiedPermissions(identity, (lastModified: string) => {
-      if (lastModified != session.lastModifiedPermissions) {
+      if ((session.lastModifiedPermissions === undefined) || (lastModified != session.lastModifiedPermissions)) {
         this.userManager.getUserRoles(identity, (roleIds: string[]) => {
           this.groupManager.getUsersGroups(identity, (groupIds: string[]) => {
             let userPermissions: { [permission: string]: boolean } = {};
@@ -53,7 +53,9 @@ export class DefaultAuthorizationManager {
                 } else {
                   session.lastModifiedPermissions = lastModified;
                   session.permissions = new PermissionSet(userPermissions, groupPermissions)
-                  callback();
+                  session.save(() => {
+                    callback();
+                  })
                 }
               }
 

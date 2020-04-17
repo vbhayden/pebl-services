@@ -132,10 +132,25 @@ pluginManager.register(sessionManager);
 
 roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()));
 
-let systemAdminRoles = ["systemAdmin"];
-for (let systemAdmin of config.systemAdmins) {
-  userManager.addUserRoles(systemAdmin, systemAdminRoles);
-}
+roleManager.getUsersByRole("systemAdmin",
+  (userIds) => {
+    console.log(userIds);
+    let processor = (userIds: string[]) => {
+      let userId = userIds.pop();
+      if (userId) {
+        userManager.deleteUserRole(userId, "systemAdmin", () => {
+          console.log("Removing", userId);
+          processor(userIds);
+        });
+      } else {
+        let systemAdminRoles = ["systemAdmin"];
+        for (let systemAdmin of config.systemAdmins) {
+          userManager.addUserRoles(systemAdmin, systemAdminRoles);
+        }
+      }
+    }
+    processor(userIds);
+  });
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   client: redisClient,
@@ -312,24 +327,25 @@ expressApp.post('/validate', function(req: Request, res: Response) {
 
 let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
   if (req && req.session) {
-    authorizationManager.assemblePermissionSet(req.session.identity.preferred_username,
+    let username = req.session.identity.preferred_username;
+    authorizationManager.assemblePermissionSet(username,
       req.session,
       () => {
         if (req.session) {
-          let authorized = authorizationManager.authorize(req.session.identity.preferred_username,
+          let authorized = authorizationManager.authorize(username,
             req.session.permissions,
             payload);
           console.log("isAuthorized", authorized);
           if (authorized) {
             let serviceMessage = new ServiceMessage({
               sessionId: req.session.id,
-              identity: "learner",
+              identity: username,
               payload: payload
             });
 
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
           } else {
-            console.log("Not authorized", req.session.identity.preferred_username, payload);
+            console.log("Not authorized", username, payload);
             ws.send(JSON.stringify({
               requestType: "error",
               payload: "Unauthorized message"

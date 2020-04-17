@@ -109,6 +109,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   }
 
   addUserRoles(userId: string, roleIds: string[]): void {
+    console.log(userId, roleIds);
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
     this.setLastModifiedPermissions(userId, Date.now() + "");
     for (let roleId of roleIds) {
@@ -120,7 +121,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     this.sessionData.getSetValues(generateUserToRolesKey(userId), callback);
   }
 
-  deleteUserRole(userId: string, roleId: string): void {
+  deleteUserRole(userId: string, roleId: string, callback: () => void): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
       if (!deleted) {
         console.log("failed to delete user role", userId, roleId);
@@ -131,6 +132,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
           console.log("failed to delete user role 2", userId, roleId);
         }
         this.setLastModifiedPermissions(userId, Date.now() + "");
+        callback();
       });
     });
   }
