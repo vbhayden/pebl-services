@@ -57,22 +57,30 @@ export class RedisSessionDataCache implements SessionDataManager {
     }
   }
 
-  getHashMultiKeys(keys: string[], callback: (data: string[]) => void): void {
+  getHashMultiKeys(keys: string[], callback: (data: { [key: string]: string[] }) => void): void {
     if (keys.length != 0) {
+      let obj = {} as { [key: string]: any };
       let batch = this.redis.batch();
       for (let key of keys) {
-        batch.hvals(key);
+        batch.hvals(key, (err, resp) => {
+          if (err) {
+            console.log(err);
+            obj[key] = [];
+          } else {
+            obj[key] = resp;
+          }
+        });
       }
       batch.exec((err, resp) => {
         if (err) {
           console.log(err);
-          callback([]);
+          callback({});
         } else {
-          callback(resp);
+          callback(obj);
         }
       });
     } else {
-      callback([]);
+      callback({});
     }
   }
 

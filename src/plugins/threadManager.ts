@@ -213,7 +213,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     let threadsObject = {
       threads: [] as string[],
       privateThreads: [] as string[],
-      groupThreads: [] as string[]
+      groupThreads: {} as { [key: string]: string[] }
     };
     this.groupManager.getUsersGroups(userId, (groupIds) => {
       this.sessionData.getHashMultiKeys(groupIds, (groupThreads) => {
