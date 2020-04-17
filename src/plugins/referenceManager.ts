@@ -13,22 +13,22 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getReferences",
-      this.validateGetReferences,
-      this.authorizeGetReferences,
+      this.validateGetReferences.bind(this),
+      this.authorizeGetReferences.bind(this),
       (payload: { [key: string]: any }) => {
         this.getReferences(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveReferences",
-      this.validateSaveReferences,
-      this.authorizeSaveReferences,
+      this.validateSaveReferences.bind(this),
+      this.authorizeSaveReferences.bind(this),
       (payload: { [key: string]: any }) => {
         this.saveReferences(payload.identity, payload.references, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteReference",
-      this.validateDeleteReference,
-      this.authorizeDeleteReference,
+      this.validateDeleteReference.bind(this),
+      this.authorizeDeleteReference.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteReference(payload.identity, payload.xId, payload.callback);
       }));

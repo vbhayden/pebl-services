@@ -14,22 +14,22 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     this.sessionData = sessionData;
 
     this.addMessageTemplate(new MessageTemplate("getSessions",
-      this.validateGetSessions,
-      this.authorizeGetSessions,
+      this.validateGetSessions.bind(this),
+      this.authorizeGetSessions.bind(this),
       (payload) => {
         this.getSessions(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveSessions",
-      this.validateSaveSessions,
-      this.authorizeSaveSessions,
+      this.validateSaveSessions.bind(this),
+      this.authorizeSaveSessions.bind(this),
       (payload) => {
         this.saveSessions(payload.identity, payload.sessions, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteSession",
-      this.validateDeleteSession,
-      this.authorizeDeleteSession,
+      this.validateDeleteSession.bind(this),
+      this.authorizeDeleteSession.bind(this),
       (payload) => {
         this.deleteSession(payload.identity, payload.xId, payload.callback);
       }));

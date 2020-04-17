@@ -14,22 +14,22 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getNotifications",
-      this.validateGetNotifications,
-      this.authorizeGetNotifications,
+      this.validateGetNotifications.bind(this),
+      this.authorizeGetNotifications.bind(this),
       (payload) => {
         this.getNotifications(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveNotifications",
-      this.validateSaveNotifications,
-      this.authorizeSaveNotifications,
+      this.validateSaveNotifications.bind(this),
+      this.authorizeSaveNotifications.bind(this),
       (payload) => {
         this.saveNotifications(payload.identity, payload.notifications, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteNotification",
-      this.validateDeleteNotification,
-      this.authorizeDeleteNotification,
+      this.validateDeleteNotification.bind(this),
+      this.authorizeDeleteNotification.bind(this),
       (payload) => {
         this.deleteNotification(payload.identity, payload.xId, payload.callback);
       }));

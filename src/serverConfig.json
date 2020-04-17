@@ -9,7 +9,7 @@
     "authenticationUrl": "https://dev.keycloak.eduworks.com:8443/auth/realms/master",
     "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
     "authenticationClientId": "PeBL-Services",
-    "authenticationRedirectURIs": ["http://localhost:8080/redirect"],
+    "authenticationRedirectURIs": ["https://localhost:8080/redirect"],
     "authenticationResponseTypes": ["code"],
     "authenticationScope": ["openid email profile"],
 
@@ -29,5 +29,5 @@
     	"Authorization": "Basic MTFkZWU2MDg1NTMyZGM4YzE4ZTQyMDFiMGY2YmE4NjE0NTBhMmI3NzoyMGFkNzM3NWE5YjcwYWY1OWJiYzM3ZWZhNjJlYTNlOGNlM2MyMGUw"
     },
 
-    "systemAdmins": ["aaron.veden", "mile.divoic"]
+    "systemAdmins": ["aaron.veden", "mile.divovic"]
 }

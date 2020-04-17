@@ -21,4 +21,6 @@ export interface RoleManager extends PeBLPlugin {
   getRole(id: string, callback: ((role: Role) => void)): void; //Get a role with the specified id
 
   getRoles(callback: ((roles: Role[]) => void)): void; //Get all the roles in the system
+
+  getUsersByRole(roleId: string, callback: (userIds: string[]) => void): void;
 }

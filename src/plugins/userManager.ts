@@ -14,36 +14,36 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     super();
     this.sessionData = redisCache;
     this.addMessageTemplate(new MessageTemplate("addUserProfile",
-      this.validateAddUserProfile,
-      this.authorizeAddUserProfile,
+      this.validateAddUserProfile.bind(this),
+      this.authorizeAddUserProfile.bind(this),
       (payload) => {
         this.addUserProfile(payload.id, payload.userName, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
-      this.validateDeleteUserProfile,
-      this.authorizeDeleteUserProfile,
+      this.validateDeleteUserProfile.bind(this),
+      this.authorizeDeleteUserProfile.bind(this),
       (payload) => {
         this.deleteUserProfile(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateUserProfile",
-      this.validateUpdateUserProfile,
-      this.authorizeUpdateUserProfile,
+      this.validateUpdateUserProfile.bind(this),
+      this.authorizeUpdateUserProfile.bind(this),
       (payload) => {
         this.updateUserProfile(payload.id, payload.userName, payload.userEmail);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUserProfile",
-      this.validateGetUserProfile,
-      this.authorizeGetUserProfile,
+      this.validateGetUserProfile.bind(this),
+      this.authorizeGetUserProfile.bind(this),
       (payload) => {
         this.getUserProfile(payload.id, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getUsers",
-      this.validateGetUsers,
-      this.authorizeGetUsers,
+      this.validateGetUsers.bind(this),
+      this.authorizeGetUsers.bind(this),
       (payload) => {
         this.getUsers(payload.callback);
       }));
@@ -109,6 +109,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   }
 
   addUserRoles(userId: string, roleIds: string[]): void {
+    console.log(userId, roleIds);
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
     this.setLastModifiedPermissions(userId, Date.now() + "");
     for (let roleId of roleIds) {
@@ -120,7 +121,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     this.sessionData.getSetValues(generateUserToRolesKey(userId), callback);
   }
 
-  deleteUserRole(userId: string, roleId: string): void {
+  deleteUserRole(userId: string, roleId: string, callback: () => void): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
       if (!deleted) {
         console.log("failed to delete user role", userId, roleId);
@@ -131,6 +132,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
           console.log("failed to delete user role 2", userId, roleId);
         }
         this.setLastModifiedPermissions(userId, Date.now() + "");
+        callback();
       });
     });
   }

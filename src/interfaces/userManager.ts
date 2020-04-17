@@ -22,7 +22,7 @@ export interface UserManager extends PeBLPlugin {
 
   addUserRoles(id: string, roleIds: string[]): void;
   getUserRoles(id: string, callback: (roleIds: string[]) => void): void;
-  deleteUserRole(id: string, roleId: string): void;
+  deleteUserRole(id: string, roleId: string, callback: () => void): void;
 
   getUsers(callback: ((users: UserProfile[]) => void)): void; // Get all users
 

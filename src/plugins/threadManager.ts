@@ -15,36 +15,36 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData = sessionData;
 
     this.addMessageTemplate(new MessageTemplate("storeThreadedMessage",
-      this.validateStoreThreadedMessage,
-      this.authorizeStoreThreadedMessage,
+      this.validateStoreThreadedMessage.bind(this),
+      this.authorizeStoreThreadedMessage.bind(this),
       (payload: { [key: string]: any }) => {
         this.storeMessage(payload.message, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
-      this.validateGetThreadedMessages,
-      this.authorizeGetThreadedMessages,
+      this.validateGetThreadedMessages.bind(this),
+      this.authorizeGetThreadedMessages.bind(this),
       (payload: { [key: string]: any }) => {
         this.getMessages(payload.thread, payload.timestamp, payload.callback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("subscribeThread",
-      this.validateSubscribeThread,
-      this.authorizeSubscribeThread,
+      this.validateSubscribeThread.bind(this),
+      this.authorizeSubscribeThread.bind(this),
       (payload: { [key: string]: any }) => {
         this.subscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
-      this.validateUnsubscribeThread,
-      this.authorizeUnsubscribeThread,
+      this.validateUnsubscribeThread.bind(this),
+      this.authorizeUnsubscribeThread.bind(this),
       (payload: { [key: string]: any }) => {
         this.unsubscribeThread(payload.identity, payload.thread, payload.callback, payload.groupId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
-      this.validateDeleteThreadedMessage,
-      this.authorizeDeleteThreadedMessage,
+      this.validateDeleteThreadedMessage.bind(this),
+      this.authorizeDeleteThreadedMessage.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteMessage(payload.thread, payload.xId, payload.callback, payload.groupId);
       }));

@@ -13,22 +13,22 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
     super();
     this.sessionData = sessionData;
     this.addMessageTemplate(new MessageTemplate("getActions",
-      this.validateGetActions,
-      this.authorizeGetActions,
+      this.validateGetActions.bind(this),
+      this.authorizeGetActions.bind(this),
       (payload: { [key: string]: any }) => {
         this.getActions(payload.identity, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveActions",
-      this.validateSaveActions,
-      this.authorizeSaveActions,
+      this.validateSaveActions.bind(this),
+      this.authorizeSaveActions.bind(this),
       (payload: { [key: string]: any }) => {
         this.saveActions(payload.identity, payload.actions, payload.callback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteAction",
-      this.validateDeleteAction,
-      this.authorizeDeleteAction,
+      this.validateDeleteAction.bind(this),
+      this.authorizeDeleteAction.bind(this),
       (payload: { [key: string]: any }) => {
         this.deleteAction(payload.identity, payload.xId, payload.callback);
       }));
