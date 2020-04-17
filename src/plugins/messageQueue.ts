@@ -68,7 +68,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
         let socket = this.useridSocketMap[userid];
         if (socket && socket.readyState === 1) {
-          socket.send(message);
+          let sm = ServiceMessage.parse(message);
+          socket.send(sm.payload);
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
