@@ -19,13 +19,12 @@ export function postData(
     path: path,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       'Content-Length': data.length
     }
   }
 
   Object.assign(postOptions.headers, headers); // Merge headers arg into postOptions
-
   var dataArr: string[] = [];
   const req = https.request(postOptions, function(resp: IncomingMessage) {
     resp.setEncoding("utf-8");

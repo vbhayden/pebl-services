@@ -23,10 +23,10 @@
     "port": 8080,
     "useSSL": true,
     "usesProxy": false,
-    "lrsUrl": "https://lrs.peblproject.com/",
+    "lrsUrl": "lrs.peblproject.com",
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",
-    	"Authorization": "Basic MTFkZWU2MDg1NTMyZGM4YzE4ZTQyMDFiMGY2YmE4NjE0NTBhMmI3NzoyMGFkNzM3NWE5YjcwYWY1OWJiYzM3ZWZhNjJlYTNlOGNlM2MyMGUw"
+    	"Authorization": "Basic NmEwZGJhOTAwMGRjMGZhNmEyZDQwMmNlZmI1NWE1YWE4YzAwZDQ3MTpjM2E5MDAxYzJjYTkyOTY3NWFjODBhMTVhODkwNzdlZDgwMTA0OTQ4"
     },
 
     "systemAdmins": ["aaron.veden", "mile.divovic"]
