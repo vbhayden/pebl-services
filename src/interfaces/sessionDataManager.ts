@@ -7,6 +7,7 @@ export interface SessionDataManager {
   getHashKeys(key: string, callback: (data: string[]) => void): void;
   getHashValue(key: string, field: string, callback: (data?: string) => void): void;
   getHashMultiField(key: string, fields: string[], callback: (data: string[]) => void): void;
+  getHashMultiKeys(keys: string[], callback: (data: { [key: string]: string[] }) => void): void;
 
   deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void;
   deleteValue(key: string, callback?: (deleted: boolean) => void): void;
