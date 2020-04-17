@@ -3,8 +3,8 @@
 
     "validRedirectDomains": ["localhost"],
 
-    "privateKeyPath": "./privkey.pem",
-    "certificatePath": "./cert.pem",
+    "privateKeyPath": "./localhost.key",
+    "certificatePath": "./localhost.crt",
 
     "authenticationUrl": "https://dev.keycloak.eduworks.com:8443/auth/realms/master",
     "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
@@ -21,7 +21,7 @@
     "cookieSameSite": "none",
 
     "port": 8080,
-    "useSSL": false,
+    "useSSL": true,
     "usesProxy": false,
     "lrsUrl": "https://lrs.peblproject.com/",
     "lrsHeaders": {
@@ -31,4 +31,3 @@
 
     "systemAdmins": ["aaron.veden", "mile.divoic"]
 }
-
