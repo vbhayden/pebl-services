@@ -260,12 +260,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             identity: user,
             requestType: "newThreadedMessage",
             payload: {
-              data: {
-                message: message,
-                thread: message.thread,
-                groupId: message.groupId,
-                isPrivate: message.isPrivate
-              }
+              message: message,
+              thread: message.thread,
+              groupId: message.groupId,
+              isPrivate: message.isPrivate
             }
           })));
       }
@@ -317,12 +315,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               identity: user,
               requestType: "newThreadedMessage",
               payload: {
-                data: {
-                  message: voided,
-                  thread: baseThread,
-                  groupId: options ? options.groupId : undefined,
-                  isPrivate: options ? options.isPrivate : undefined
-                }
+                message: voided,
+                thread: baseThread,
+                groupId: options ? options.groupId : undefined,
+                isPrivate: options ? options.isPrivate : undefined
               }
             })));
           }
