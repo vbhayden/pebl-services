@@ -36,7 +36,7 @@ export const KEY_GROUPS = 'groups';
 export const KEY_USERS = 'users';
 export const KEY_NAVIGATIONS = 'navigations';
 
-export const LRS_SYNC_TIMEOUT = 60000;
+export const LRS_SYNC_TIMEOUT = 30000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const JOB_BUFFER_TIMEOUT = 30000;
 
@@ -48,6 +48,7 @@ export const QUEUE_OUTGOING_MESSAGE_PREFIX = 'rsmq:rt:';
 export const QUEUE_JOBS = 'rsmq:rt:jobs';
 export const QUEUE_INCOMING_MESSAGE = 'rsmq:rt:incomingMessages';
 export const QUEUE_ACTIVE_JOBS = 'activeJobs';
+export const QUEUE_ALL_USERS = "allUsers";
 
 export const MESSAGE_QUEUE_JOBS = 'jobs';
 export const MESSAGE_QUEUE_INCOMING_MESSAGES = 'incomingMessages';

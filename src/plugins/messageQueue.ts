@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS } from '../utils/constants';
+import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -34,6 +34,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.pluginManager = pluginManager;
     this.subscriber = redis.createClient(redisConfig.options);
     this.subscriber.subscribe(QUEUE_ACTIVE_JOBS);
+    this.subscriber.subscribe(QUEUE_ALL_USERS);
     this.subscriber.on('message', (channel: string, message: string) => {
       if (channel === QUEUE_INCOMING_MESSAGE) {
         this.receiveIncomingMessages();
@@ -44,6 +45,12 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         let socket = this.useridSocketMap[userid];
         if (socket && socket.readyState === 1) {
           socket.send(JSON.stringify(ServiceMessage.parse(message).payload));
+        }
+      } else if (channel === QUEUE_ALL_USERS) {
+        let serviceMessage = ServiceMessage.parse(message);
+        let payload = JSON.stringify(serviceMessage.payload);
+        for (let socket in this.sessionSocketMap) {
+          this.sessionSocketMap[socket].send(payload);
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
