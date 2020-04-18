@@ -8,11 +8,9 @@ export interface MessageQueueManager {
 
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
   enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
-  enqueueJobsMessage(message: JobMessage, callback: ((success: boolean) => void)): void;
 
   createIncomingQueue(callback: ((success: boolean) => void)): void;
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
-  createJobsQueue(callback: ((success: boolean) => void)): void;
 
   removeOutgoingQueue(sessionId: string): void;
 

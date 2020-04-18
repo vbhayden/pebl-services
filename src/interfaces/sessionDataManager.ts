@@ -1,7 +1,8 @@
 export interface SessionDataManager {
 
-  setHashValues(key: string, values: string[]): void;
-  setHashValue(key: string, field: string, value: string): void;
+  setHashValues(key: string, values: string[], callback?: (worked: "OK") => void): void;
+  setHashValue(key: string, field: string, value: string, callback?: (fields: number) => void): void;
+  setHashValueIfNotExisting(key: string, field: string, value: string, callback?: (didSet: boolean) => void): void;
 
   getHashValues(key: string, callback: (data: string[]) => void): void;
   getHashKeys(key: string, callback: (data: string[]) => void): void;

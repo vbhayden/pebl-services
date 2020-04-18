@@ -13,14 +13,35 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis.publish(channel, message);
   }
 
-  setHashValues(key: string, values: string[]): void {
-    this.redis.hmset(key, values);
+  setHashValues(key: string, values: string[], callback?: (worked: "OK") => void): void {
+    this.redis.hmset(key, values, (err, result) => {
+      if (err) {
+        console.log(err);
+      }
+      if (callback)
+        callback(result);
+    });
   }
 
-  setHashValue(key: string, field: string, value: string): void {
-    this.redis.hset(key, field, value);
+  setHashValue(key: string, field: string, value: string, callback?: (fields: number) => void): void {
+    this.redis.hset(key, field, value, (err, result) => {
+      if (err) {
+        console.log(err);
+      }
+      if (callback)
+        callback(result);
+    });
   }
 
+  setHashValueIfNotExisting(key: string, field: string, value: string, callback?: (didSet: boolean) => void): void {
+    this.redis.hsetnx(key, field, value, (err, result) => {
+      if (err) {
+        console.log(err);
+      }
+      if (callback)
+        callback(result == 1);
+    });
+  }
 
   getHashValues(key: string, callback: (data: string[]) => void): void {
     this.redis.hvals(key, (err, result) => {
@@ -174,7 +195,7 @@ export class RedisSessionDataCache implements SessionDataManager {
         }
       } else {
         if (callback !== undefined) {
-          callback(true);
+          callback(result > 0);
         }
       }
     });

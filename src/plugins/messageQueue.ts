@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_JOBS, QUEUE_ACTIVE_JOBS, MESSAGE_QUEUE_JOBS } from '../utils/constants';
+import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -37,32 +37,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.subscriber.on('message', (channel: string, message: string) => {
       if (channel === QUEUE_INCOMING_MESSAGE) {
         this.receiveIncomingMessages();
-      } else if (channel === QUEUE_JOBS) {
-        this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_JOBS }, (err, resp: RedisSMQ.QueueMessage | {}) => {
-          if (this.isQueueMessage(resp)) {
-            let payload = JobMessage.parse(resp.message);
-            this.dispatchJobMessage(new JobMessage(payload.jobType, payload.timeout, resp.id));
-
-            this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(new JobMessage('jobStarted', payload.timeout, resp.id)));
-            console.log('job started');
-          }
-        });
       } else if (channel === QUEUE_ACTIVE_JOBS) {
-        //When a job is started, all nodes receive a jobStarted message indicating which job was started and how long it should take for it to run
-        //They set a timeout to check for failed jobs in the case they do not recieve the paired jobFinished message within the alloted timeout
-        //When a jobFinished event arrives, the nodes remove their timeouts for that job
-        let jobMessage = JobMessage.parse(message);
-        if (jobMessage.id) {
-          if (jobMessage.jobType === 'jobStarted') {
-            this.timeouts[jobMessage.id] = setTimeout(() => {
-              this.runFailedJobs(jobMessage);
-            }, jobMessage.timeout + JOB_BUFFER_TIMEOUT);
-          } else if (jobMessage.jobType === 'jobFinished') {
-            clearTimeout(this.timeouts[jobMessage.id]);
-          }
-        } else {
-          console.log("Active Job is missing id", jobMessage);
-        }
+        this.processActiveJob(message);
       } else if (channel.startsWith(QUEUE_REALTIME_BROADCAST_PREFIX)) {
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
         let socket = this.useridSocketMap[userid];
@@ -76,25 +52,93 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
+  private processJob(message: string | JobMessage, startup?: boolean): void {
+    let jobMessage: JobMessage;
+    if (message instanceof JobMessage) {
+      jobMessage = message;
+    } else {
+      jobMessage = JobMessage.parse(message);
+    }
+
+    jobMessage.startTime = Date.now();
+
+    this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
+      jobMessage.jobType,
+      JSON.stringify(jobMessage),
+      (didSet: boolean) => {
+        if (didSet) {
+          console.log('Job started', jobMessage.jobType);
+          this.dispatchJobMessage(jobMessage);
+          this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
+        } else {
+          console.log('Job already started', jobMessage.jobType);
+          if (startup) {
+            this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS,
+              jobMessage.jobType,
+              (data?: string) => {
+                if (data) {
+                  this.processActiveJob(JobMessage.parse(data));
+                } else {
+                  this.processJob(jobMessage);
+                }
+              });
+          }
+        }
+      });
+  }
+
+  //When a job is started, all nodes receive a jobStarted message indicating which job was started and how long it should take for it to run
+  //They set a timeout to check for failed jobs in the case they do not recieve the paired jobFinished message within the alloted timeout
+  //When a jobFinished event arrives, the nodes remove their timeouts for that job
+  private processActiveJob(message: string | JobMessage): void {
+    let jobMessage: JobMessage;
+    if (message instanceof JobMessage) {
+      jobMessage = message;
+    } else {
+      jobMessage = JobMessage.parse(message);
+    }
+
+    if (jobMessage.finished) {
+      clearTimeout(this.timeouts[jobMessage.jobType]);
+      this.timeouts[jobMessage.jobType] = setTimeout(() => {
+        this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
+      }, jobMessage.timeout);
+
+    } else if (jobMessage.startTime) {
+      let remainingTime = jobMessage.timeout + JOB_BUFFER_TIMEOUT;
+      remainingTime -= (Date.now() - jobMessage.startTime);
+
+      if (remainingTime > 0) {
+        this.timeouts[jobMessage.jobType] = setTimeout(() => {
+          this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
+            jobMessage.jobType,
+            (deleted: boolean) => {
+              this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
+            });
+        }, remainingTime);
+      } else {
+        this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType, (deleted: boolean) => {
+          this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
+        });
+      }
+    }
+  }
+
   private isQueueMessage(msg: RedisSMQ.QueueMessage | {}): msg is RedisSMQ.QueueMessage {
     return (msg as RedisSMQ.QueueMessage).id !== undefined;
   }
 
   initialize(): void {
-    this.createIncomingQueue((success) => { });
-    this.createJobsQueue((success) => {
-      if (success) {
-        setTimeout(() => {
-          this.enqueueJobsMessage(new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT), (success) => {
-            console.log("queued job");
+    this.createIncomingQueue((success) => {
+      this.sessionDataManager.deleteValue(SET_ALL_JOBS, () => {
+        this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT)));
+        this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(new JobMessage("lrsSync", LRS_SYNC_TIMEOUT)));
+        this.sessionDataManager.getSetValues(SET_ALL_JOBS,
+          (jobs: string[]) => {
+            console.log("Available jobs", jobs);
+            jobs.map((job) => this.processJob(JobMessage.parse(job), true));
           });
-        }, QUEUE_CLEANUP_TIMEOUT);
-        setTimeout(() => {
-          this.enqueueJobsMessage(new JobMessage("lrsSync", LRS_SYNC_TIMEOUT), (success) => {
-            console.log("queued LRS sync");
-          });
-        }, LRS_SYNC_TIMEOUT)
-      }
+      });
     });
   }
 
@@ -120,18 +164,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       }
       this.sessionSocketMap[sessionId] = websocket;
       this.subscriber.subscribe(generateOutgoingQueueForId(sessionId));
-    });
-  }
-
-  createJobsQueue(callback: ((success: boolean) => void)): void {
-    this.rsmq.createQueue({ qname: MESSAGE_QUEUE_JOBS }, (err, resp) => {
-      if (err) {
-        console.log(err);
-        callback(false);
-      } else if (resp === 1) {
-        callback(true);
-      }
-      this.subscriber.subscribe(QUEUE_JOBS);
     });
   }
 
@@ -178,16 +210,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     }
   }
 
-  enqueueJobsMessage(message: JobMessage, callback: ((success: boolean) => void)): void {
-    this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_JOBS, message: JSON.stringify(message) }, function(err, resp) {
-      if (err) {
-        console.log(err);
-        return callback(false);
-      }
-      callback(true);
-    });
-  }
-
   dispatchJobMessage(message: JobMessage): void {
     if (message.jobType === 'cleanup') {
       this.dispatchCleanup(message);
@@ -213,9 +235,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           for (let profile of vals[2])
             this.lrsManager.storeProfile(profile, (success) => { });
       }
-      setTimeout(() => {
-        this.retryJob(message);
-      }, message.timeout);
+
+      this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
+        message.jobType,
+        () => {
+          message.finished = true;
+          console.log("Job finished", message.jobType);
+          this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
+        });
     });
   }
 
@@ -293,7 +320,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       } else {
         scanAll('0', 'sess:*', [], (sessions: string[]) => {
           let filtered = queues.filter((queue: string) => {
-            if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES || queue === MESSAGE_QUEUE_JOBS)
+            if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
               return false;
             return !(sessions.includes('sess:' + queue));
           });
@@ -302,41 +329,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             this.removeOutgoingQueue(queue);
           }
 
-          //Re-add the message in specified timeout period
-          setTimeout(() => {
-            this.retryJob(message);
-          }, message.timeout);
-
+          this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
+            message.jobType,
+            () => {
+              message.finished = true;
+              console.log("Job finished", message.jobType);
+              this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
+            });
         });
-      }
-    });
-  }
-
-  private retryJob(message: JobMessage): void {
-    this.enqueueJobsMessage(new JobMessage(message.jobType, message.timeout), (success) => {
-      if (success && message.id) {
-        //Delete the old message
-        this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_JOBS, id: message.id }, (err, resp) => {
-          if (err) {
-            console.log(err);
-          } else {
-            let jobFinishedMessage = {
-              type: 'jobFinished',
-              id: message.id,
-              timeout: message.timeout
-            }
-            this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(jobFinishedMessage));
-            console.log('job finished');
-          }
-        });
-      }
-    });
-  }
-
-  private runFailedJobs(jobMessage: JobMessage) {
-    this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_JOBS }, (err, resp) => {
-      if (this.isQueueMessage(resp)) {
-        this.retryJob(JobMessage.parse(resp.message));
       }
     });
   }
