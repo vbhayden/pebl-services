@@ -36,29 +36,47 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
 
   validateGetActions(payload: { [key: string]: any }): boolean {
     //TODO
-    return false;
+    return true;
   }
 
   authorizeGetActions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveActions(payload: { [key: string]: any }): boolean {
-    //TODO
+    if (payload.actions && Array.isArray(payload.actions) && payload.actions.length > 0) {
+      for (let action in payload.actions) {
+        if (Action.is(payload.actions[action]))
+          payload.actions[action] = new Action(payload.actions[action]);
+        else
+          return false;
+      }
+      return true;
+    }
     return false;
   }
 
   authorizeSaveActions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteAction(payload: { [key: string]: any }): boolean {
-    //TODO
+    if (payload.xId && typeof payload.xId === "string")
+      return true;
     return false;
   }
 
   authorizeDeleteAction(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   getActions(identity: string, callback: ((actions: Action[]) => void)): void {
