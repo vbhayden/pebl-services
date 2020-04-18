@@ -248,10 +248,22 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToCache(message: ServiceMessage): void {
     let dispatchCallback = (data: any) => {
+      let o;
+      if (data instanceof Object) {
+        if (!data["requestType"]) {
+          data["requestType"] = message.getRequestType();
+        }
+        o = data;
+      } else {
+        o = {
+          requestType: message.getRequestType(),
+          data: data
+        }
+      }
       let sm = new ServiceMessage(message.identity,
-        data,
+        o,
         message.sessionId,
-        message.messageId)
+        message.messageId);
       this.dispatchToClient(sm);
     }
     let messageTemplate = this.pluginManager.getMessageTemplate(message.getRequestType());
