@@ -36,29 +36,29 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
 
   validateGetReferences(payload: { [key: string]: any }): boolean {
     //TODO
-    return false;
+    return true;
   }
 
   authorizeGetReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   validateSaveReferences(payload: { [key: string]: any }): boolean {
     //TODO
-    return false;
+    return true;
   }
 
   authorizeSaveReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   validateDeleteReference(payload: { [key: string]: any }): boolean {
     //TODO
-    return false;
+    return true;
   }
 
   authorizeDeleteReference(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   getReferences(identity: string, callback: ((references: Reference[]) => void)): void {

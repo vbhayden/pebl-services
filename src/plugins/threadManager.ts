@@ -337,10 +337,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           }
         });
       }
-      this.sessionData.deleteHashValue(generateThreadKey(thread),
-        messageId, (result: boolean) => {
-          callback(result);
+      this.sessionData.deleteSortedTimestampMember('timestamp:sharedAnnotations',
+        messageId,
+        (deleted: number) => {
+          this.sessionData.deleteHashValue(generateThreadKey(thread),
+            messageId, (result: boolean) => {
+              callback(result);
+            });
         });
+      
     });
   }
 }
