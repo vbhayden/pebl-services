@@ -36,27 +36,47 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   }
 
   validateGetEvents(payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   authorizeGetEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveEvents(payload: { [key: string]: any }): boolean {
+    if (payload.smts && Array.isArray(payload.smts) && payload.smts.length > 0) {
+      for (let event in payload.smts) {
+        if (XApiStatement.is(payload.smts[event]))
+          payload.smts[event] = new XApiStatement(payload.smts[event]);
+        else
+          return false;
+      }
+      return true;
+    }
     return false;
   }
 
   authorizeSaveEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteEvent(payload: { [key: string]: any }): boolean {
+    if (payload.xId && typeof payload.xId == "string")
+      return true;
     return false;
   }
 
   authorizeDeleteEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   // getEventsForBook(identity: string, book: string): XApiStatement[]; //Retrieve all events for this user made within the specific book

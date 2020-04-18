@@ -53,6 +53,8 @@ import { ActionManager } from "./interfaces/actionManager";
 import { DefaultActionManager } from "./plugins/actionManager";
 import { SessionManager } from "./interfaces/sessionManager";
 import { DefaultSessionManager } from "./plugins/sessionManager";
+import { NavigationManager } from "./interfaces/navigationManager";
+import { DefaultNavigationManager } from "./plugins/navigationManager";
 import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
@@ -105,6 +107,7 @@ const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupM
 const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache);
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
+const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
 const lrsManager: LRS = new LRSPlugin(new Endpoint({
   url: config.lrsUrl,
   headers: config.lrsHeaders
@@ -129,6 +132,7 @@ pluginManager.register(threadManager);
 pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
 pluginManager.register(sessionManager);
+pluginManager.register(navigationManager);
 
 roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()),
   () => {

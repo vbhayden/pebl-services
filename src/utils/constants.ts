@@ -34,6 +34,7 @@ export const KEY_SESSIONS = 'sessions';
 export const KEY_ROLES = 'roles';
 export const KEY_GROUPS = 'groups';
 export const KEY_USERS = 'users';
+export const KEY_NAVIGATIONS = 'navigations';
 
 export const LRS_SYNC_TIMEOUT = 60000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
@@ -118,6 +119,10 @@ export function generateRoleToUsersKey(roleId: string): string {
   return 'role:' + roleId + ':' + KEY_USERS;
 }
 
+export function generateUserNavigationsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_NAVIGATIONS;
+}
+
 //groups
 export function generateGroupToUserMembersKey(groupId: string): string {
   return 'group:' + groupId + ':user:membership';
@@ -183,6 +188,10 @@ export function generateActionsKey(id: string): string {
 
 export function generateSessionsKey(id: string): string {
   return 'session:' + id;
+}
+
+export function generateNavigationsKey(id: string): string {
+  return 'navigation:' + id;
 }
 
 export function generateBroadcastQueueForUserId(id: string): string {
