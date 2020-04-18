@@ -184,11 +184,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       arr.push(stmtStr);
       this.sessionData.queueForLrs(stmtStr);
       this.sessionData.addTimestampValue(generateTimestampForAnnotations(identity), date.getTime(), stmt.id);
-      this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
-        requestType: "newAnnotation",
-        data: stmts
-      })));
     }
+    this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
+      requestType: "newAnnotation",
+      data: stmts
+    })));
     this.sessionData.setHashValues(generateUserAnnotationsKey(identity), arr);
     callback(true);
   }
@@ -221,11 +221,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       arr.push(stmtStr);
       this.sessionData.queueForLrs(stmtStr);
       this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), stmt.id);
-      this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-        requestType: "newSharedAnnotation",
-        data: stmts
-      })));
     }
+    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
+      requestType: "newSharedAnnotation",
+      data: stmts
+    })));
     this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
