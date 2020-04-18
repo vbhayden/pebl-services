@@ -237,7 +237,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           threadsObject.threads = threads;
           this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId), (privateThreads) => {
             threadsObject.privateThreads = privateThreads;
-            callback({payload: {data: threadsObject}, requestType: "getSubscribedThreads"});
+            callback({ payload: { data: threadsObject }, requestType: "getSubscribedThreads" });
           });
         });
       });
@@ -276,7 +276,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             payload: {
               data: message,
               thread: message.thread,
-              options: {isPrivate: message.isPrivate, groupId: message.groupId}
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
             }
           })));
       }
@@ -284,7 +284,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: {[key: string]: any}) => void), options?: { [key: string]: any }): void {
+  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: { [key: string]: any }) => void), options?: { [key: string]: any }): void {
     let thread = baseThread;
     if (options && options.groupId)
       thread = this.getGroupScopedThread(thread, options.groupId);

@@ -2,16 +2,18 @@ export class JobMessage {
 
   readonly timeout: number;
   readonly jobType: string;
-  readonly id?: string;
+  startTime?: number;
+  finished?: boolean;
 
-  constructor(jobType: string, timeout: number, id?: string) {
+  constructor(jobType: string, timeout: number, startTime?: number, finished?: boolean) {
     this.jobType = jobType;
     this.timeout = timeout;
-    this.id = id;
+    this.startTime = startTime;
+    this.finished = finished;
   }
 
   static parse(data: string): JobMessage {
     let o = JSON.parse(data);
-    return new JobMessage(o.id, o.jobType, o.timeout);
+    return new JobMessage(o.jobType, o.timeout, o.startTime, o.finished);
   }
 }
