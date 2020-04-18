@@ -68,8 +68,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
         let socket = this.useridSocketMap[userid];
         if (socket && socket.readyState === 1) {
+          console.log(message);
           let sm = ServiceMessage.parse(message);
-          socket.send(sm.payload);
+          console.log(sm);
+          socket.send(JSON.stringify(sm.payload));
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
@@ -223,12 +225,12 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToCache(message: ServiceMessage): void {
     let dispatchCallback = (data: any) => {
-      this.dispatchToClient(new ServiceMessage(message.identity,
+      let sm = new ServiceMessage(message.identity,
         data,
         message.sessionId,
-        message.messageId));
+        message.messageId)
+      this.dispatchToClient(sm);
     }
-    console.log(message);
     let messageTemplate = this.pluginManager.getMessageTemplate(message.getRequestType());
     if (messageTemplate) {
       messageTemplate.action(message.payload, dispatchCallback);

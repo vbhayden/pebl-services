@@ -183,13 +183,12 @@ export function generateSessionsKey(id: string): string {
   return 'session:' + id;
 }
 
-
 export function generateBroadcastQueueForUserId(id: string): string {
   return QUEUE_REALTIME_BROADCAST_PREFIX + id;
 }
 
 export function generateOutgoingQueueForId(id: string): string {
-  return QUEUE_REALTIME_BROADCAST_PREFIX + id;
+  return QUEUE_OUTGOING_MESSAGE_PREFIX + id;
 }
 
 export function generateTimestampForUserId(id: string): string {

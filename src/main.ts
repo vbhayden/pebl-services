@@ -394,7 +394,8 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                         requestType: "error",
                         payload: {
                           description: "Invalid Message",
-                          target: payload.id
+                          target: payload.id,
+                          payload: payload
                         }
                       }));
                       return;
