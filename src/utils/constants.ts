@@ -233,3 +233,7 @@ export function generateSubscribedUsersKey(thread: string): string {
 export function generateTimestampForAnnotations(id: string): string {
   return 'timestamp:annotations:' + id;
 }
+
+export function generateTimestampForReference(id: string): string {
+  return 'timestamp:references:' + id;
+}

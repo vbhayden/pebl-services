@@ -2,9 +2,10 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Reference } from "../models/reference";
-import { generateUserReferencesKey, generateReferencesKey } from "../utils/constants";
+import { generateUserReferencesKey, generateReferencesKey, generateTimestampForReference } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { Voided } from "../models/xapiStatement";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
@@ -16,7 +17,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
       this.validateGetReferences.bind(this),
       this.authorizeGetReferences.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getReferences(payload.identity, dispatchCallback);
+        this.getReferences(payload.identity, payload.timestamp, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveReferences",
@@ -61,22 +62,30 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     return true;
   }
 
-  getReferences(identity: string, callback: ((references: Reference[]) => void)): void {
-    this.sessionData.getHashValues(generateUserReferencesKey(identity),
-      (result: string[]) => {
+  getReferences(identity: string, timestamp: number, callback: (data: { [key: string]: any }) => void): void {
+    this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForReference(identity), timestamp, (data) => {
+      this.sessionData.getHashMultiField(generateUserReferencesKey(identity), data.map((x) => generateReferencesKey(x)), (result) => {
         callback(result.map(function(x) {
-          return new Reference(JSON.parse(x));
+          let obj = JSON.parse(x);
+          if (Reference.is(obj))
+            return new Reference(obj);
+          else
+            return new Voided(obj);
         }));
       });
+    });
   }
 
   saveReferences(identity: string, references: Reference[], callback: ((success: boolean) => void)): void {
     let arr = [];
-    for (let reference of references) {
-      let referenceStr = JSON.stringify(reference);
-      arr.push(generateReferencesKey(reference.id));
-      arr.push(referenceStr);
-      this.sessionData.queueForLrs(referenceStr);
+    let date = new Date();
+    for (let stmt of references) {
+      stmt.stored = date.toISOString();
+      let stmtStr = JSON.stringify(stmt);
+      arr.push(generateReferencesKey(stmt.id));
+      arr.push(stmtStr);
+      this.sessionData.queueForLrs(stmtStr);
+      this.sessionData.addTimestampValue(generateTimestampForReference(identity), date.getTime(), stmt.id);
     }
     this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
     callback(true);
@@ -86,13 +95,20 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     this.sessionData.getHashValue(generateUserReferencesKey(identity), generateReferencesKey(id), (data) => {
       if (data) {
         this.sessionData.queueForLrsVoid(data);
+        let voided = new Reference(JSON.parse(data)).toVoidRecord();
+        this.sessionData.addTimestampValue(generateTimestampForReference(identity), new Date(voided.stored).getTime(), voided.id);
+        this.sessionData.setHashValues(generateUserReferencesKey(identity), [generateReferencesKey(voided.id), JSON.stringify(voided)]);
       }
-      this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
-        generateReferencesKey(id), (result: boolean) => {
-          if (!result) {
-            console.log("failed to remove reference", id);
-          }
-          callback(result);
+      this.sessionData.deleteSortedTimestampMember(generateTimestampForReference(identity),
+        id,
+        (deleted: number) => {
+          this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
+            generateReferencesKey(id), (result: boolean) => {
+              if (!result) {
+                console.log("failed to remove refernce", id);
+              }
+              callback(result);
+            });
         });
     });
   }

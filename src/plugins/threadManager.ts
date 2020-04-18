@@ -194,11 +194,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData.setHashValues(generateSubscribedUsersKey(thread), [userId, userId]);
 
     callback({
-      payload: {
-        data: true,
-        thread: baseThread,
-        options: options
-      },
+      data: true,
+      thread: baseThread,
+      options: options,
       requestType: "subscribeThread"
     });
   }
@@ -237,7 +235,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           threadsObject.threads = threads;
           this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId), (privateThreads) => {
             threadsObject.privateThreads = privateThreads;
-            callback({ payload: { data: threadsObject }, requestType: "getSubscribedThreads" });
+            callback({data: threadsObject, requestType: "getSubscribedThreads" });
           });
         });
       });
@@ -273,11 +271,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         if (user !== userId) //Don't send the message to the sender
           this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
             requestType: "newThreadedMessage",
-            payload: {
-              data: message,
-              thread: message.thread,
-              options: { isPrivate: message.isPrivate, groupId: message.groupId }
-            }
+            data: message,
+            thread: message.thread,
+            options: { isPrivate: message.isPrivate, groupId: message.groupId }
           })));
       }
     });
@@ -294,17 +290,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp, (data) => {
       this.sessionData.getHashMultiField(generateThreadKey(thread), data, (vals) => {
         callback({
-          payload: {
-            data: vals.map((val) => {
-              let obj = JSON.parse(val);
-              if (Message.is(obj))
-                return new Message(obj);
-              else
-                return new Voided(obj);
-            }),
-            thread: baseThread,
-            options: options
-          },
+          data: vals.map((val) => {
+            let obj = JSON.parse(val);
+            if (Message.is(obj))
+              return new Message(obj);
+            else
+              return new Voided(obj);
+          }),
+          thread: baseThread,
+          options: options,
           requestType: "getThreadedMessages"
         });
       });
@@ -328,11 +322,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           for (let user of users) {
             this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
               requestType: "newThreadedMessage",
-              payload: {
-                data: voided,
-                thread: baseThread,
-                options: options
-              }
+              data: voided,
+              thread: baseThread,
+              options: options
             })));
           }
         });
