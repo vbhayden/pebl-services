@@ -161,7 +161,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   getAnnotations(identity: string, timestamp: number, callback: ((stmts: (Annotation | Voided)[]) => void)): void {
     this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForAnnotations(identity), timestamp, (data) => {
       this.sessionData.getHashMultiField(generateUserAnnotationsKey(identity), data.map((x) => generateAnnotationsKey(x)), (result) => {
-        callback(result.reverse().map(function(x) {
+        callback(result.map(function(x) {
           let obj = JSON.parse(x);
           if (Annotation.is(obj))
             return new Annotation(obj);
