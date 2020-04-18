@@ -235,7 +235,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           threadsObject.threads = threads;
           this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId), (privateThreads) => {
             threadsObject.privateThreads = privateThreads;
-            callback({data: threadsObject, requestType: "getSubscribedThreads" });
+            callback({ data: threadsObject, requestType: "getSubscribedThreads" });
           });
         });
       });
@@ -337,7 +337,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               callback(result);
             });
         });
-      
+
     });
   }
 }
