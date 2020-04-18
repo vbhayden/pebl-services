@@ -249,7 +249,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   dispatchToCache(message: ServiceMessage): void {
     let dispatchCallback = (data: any) => {
       let o;
-      if (data instanceof Object) {
+      if ((data != null) && (typeof (data) === "object") && (data.length === undefined)) {
         if (!data["requestType"]) {
           data["requestType"] = message.getRequestType();
         }

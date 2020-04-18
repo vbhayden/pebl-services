@@ -220,3 +220,7 @@ export function generateUserGroupThreadsKey(id: string, groupId: string): string
 export function generateSubscribedUsersKey(thread: string): string {
   return 'users:thread:' + thread;
 }
+
+export function generateTimestampForAnnotations(id: string): string {
+  return 'timestamp:annotations:' + id;
+}

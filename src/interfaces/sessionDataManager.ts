@@ -19,6 +19,7 @@ export interface SessionDataManager {
 
   addTimestampValue(key: string, timestamp: number, value: string): void;
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
+  deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void;
 
   queueForLrs(value: string): void;
   queueForLrsVoid(value: string): void;

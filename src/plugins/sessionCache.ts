@@ -226,6 +226,17 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void {
+    this.redis.zrem(key, memberId, (err, result) => {
+      if (err) {
+        console.log(err);
+        callback(-1);
+      } else {
+        callback(result);
+      }
+    });
+  }
+
   queueForLrs(value: string): void {
     this.redis.rpush('outgoingXapi', value);
   }
