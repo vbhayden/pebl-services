@@ -136,25 +136,25 @@ pluginManager.register(navigationManager);
 
 roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()),
   () => {
-    roleManager.getUsersByRole("systemAdmin",
-      (userIds) => {
-        console.log(userIds);
-        let processor = (userIds: string[]) => {
-          let userId = userIds.pop();
-          if (userId) {
-            userManager.deleteUserRole(userId, "systemAdmin", () => {
-              console.log("Removing", userId);
-              processor(userIds);
-            });
-          } else {
-            let systemAdminRoles = ["systemAdmin"];
-            for (let systemAdmin of config.systemAdmins) {
-              userManager.addUserRoles(systemAdmin, systemAdminRoles);
-            }
-          }
-        }
-        processor(userIds);
-      });
+    //     roleManager.getUsersByRole("systemAdmin",
+    //       (userIds) => {
+    //         console.log(userIds);
+    //         let processor = (userIds: string[]) => {
+    //           let userId = userIds.pop();
+    //           if (userId) {
+    //             userManager.deleteUserRole(userId, "systemAdmin", () => {
+    //               console.log("Removing", userId);
+    //               processor(userIds);
+    //             });
+    //           } else {
+    //             let systemAdminRoles = ["systemAdmin"];
+    //             for (let systemAdmin of config.systemAdmins) {
+    //               userManager.addUserRoles(systemAdmin, systemAdminRoles, () => { });
+    //             }
+    //           }
+    //         }
+    //         processor(userIds);
+    //       });
   });
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
@@ -168,7 +168,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
 
 messageQueue.initialize();
 
-const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config);
+const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config, userManager);
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");

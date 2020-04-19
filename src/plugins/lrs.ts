@@ -16,13 +16,14 @@ export class LRSPlugin implements LRS {
 
 
 
-  storeStatements(stmts: XApiStatement[]): void {
+  storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void {
     stmts.forEach(function(rec) {
       delete rec.identity;
+      rec = rec.toXAPI();
     });
 
     let path = "/data/xapi/statements";
-    network.postData(this.endpoint.url, path, this.endpoint.headers, JSON.stringify(stmts));
+    network.postData(this.endpoint.url, path, this.endpoint.headers, JSON.stringify(stmts), successCb, failureCb);
   }
 
   voidStatements(stmts: XApiStatement[]): Voided[] {

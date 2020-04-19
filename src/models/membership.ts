@@ -37,7 +37,14 @@ export class Membership extends XApiStatement {
     this.organizationName = extensions[PREFIX_PEBL_EXTENSION + "organizationName"];
   }
 
+  static replaceInvalidJson(x: Membership): Membership {
+    return new Membership(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "joined");
   }

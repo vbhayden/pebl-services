@@ -33,7 +33,14 @@ export class Navigation extends XApiStatement {
     }
   }
 
+  static replaceInvalidJson(x: Navigation): Navigation {
+    return new Navigation(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "paged-next") || (verb == "paged-prev") || (verb == "paged-jump") || (verb == "interacted") ||
       (verb == "completed");

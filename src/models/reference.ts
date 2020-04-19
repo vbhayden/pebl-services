@@ -39,7 +39,14 @@ export class Reference extends XApiStatement {
     this.externalURL = extensions[PREFIX_PEBL_EXTENSION + "externalURL"];
   }
 
+  static replaceInvalidJson(x: Reference): Reference {
+    return new Reference(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "pushed") || (verb == "pulled");
   }

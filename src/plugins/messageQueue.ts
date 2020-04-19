@@ -158,7 +158,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
               });
           }
         }
-
         walkJobs(jobSet);
       });
     });
@@ -249,7 +248,12 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (values) {
         let vals = this.lrsManager.parseStatements(values);
         if (vals[0].length > 0)
-          this.lrsManager.storeStatements(vals[0]);
+          this.lrsManager.storeStatements(vals[0], () => {
+            this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
+            console.log('success');
+          }, () => {
+            console.log('failure');
+          });
         if (vals[1].length > 0)
           for (let activity of vals[1])
             this.lrsManager.storeActivity(activity, (success) => { });

@@ -110,20 +110,27 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     });
   }
 
-  addUserRoles(userId: string, roleIds: string[]): void {
+  addUserRoles(userId: string, roleIds: string[], callback: (data: boolean) => void): void {
     console.log(userId, roleIds);
-    this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
-    this.setLastModifiedPermissions(userId, Date.now() + "");
-    for (let roleId of roleIds) {
-      this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
-    }
+    this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds, (added: number) => {
+      console.log("adding role", userId, roleIds, added);
+      if (added > 0) {
+        this.setLastModifiedPermissions(userId, Date.now() + "");
+        for (let roleId of roleIds) {
+          this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
+        }
+        callback(true);
+      } else {
+        callback(false);
+      }
+    });
   }
 
   getUserRoles(userId: string, callback: (roleIds: string[]) => void): void {
     this.sessionData.getSetValues(generateUserToRolesKey(userId), callback);
   }
 
-  deleteUserRole(userId: string, roleId: string, callback: () => void): void {
+  deleteUserRole(userId: string, roleId: string, callback: (deleted: boolean) => void): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
       if (!deleted) {
         console.log("failed to delete user role", userId, roleId);
@@ -134,7 +141,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
           console.log("failed to delete user role 2", userId, roleId);
         }
         this.setLastModifiedPermissions(userId, Date.now() + "");
-        callback();
+        callback(deleted);
       });
     });
   }

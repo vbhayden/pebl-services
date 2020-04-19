@@ -50,7 +50,7 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
     if (payload.navigations && Array.isArray(payload.navigations) && payload.navigations.length > 0) {
       for (let nav in payload.navigations) {
         if (Navigation.is(payload.navigations[nav]))
-          payload.navigations[nav] = new Navigation(payload.navigations[nav]);
+          payload.navigations[nav] = Navigation.replaceInvalidJson(payload.navigations[nav]);
         else
           return false;
       }

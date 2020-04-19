@@ -145,7 +145,16 @@ export class RedisSessionDataCache implements SessionDataManager {
         }
       });
     } else {
-      this.redis.sadd(key, value);
+      this.redis.sadd(key, value, (err, result) => {
+        if (err) {
+          console.log(err);
+          if (callback)
+            callback(-1);
+        } else {
+          if (callback)
+            callback(result);
+        }
+      });
     }
   }
 
@@ -153,13 +162,9 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis.smembers(key, (err, result) => {
       if (err) {
         console.log(err);
-        if (callback !== undefined) {
-          callback([]);
-        }
+        callback([]);
       } else {
-        if (callback !== undefined) {
-          callback(result);
-        }
+        callback(result);
       }
     })
   }
@@ -256,8 +261,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   }
 
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
-    let transaction = this.redis.multi();
-    transaction.lrange('outgoingXapi', 0, count, (err, resp) => {
+    this.redis.lrange('outgoingXapi', 0, count, (err, resp) => {
       if (err) {
         console.log(err);
         callback(undefined);
@@ -265,7 +269,9 @@ export class RedisSessionDataCache implements SessionDataManager {
         callback(resp);
       }
     });
-    transaction.ltrim('outgoingXapi', count + 1, -1);
-    transaction.exec();
+  }
+
+  trimForLrs(count: number): void {
+    this.redis.ltrim('outgoingXapi', count + 1, -1);
   }
 }

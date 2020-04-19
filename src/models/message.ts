@@ -44,7 +44,14 @@ export class Message extends XApiStatement {
     }
   }
 
+  static replaceInvalidJson(x: Message): Message {
+    return new Message(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "responded") || (verb == "noted");
   }
