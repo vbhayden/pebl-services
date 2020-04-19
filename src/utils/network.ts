@@ -10,7 +10,7 @@ export function postData(
   successCallback?: (incomingData: string) => void,
   failCallback?: (e: Error | { [key: string]: any }) => void): void {
 
-  let data = (rawData.startsWith("\"") && rawData.endsWith("\"")) ? rawData.substring(1, rawData.length - 1) : rawData;
+  let outgoingData = (rawData.startsWith("\"") && rawData.endsWith("\"")) ? rawData.substring(1, rawData.length - 1) : rawData;
 
   var postOptions = {
     host: host,
@@ -19,8 +19,7 @@ export function postData(
     path: path,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
+      'Content-Type': 'application/json; charset=utf-8'
     }
   }
 
@@ -28,32 +27,46 @@ export function postData(
   var dataArr: string[] = [];
   const req = https.request(postOptions, function(resp: IncomingMessage) {
     resp.setEncoding("utf-8");
+
     resp.on("data", function(data) {
       dataArr.push(data);
     });
+
     resp.on("end", function() {
       //Check for errors in response
-      if (dataArr.length > 0) {
-        try {
-          let o = JSON.parse(dataArr[0])
-          if (o.errorId && failCallback)
-            return failCallback(o);
-        } catch (e) {
-          //
-        }
+      let data = dataArr.join("");
+      let statusCode = 200;
+      if (resp.statusCode) {
+        statusCode = resp.statusCode;
       }
-      if (successCallback) {
-        successCallback(dataArr.join(""));
+
+      if (statusCode < 300) {
+        if (successCallback) {
+          successCallback(data);
+        }
+      } else {
+        let message = "default bad post";
+        if (resp.statusMessage) {
+          message = resp.statusMessage;
+        }
+        console.log("failed", message, data);
+        if (failCallback) {
+          failCallback({
+            error: message,
+            message: data
+          });
+        }
       }
     });
   });
+
   req.on('error', function(e) {
     if (failCallback) {
       console.log(e);
       failCallback(e);
     }
   });
-  req.write(data);
+  req.write(outgoingData);
   req.end();
 }
 
