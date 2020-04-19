@@ -227,9 +227,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   private adjustUserPermissions(userId: string, accessToken: string, callback: () => void): void {
 
     this.userManager.getUserRoles(userId, (roleIds: string[]) => {
-      let accessTokenObject = JSON.parse(new Buffer((accessToken.split('.')[1]), 'base64').toString());
-
-      console.log("accessToken", accessTokenObject);
+      let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
 
       let removeRoles = (roles: string[], done: () => void) => {
         let role = roles.pop();
