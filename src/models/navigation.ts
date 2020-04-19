@@ -33,6 +33,10 @@ export class Navigation extends XApiStatement {
     }
   }
 
+  static replaceInvalidJson(x: Navigation): Navigation {
+    return new Navigation(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;

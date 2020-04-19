@@ -30,6 +30,10 @@ export class ProgramAction extends XApiStatement {
 
   }
 
+  static replaceInvalidJson(x: ProgramAction): ProgramAction {
+    return new ProgramAction(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;
