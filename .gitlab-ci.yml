@@ -45,7 +45,7 @@ buildQa:
   - npm run compile
   - cp "$QA_SERVER_CONFIG" dist/serverConfig.json
   # - cp "$QA_SERVER_CONFIG2" dist/serverConfig2.json
-  - LAST_TAG=$(git describe --tags  --always | cut -d '-' -f1)
+  - LAST_TAG=$(git describe --tags  --always)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
   # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json    
   artifacts:
