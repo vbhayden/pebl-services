@@ -243,7 +243,7 @@ expressApp.disable('x-powered-by');
 
 expressApp.get('/', function(req: Request, res: Response) {
   console.log(req.session?.id)
-  res.send("Hello World!, version ${config.version}").end();
+  res.send(`Hello World!, version ${config.version}`).end();
 });
 
 expressApp.get('/login', function(req: Request, res: Response) {
