@@ -14,7 +14,8 @@
     },
     "scripts": {
         "compile": "tsfmt -r && tsc",
-        "dev": "ts-node-dev --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
+        "dev": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
+        "dev2": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig2.json",
         "start": "node ./dist/main.js ./src/serverConfig.json"
     },
     "devDependencies": {
