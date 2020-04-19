@@ -31,10 +31,6 @@ export class Session extends XApiStatement {
     this.type = this.verb.display["en-US"];
   }
 
-  static replaceInvalidJson(x: Session): Session {
-    return new Session(XApiStatement.replaceInvalidJson(x));
-  }
-
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;

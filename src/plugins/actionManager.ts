@@ -50,7 +50,7 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
     if (payload.actions && Array.isArray(payload.actions) && payload.actions.length > 0) {
       for (let action in payload.actions) {
         if (Action.is(payload.actions[action])) {
-          payload.actions[action] = Action.replaceInvalidJson(payload.actions[action]);
+          payload.actions[action] = new Action(payload.actions[action]);
         }
         else
           return false;

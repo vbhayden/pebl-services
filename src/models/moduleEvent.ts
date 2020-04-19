@@ -5,10 +5,6 @@ export class ModuleEvent extends XApiStatement {
   constructor(raw: { [key: string]: any }) {
     super(raw);
   }
-
-  static replaceInvalidJson(x: ModuleEvent): ModuleEvent {
-    return new ModuleEvent(XApiStatement.replaceInvalidJson(x));
-  }
 }
 
 export class ModuleRating extends ModuleEvent {

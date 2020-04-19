@@ -44,10 +44,6 @@ export class Message extends XApiStatement {
     }
   }
 
-  static replaceInvalidJson(x: Message): Message {
-    return new Message(XApiStatement.replaceInvalidJson(x));
-  }
-
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;

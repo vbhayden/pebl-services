@@ -40,10 +40,6 @@ export class Annotation extends XApiStatement {
     this.style = extensions[PREFIX_PEBL_EXTENSION + "style"];
   }
 
-  static replaceInvalidJson(x: Annotation): Annotation {
-    return new Annotation(XApiStatement.replaceInvalidJson(x));
-  }
-
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;
