@@ -2,10 +2,11 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Reference } from "../models/reference";
-import { generateUserReferencesKey, generateReferencesKey, generateTimestampForReference } from "../utils/constants";
+import { generateUserReferencesKey, generateReferencesKey, generateTimestampForReference, generateBroadcastQueueForUserId } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Voided } from "../models/xapiStatement";
+import { ServiceMessage } from "../models/serviceMessage";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
@@ -41,25 +42,47 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
   }
 
   authorizeGetReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return true;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveReferences(payload: { [key: string]: any }): boolean {
-    //TODO
+    if (payload.references && (payload.references instanceof Array) && (payload.references.length > 0)) {
+      for (let i in payload.references) {
+        let ref = payload.references[i];
+        if (Reference.is(ref)) {
+          payload.references[i] = new Reference(ref);
+        } else {
+          return false;
+        }
+      }
+    }
+
     return true;
   }
 
   authorizeSaveReferences(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return true;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteReference(payload: { [key: string]: any }): boolean {
-    //TODO
-    return true;
+    if (typeof (payload.xId) === "string") {
+      return true;
+    }
+
+    return false;
   }
 
   authorizeDeleteReference(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return true;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   getReferences(identity: string, timestamp: number, callback: (data: { [key: string]: any }) => void): void {
@@ -86,6 +109,10 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
       arr.push(stmtStr);
       this.sessionData.queueForLrs(stmtStr);
       this.sessionData.addTimestampValue(generateTimestampForReference(identity), date.getTime(), stmt.id);
+      this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
+        requestType: "newAnnotation",
+        data: stmt
+      })));
     }
     this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
     callback(true);
