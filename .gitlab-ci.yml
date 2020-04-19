@@ -23,6 +23,7 @@ build:
   - npm install
   - npm run compile
   - cp "$DEV_SERVER_CONFIG" dist/serverConfig.json
+  - cp "$DEV_SERVER_CONFIG2" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
