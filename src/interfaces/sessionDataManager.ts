@@ -13,7 +13,7 @@ export interface SessionDataManager {
   deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void;
   deleteValue(key: string, callback?: (deleted: boolean) => void): void;
 
-  addSetValue(key: string, value: (string[] | string)): void;
+  addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void;
   getSetValues(key: string, callback: (data: string[]) => void): void;
   deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void;
 

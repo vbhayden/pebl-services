@@ -243,7 +243,7 @@ expressApp.disable('x-powered-by');
 
 expressApp.get('/', function(req: Request, res: Response) {
   console.log(req.session?.id)
-  res.send("Hello World!").end();
+  res.send(`Hello World!, version ${config.version}`).end();
 });
 
 expressApp.get('/login', function(req: Request, res: Response) {
@@ -454,5 +454,5 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 });
 
 httpsServer.listen(config.port, function() {
-  console.log(`listening on port ${config.port}`);
+  console.log(`listening on port ${config.port}, version ${config.version}`);
 });

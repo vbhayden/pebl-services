@@ -1,17 +1,17 @@
 {
-    "serverName": "localhost",
+    "serverName": "localhost2",
 
-    "validRedirectDomains": ["localhost", "eduweb.vedbyte.com"],
-
-    "privateKeyPath": "./localhost.key",
-    "certificatePath": "./localhost.crt",
+    "validRedirectDomains": ["localhost2"],
 
     "version": "REPLACEMEVERSION",
+    
+    "privateKeyPath": "./localhost2.key",
+    "certificatePath": "./localhost2.crt",
 
     "authenticationUrl": "https://dev.keycloak.eduworks.com:8443/auth/realms/master",
     "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
     "authenticationClientId": "PeBL-Services",
-    "authenticationRedirectURIs": ["https://localhost:8080/redirect"],
+    "authenticationRedirectURIs": ["https://localhost2:8081/redirect"],
     "authenticationResponseTypes": ["code"],
     "authenticationScope": ["openid email profile"],
 
@@ -22,7 +22,7 @@
 
     "cookieSameSite": "none",
 
-    "port": 8080,
+    "port": 8081,
     "useSSL": true,
     "usesProxy": false,
     "lrsUrl": "lrs.peblproject.com",
