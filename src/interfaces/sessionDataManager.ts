@@ -24,6 +24,7 @@ export interface SessionDataManager {
   queueForLrs(value: string): void;
   queueForLrsVoid(value: string): void;
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
+  trimForLrs(count: number): void;
 
   broadcast(channel: string, message: string): void;
 }

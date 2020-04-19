@@ -8,7 +8,7 @@ export function postData(
   headers: { [key: string]: any },
   rawData: string,
   successCallback?: (incomingData: string) => void,
-  failCallback?: (e: Error) => void): void {
+  failCallback?: (e: Error | { [key: string]: any }) => void): void {
 
   let data = (rawData.startsWith("\"") && rawData.endsWith("\"")) ? rawData.substring(1, rawData.length - 1) : rawData;
 
@@ -32,6 +32,16 @@ export function postData(
       dataArr.push(data);
     });
     resp.on("end", function() {
+      //Check for errors in response
+      if (dataArr.length > 0) {
+        try {
+          let o = JSON.parse(dataArr[0])
+          if (o.errorId && failCallback)
+            return failCallback(o);
+        } catch (e) {
+          //
+        }
+      }
       if (successCallback) {
         successCallback(dataArr.join(""));
       }

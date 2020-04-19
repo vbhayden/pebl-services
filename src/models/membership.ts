@@ -38,6 +38,9 @@ export class Membership extends XApiStatement {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "joined");
   }

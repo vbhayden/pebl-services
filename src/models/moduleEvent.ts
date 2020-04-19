@@ -32,6 +32,9 @@ export class ModuleRating extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleRating")
   }
@@ -64,6 +67,9 @@ export class ModuleFeedback extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleFeedback")
   }
@@ -107,6 +113,9 @@ export class ModuleExample extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleExample");
   }
@@ -139,6 +148,9 @@ export class ModuleExampleRating extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleExampleRating")
   }
@@ -173,6 +185,9 @@ export class ModuleExampleFeedback extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleExampleFeedback");
   }
@@ -206,6 +221,9 @@ export class ModuleRemovedEvent extends ModuleEvent {
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "moduleRemovedEvent");
   }

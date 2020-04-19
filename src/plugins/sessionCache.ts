@@ -247,8 +247,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   }
 
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
-    let transaction = this.redis.multi();
-    transaction.lrange('outgoingXapi', 0, count, (err, resp) => {
+    this.redis.lrange('outgoingXapi', 0, count, (err, resp) => {
       if (err) {
         console.log(err);
         callback(undefined);
@@ -256,7 +255,9 @@ export class RedisSessionDataCache implements SessionDataManager {
         callback(resp);
       }
     });
-    transaction.ltrim('outgoingXapi', count + 1, -1);
-    transaction.exec();
+  }
+
+  trimForLrs(count: number): void {
+    this.redis.ltrim('outgoingXapi', count + 1, -1);
   }
 }
