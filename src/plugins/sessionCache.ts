@@ -131,10 +131,19 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  addSetValue(key: string, value: (string[] | string)): void {
+  addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void {
     //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)
     if (value instanceof Array) {
-      this.redis.sadd(key, ...value);
+      this.redis.sadd(key, ...value, (err, result) => {
+        if (err) {
+          console.log(err);
+          if (callback)
+            callback(-1);
+        } else {
+          if (callback)
+            callback(result);
+        }
+      });
     } else {
       this.redis.sadd(key, value);
     }

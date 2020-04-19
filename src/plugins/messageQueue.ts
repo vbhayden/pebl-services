@@ -138,13 +138,28 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   initialize(): void {
     this.createIncomingQueue((success) => {
       this.sessionDataManager.deleteValue(SET_ALL_JOBS, () => {
-        this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT)));
-        this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(new JobMessage("lrsSync", LRS_SYNC_TIMEOUT)));
-        this.sessionDataManager.getSetValues(SET_ALL_JOBS,
-          (jobs: string[]) => {
-            console.log("Available jobs", jobs);
-            jobs.map((job) => this.processJob(JobMessage.parse(job), true));
-          });
+        let jobSet = [
+          new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
+          new JobMessage("lrsSync", LRS_SYNC_TIMEOUT)
+        ];
+
+        let walkJobs = (jobs: JobMessage[]) => {
+          let job = jobs.pop();
+          if (job) {
+            this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(job),
+              (added: number) => {
+                walkJobs(jobs);
+              });
+          } else {
+            this.sessionDataManager.getSetValues(SET_ALL_JOBS,
+              (jobs: string[]) => {
+                console.log("Available jobs", jobs);
+                jobs.map((job) => this.processJob(JobMessage.parse(job), true));
+              });
+          }
+        }
+
+        walkJobs(jobSet);
       });
     });
   }
