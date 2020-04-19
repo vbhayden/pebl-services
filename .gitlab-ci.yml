@@ -152,8 +152,8 @@ deployProd:
    - ssh-add "$PROD_PRIVATE_KEY" > /dev/null
 
    - ssh -p22 $USERNAME@$PROD_SERVER_IP "rm -rf /srv/prodNode/*"
-   - scp -P22 -r dist $USERNAME@$PROD_SERVER_IP:/srv/qaNode/
-   - scp -P22 -r package.json $USERNAME@$PROD_SERVER_IP:/srv/qaNode/
+   - scp -P22 -r dist $USERNAME@$PROD_SERVER_IP:/srv/prodNode/
+   - scp -P22 -r package.json $USERNAME@$PROD_SERVER_IP:/srv/prodNode/
    - ssh -p22 $USERNAME@$PROD_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -p22 $USERNAME@$PROD_SERVER_IP "date > /srv/prodNodeUpdated"
 
