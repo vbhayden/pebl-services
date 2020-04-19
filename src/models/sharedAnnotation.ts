@@ -6,6 +6,10 @@ export class SharedAnnotation extends Annotation {
     super(raw);
   }
 
+  static replaceInvalidJson(x: SharedAnnotation): SharedAnnotation {
+    return new SharedAnnotation(XApiStatement.replaceInvalidJson(x));
+  }
+
   static is(x: XApiStatement): boolean {
     if (!XApiStatement.is(x))
       return false;

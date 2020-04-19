@@ -76,7 +76,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
         let annotation = payload.stmts[annotationIndex];
         console.log(annotationIndex, annotation, Annotation.is(annotation));
         if (Annotation.is(annotation)) {
-          payload.stmts[annotationIndex] = new Annotation(annotation);
+          payload.stmts[annotationIndex] = Annotation.replaceInvalidJson(annotation);
         } else {
           return false;
         }
@@ -109,7 +109,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       for (let annotationIndex in payload.stmts) {
         let annotation = payload.stmts[annotationIndex];
         if (SharedAnnotation.is(annotation)) {
-          payload.stmts[annotationIndex] = new SharedAnnotation(annotation);
+          payload.stmts[annotationIndex] = SharedAnnotation.replaceInvalidJson(annotation);
         } else {
           return false;
         }

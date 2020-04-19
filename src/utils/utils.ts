@@ -1,5 +1,10 @@
-export function stringIsInvalidJson(string: string): boolean {
-  if (string.match(/[\b\f\n\r\t\v\0]/))
-    return false;
-  return true;
+export function replaceInvalidJson(string: string): string {
+  return string.replace(/[\\]/g, '\\\\')
+    .replace(/[\"]/g, '\\\"')
+    .replace(/[\/]/g, '\\/')
+    .replace(/[\b]/g, '\\b')
+    .replace(/[\f]/g, '\\f')
+    .replace(/[\n]/g, '\\n')
+    .replace(/[\r]/g, '\\r')
+    .replace(/[\t]/g, '\\t')
 }
