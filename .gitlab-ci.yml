@@ -1,5 +1,5 @@
 variables:
-   USERNAME: deployment   
+   USERNAME: deployment
 
 image: node:12
 
@@ -27,14 +27,14 @@ buildDev:
   - cp "$DEV_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json  
+  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
     - package.json
 
 ########################
-    
+
 buildQa:
   stage: build
   only:
@@ -47,14 +47,14 @@ buildQa:
   # - cp "$QA_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags  --always)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json    
+  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
     - package.json
 
 ########################
-    
+
 buildProd:
   stage: build
   only:
@@ -65,16 +65,16 @@ buildProd:
   - npm run compile
   - cp "$PROD_SERVER_CONFIG" dist/serverConfig.json
   # - cp "$PROD_SERVER_CONFIG2" dist/serverConfig2.json
-  - LAST_TAG=$(git describe --tags --always)
+  - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json    
+  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
     - package.json
 
-    
-########################    
+
+########################
 ### DEPLOYMENTS
 ########################
 
@@ -82,6 +82,9 @@ deployDev:
   stage: deploy
   only:
     - dev
+  environment:
+    name: dev
+    url: https://dev.services.peblproject.org
   script:
    - apt-get update -y
    - apt-get install openssh-client -y
@@ -104,11 +107,14 @@ deployDev:
    - ssh -p22 $USERNAME@$DEV_SERVER_IP "date > /srv/devNodeUpdated"
 
 ########################
-   
+
 deployQa:
   stage: deploy
   only:
     - qa
+  environment:
+    name: qa
+    url: https://qa.services.peblproject.org
   script:
    - apt-get update -y
    - apt-get install openssh-client -y
@@ -129,13 +135,16 @@ deployQa:
    - scp -P22 -r package.json $USERNAME@$QA_SERVER_IP:/srv/qaNode/
    - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && npm install --production"
    - ssh -p22 $USERNAME@$QA_SERVER_IP "date > /srv/qaNodeUpdated"
-   
+
 ########################
-   
+
 deployProd:
   stage: deploy
   only:
     - master
+  environment:
+    name: prod
+    url: https://services.peblproject.org
   script:
    - apt-get update -y
    - apt-get install openssh-client -y
@@ -156,4 +165,3 @@ deployProd:
    - scp -P22 -r package.json $USERNAME@$PROD_SERVER_IP:/srv/prodNode/
    - ssh -p22 $USERNAME@$PROD_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -p22 $USERNAME@$PROD_SERVER_IP "date > /srv/prodNodeUpdated"
-
