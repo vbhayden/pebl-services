@@ -158,7 +158,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
               });
           }
         }
-
         walkJobs(jobSet);
       });
     });

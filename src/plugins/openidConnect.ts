@@ -2,14 +2,17 @@ import { AuthenticationManager } from '../interfaces/authenticationManager'
 
 import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client";
+import { UserManager } from '../interfaces/userManager';
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
   private activeClient: Client | null = null;
   private config: { [key: string]: any };
+  private userManager: UserManager;
 
-  constructor(config: { [key: string]: any }) {
+  constructor(config: { [key: string]: any }, userManager: UserManager) {
     this.config = config;
+    this.userManager = userManager;
     OpenIDClient.Issuer.discover(config.authenticationUrl)
       .then((issued: Issuer<Client>) => {
 
@@ -49,7 +52,13 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                 session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
                 let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
                 session.refreshTokenExpiration = Date.now() + refreshExpiration;
-                this.getProfile(session, callback);
+                this.getProfile(session, (refreshed: boolean) => {
+                  this.adjustUserPermissions(session.identity.preferred_username,
+                    session.activeTokens.access_token,
+                    () => {
+                      callback(refreshed);
+                    });
+                });
               } else {
                 console.log("No expiration date set on access token");
                 this.clearActiveTokens(session, callback);
@@ -168,11 +177,13 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: boolean) => void): void {
+  private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: false) => void): void {
     delete session.activeTokens;
     delete session.accessTokenExpiration;
     delete session.refreshTokenExpiration;
-    session.save(() => { if (callback) callback(false); });
+    session.save(() => {
+      if (callback) callback(false);
+    });
   }
 
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
@@ -213,8 +224,75 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     return true;
   }
 
+  private adjustUserPermissions(userId: string, accessToken: string, callback: () => void): void {
+
+    this.userManager.getUserRoles(userId, (roleIds: string[]) => {
+      let accessTokenObject = JSON.parse(new Buffer((accessToken.split('.')[1]), 'base64').toString());
+
+      console.log("accessToken", accessTokenObject);
+
+      let removeRoles = (roles: string[], done: () => void) => {
+        let role = roles.pop();
+        if (role) {
+          this.userManager.deleteUserRole(userId,
+            role,
+            () => {
+              removeRoles(roles, done);
+            });
+        } else {
+          done();
+        }
+      }
+      if (accessTokenObject.resource_access) {
+        let rolesToRemove: string[] = [];
+        let rolesToAdd: string[] = [];
+        let ps = accessTokenObject.resource_access["PeBL-Services"];
+        if (ps && ps.roles) {
+          for (let incomingRole of ps.roles) {
+            let found = false;
+            for (let roleId of roleIds) {
+              if (roleId === incomingRole) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              rolesToAdd.push(incomingRole);
+            }
+          }
+          for (let roleId of roleIds) {
+            let found = false;
+            for (let incomingRole of ps.roles) {
+              if (roleId === incomingRole) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              rolesToRemove.push(roleId);
+            }
+          }
+
+          console.log("adjusting", rolesToRemove, rolesToAdd);
+
+          removeRoles(rolesToRemove, () => {
+            if (rolesToAdd.length > 0) {
+              this.userManager.addUserRoles(userId, rolesToAdd, (added: boolean) => {
+                callback();
+              });
+            } else {
+              callback();
+            }
+          });
+        } else {
+          console.log("adjusting, remove all", roleIds);
+          removeRoles(roleIds, callback);
+        }
+      }
+    });
+  }
+
   redirect(req: Request, session: Express.Session, res: Response): void {
-    let self = this;
     if (this.activeClient) {
       this.activeClient.callback(
         this.config.authenticationRedirectURIs[0],
@@ -227,8 +305,16 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
               let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
               session.refreshTokenExpiration = Date.now() + refreshExpiration;
-              self.getProfile(session, (found) => {
-                res.redirect(session.redirectUrl);
+              this.getProfile(session, (found) => {
+                if (found) {
+                  this.adjustUserPermissions(session.identity.preferred_username,
+                    session.activeTokens.access_token,
+                    () => {
+                      res.redirect(session.redirectUrl);
+                    });
+                } else {
+                  console.log("Missing profile identity on redirect");
+                }
               });
             } else {
               console.log("No expiration date set on access token");

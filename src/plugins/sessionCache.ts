@@ -145,7 +145,16 @@ export class RedisSessionDataCache implements SessionDataManager {
         }
       });
     } else {
-      this.redis.sadd(key, value);
+      this.redis.sadd(key, value, (err, result) => {
+        if (err) {
+          console.log(err);
+          if (callback)
+            callback(-1);
+        } else {
+          if (callback)
+            callback(result);
+        }
+      });
     }
   }
 
@@ -153,13 +162,9 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis.smembers(key, (err, result) => {
       if (err) {
         console.log(err);
-        if (callback !== undefined) {
-          callback([]);
-        }
+        callback([]);
       } else {
-        if (callback !== undefined) {
-          callback(result);
-        }
+        callback(result);
       }
     })
   }
