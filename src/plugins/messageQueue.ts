@@ -249,6 +249,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         let vals = this.lrsManager.parseStatements(values);
         if (vals[0].length > 0)
           this.lrsManager.storeStatements(vals[0], () => {
+            this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
             console.log('success');
           }, () => {
             console.log('failure');
