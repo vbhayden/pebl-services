@@ -3,6 +3,8 @@
 
     "validRedirectDomains": ["localhost2"],
 
+    "version": "REPLACEMEVERSION",
+    
     "privateKeyPath": "./localhost2.key",
     "certificatePath": "./localhost2.crt",
 

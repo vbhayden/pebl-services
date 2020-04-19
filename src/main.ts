@@ -454,5 +454,5 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 });
 
 httpsServer.listen(config.port, function() {
-  console.log(`listening on port ${config.port}`);
+  console.log(`listening on port ${config.port}, version ${config.version}`);
 });
