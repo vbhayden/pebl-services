@@ -50,7 +50,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     if (payload.smts && Array.isArray(payload.smts) && payload.smts.length > 0) {
       for (let event in payload.smts) {
         if (XApiStatement.is(payload.smts[event]))
-          payload.smts[event] = XApiStatement.replaceInvalidJson(payload.smts[event]);
+          payload.smts[event] = new XApiStatement(payload.smts[event]);
         else
           return false;
       }

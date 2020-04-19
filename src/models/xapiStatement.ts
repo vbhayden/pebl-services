@@ -1,5 +1,4 @@
 import { PREFIX_PEBL_THREAD } from "../utils/constants";
-import { replaceInvalidJson } from "../utils/utils";
 class Verb {
   id: string;
   display: { [key: string]: string };
@@ -7,15 +6,6 @@ class Verb {
   constructor(raw: { [key: string]: any }) {
     this.id = raw.id;
     this.display = raw.display;
-  }
-
-  static replaceInvalidJson(x: Verb): Verb {
-    x.id = replaceInvalidJson(x.id);
-    for (let string in x.display) {
-      x.display[string] = replaceInvalidJson(x.display[string]);
-    }
-
-    return x;
   }
 
   static is(x: any): boolean {
@@ -56,21 +46,21 @@ class AgentObject {
     this.account = raw.account;
   }
 
-  static replaceInvalidJson(x: AgentObject): AgentObject {
-    if (x.name)
-      x.name = replaceInvalidJson(x.name);
-    if (x.mbox)
-      x.mbox = replaceInvalidJson(x.mbox);
-    if (x.mbox_sha1sum)
-      x.mbox_sha1sum = replaceInvalidJson(x.mbox_sha1sum);
-    if (x.openid)
-      x.openid = replaceInvalidJson(x.openid);
-    if (x.account) {
-      x.account.homePage = replaceInvalidJson(x.account.homePage);
-      x.account.name = replaceInvalidJson(x.account.name);
-    }
-    return x;
-  }
+  // static replaceInvalidJson(x: AgentObject): AgentObject {
+  //   if (x.name)
+  //     x.name = replaceInvalidJson(x.name);
+  //   if (x.mbox)
+  //     x.mbox = replaceInvalidJson(x.mbox);
+  //   if (x.mbox_sha1sum)
+  //     x.mbox_sha1sum = replaceInvalidJson(x.mbox_sha1sum);
+  //   if (x.openid)
+  //     x.openid = replaceInvalidJson(x.openid);
+  //   if (x.account) {
+  //     x.account.homePage = replaceInvalidJson(x.account.homePage);
+  //     x.account.name = replaceInvalidJson(x.account.name);
+  //   }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -117,16 +107,16 @@ class GroupObject {
     this.name = raw.name;
   }
 
-  static replaceInvalidJson(x: GroupObject): GroupObject {
-    for (let obj in x.member) {
-      x.member[obj] = AgentObject.replaceInvalidJson(x.member[obj]);
-    }
+  // static replaceInvalidJson(x: GroupObject): GroupObject {
+  //   for (let obj in x.member) {
+  //     x.member[obj] = AgentObject.replaceInvalidJson(x.member[obj]);
+  //   }
 
-    if (x.name)
-      x.name = replaceInvalidJson(x.name);
+  //   if (x.name)
+  //     x.name = replaceInvalidJson(x.name);
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -154,11 +144,11 @@ class StatementRefObject {
     this.id = raw.id;
   }
 
-  static replaceInvalidJson(x: StatementRefObject): StatementRefObject {
-    x.id = replaceInvalidJson(x.id);
+  // static replaceInvalidJson(x: StatementRefObject): StatementRefObject {
+  //   x.id = replaceInvalidJson(x.id);
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -214,10 +204,10 @@ class SubStatementObject {
     this.attachments = raw.attachments;
   }
 
-  static replaceInvalidJson(x: SubStatementObject): SubStatementObject {
-    return x;
-    //TODO
-  }
+  // static replaceInvalidJson(x: SubStatementObject): SubStatementObject {
+  //   return x;
+  //   //TODO
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -240,15 +230,15 @@ class InteractionComponent {
     this.description = raw.description;
   }
 
-  static replaceInvalidJson(x: InteractionComponent): InteractionComponent {
-    x.id = replaceInvalidJson(x.id);
+  // static replaceInvalidJson(x: InteractionComponent): InteractionComponent {
+  //   x.id = replaceInvalidJson(x.id);
 
-    for (let key in x.description) {
-      x.description[key] = replaceInvalidJson(x.description[key]);
-    }
+  //   for (let key in x.description) {
+  //     x.description[key] = replaceInvalidJson(x.description[key]);
+  //   }
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -298,67 +288,67 @@ export class ActivityObject {
     this.definition = raw.definition;
   }
 
-  static replaceInvalidJson(x: ActivityObject): ActivityObject {
-    x.id = replaceInvalidJson(x.id);
-    if (x.definition) {
-      if (x.definition.name) {
-        for (let key in x.definition.name) {
-          x.definition.name[key] = replaceInvalidJson(x.definition.name[key]);
-        }
-      }
-      if (x.definition.description) {
-        for (let key in x.definition.description) {
-          x.definition.description[key] = replaceInvalidJson(x.definition.description[key]);
-        }
-      }
-      if (x.definition.type)
-        x.definition.type = replaceInvalidJson(x.definition.type);
+  // static replaceInvalidJson(x: ActivityObject): ActivityObject {
+  //   x.id = replaceInvalidJson(x.id);
+  //   if (x.definition) {
+  //     if (x.definition.name) {
+  //       for (let key in x.definition.name) {
+  //         x.definition.name[key] = replaceInvalidJson(x.definition.name[key]);
+  //       }
+  //     }
+  //     if (x.definition.description) {
+  //       for (let key in x.definition.description) {
+  //         x.definition.description[key] = replaceInvalidJson(x.definition.description[key]);
+  //       }
+  //     }
+  //     if (x.definition.type)
+  //       x.definition.type = replaceInvalidJson(x.definition.type);
 
-      if (x.definition.moreInfo)
-        x.definition.moreInfo = replaceInvalidJson(x.definition.moreInfo);
+  //     if (x.definition.moreInfo)
+  //       x.definition.moreInfo = replaceInvalidJson(x.definition.moreInfo);
 
-      if (x.definition.interactionType)
-        x.definition.interactionType = replaceInvalidJson(x.definition.interactionType);
+  //     if (x.definition.interactionType)
+  //       x.definition.interactionType = replaceInvalidJson(x.definition.interactionType);
 
-      if (x.definition.correctResponsePattern) {
-        for (let pattern of x.definition.correctResponsePattern) {
-          pattern = replaceInvalidJson(pattern);
-        }
-      }
+  //     if (x.definition.correctResponsePattern) {
+  //       for (let pattern of x.definition.correctResponsePattern) {
+  //         pattern = replaceInvalidJson(pattern);
+  //       }
+  //     }
 
-      if (x.definition.choices) {
-        for (let choice of x.definition.choices) {
-          choice = InteractionComponent.replaceInvalidJson(choice);
-        }
-      }
+  //     if (x.definition.choices) {
+  //       for (let choice of x.definition.choices) {
+  //         choice = InteractionComponent.replaceInvalidJson(choice);
+  //       }
+  //     }
 
-      if (x.definition.scale) {
-        for (let s of x.definition.scale) {
-          s = InteractionComponent.replaceInvalidJson(s);
-        }
-      }
+  //     if (x.definition.scale) {
+  //       for (let s of x.definition.scale) {
+  //         s = InteractionComponent.replaceInvalidJson(s);
+  //       }
+  //     }
 
-      if (x.definition.source) {
-        for (let s of x.definition.source) {
-          s = InteractionComponent.replaceInvalidJson(s);
-        }
-      }
+  //     if (x.definition.source) {
+  //       for (let s of x.definition.source) {
+  //         s = InteractionComponent.replaceInvalidJson(s);
+  //       }
+  //     }
 
-      if (x.definition.target) {
-        for (let t of x.definition.target) {
-          t = InteractionComponent.replaceInvalidJson(t);
-        }
-      }
+  //     if (x.definition.target) {
+  //       for (let t of x.definition.target) {
+  //         t = InteractionComponent.replaceInvalidJson(t);
+  //       }
+  //     }
 
-      if (x.definition.steps) {
-        for (let step of x.definition.steps) {
-          step = InteractionComponent.replaceInvalidJson(step);
-        }
-      }
-    }
+  //     if (x.definition.steps) {
+  //       for (let step of x.definition.steps) {
+  //         step = InteractionComponent.replaceInvalidJson(step);
+  //       }
+  //     }
+  //   }
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -465,24 +455,24 @@ class Attachment {
     this.fileUrl = raw.fileUrl;
   }
 
-  static replaceInvalidJson(x: Attachment): Attachment {
-    x.usageType = replaceInvalidJson(x.usageType);
-    for (let key in x.display) {
-      x.display[key] = replaceInvalidJson(x.display[key]);
-    }
-    if (x.description) {
-      for (let key in x.description) {
-        x.description[key] = replaceInvalidJson(x.description[key]);
-      }
-    }
-    x.contentType = replaceInvalidJson(x.contentType);
-    x.sha2 = replaceInvalidJson(x.sha2);
-    if (x.fileUrl) {
-      x.fileUrl = replaceInvalidJson(x.fileUrl);
-    }
+  // static replaceInvalidJson(x: Attachment): Attachment {
+  //   x.usageType = replaceInvalidJson(x.usageType);
+  //   for (let key in x.display) {
+  //     x.display[key] = replaceInvalidJson(x.display[key]);
+  //   }
+  //   if (x.description) {
+  //     for (let key in x.description) {
+  //       x.description[key] = replaceInvalidJson(x.description[key]);
+  //     }
+  //   }
+  //   x.contentType = replaceInvalidJson(x.contentType);
+  //   x.sha2 = replaceInvalidJson(x.sha2);
+  //   if (x.fileUrl) {
+  //     x.fileUrl = replaceInvalidJson(x.fileUrl);
+  //   }
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
@@ -613,78 +603,78 @@ export class XApiStatement {
     }
   }
 
-  static replaceInvalidJson(x: XApiStatement): XApiStatement {
-    x.id = replaceInvalidJson(x.id);
-    if (ActivityObject.is(x.object))
-      x.object = ActivityObject.replaceInvalidJson(<ActivityObject>x.object);
-    else if (AgentObject.is(x.object))
-      x.object = AgentObject.replaceInvalidJson(<AgentObject>x.object);
-    else if (GroupObject.is(x.object))
-      x.object = GroupObject.replaceInvalidJson(<GroupObject>x.object);
-    else if (StatementRefObject.is(x.object))
-      x.object = StatementRefObject.replaceInvalidJson(<StatementRefObject>x.object);
-    else if (SubStatementObject.is(x.object))
-      x.object = SubStatementObject.replaceInvalidJson(<SubStatementObject>x.object);
+  // static replaceInvalidJson(x: XApiStatement): XApiStatement {
+  //   x.id = replaceInvalidJson(x.id);
+  //   if (ActivityObject.is(x.object))
+  //     x.object = ActivityObject.replaceInvalidJson(<ActivityObject>x.object);
+  //   else if (AgentObject.is(x.object))
+  //     x.object = AgentObject.replaceInvalidJson(<AgentObject>x.object);
+  //   else if (GroupObject.is(x.object))
+  //     x.object = GroupObject.replaceInvalidJson(<GroupObject>x.object);
+  //   else if (StatementRefObject.is(x.object))
+  //     x.object = StatementRefObject.replaceInvalidJson(<StatementRefObject>x.object);
+  //   else if (SubStatementObject.is(x.object))
+  //     x.object = SubStatementObject.replaceInvalidJson(<SubStatementObject>x.object);
 
-    if (AgentObject.is(x.actor))
-      x.actor = AgentObject.replaceInvalidJson(<AgentObject>x.actor);
-    else if (GroupObject.is(x.actor))
-      x.actor = GroupObject.replaceInvalidJson(<GroupObject>x.actor);
+  //   if (AgentObject.is(x.actor))
+  //     x.actor = AgentObject.replaceInvalidJson(<AgentObject>x.actor);
+  //   else if (GroupObject.is(x.actor))
+  //     x.actor = GroupObject.replaceInvalidJson(<GroupObject>x.actor);
 
-    x.verb = Verb.replaceInvalidJson(x.verb);
+  //   x.verb = Verb.replaceInvalidJson(x.verb);
 
-    if (x.context) {
-      if (x.context.registration)
-        x.context.registration = replaceInvalidJson(x.context.registration);
-      if (x.context.instructor)
-        x.context.instructor = AgentObject.replaceInvalidJson(x.context.instructor);
-      if (x.context.team)
-        x.context.team = GroupObject.replaceInvalidJson(x.context.team);
-      if (x.context.contextActivities) {
-        if (x.context.contextActivities.parent) {
-          for (let p of x.context.contextActivities.parent) {
-            p = ActivityObject.replaceInvalidJson(p);
-          }
-        }
-        if (x.context.contextActivities.grouping) {
-          for (let g of x.context.contextActivities.grouping) {
-            g = ActivityObject.replaceInvalidJson(g);
-          }
-        }
-        if (x.context.contextActivities.category) {
-          for (let c of x.context.contextActivities.category) {
-            c = ActivityObject.replaceInvalidJson(c);
-          }
-        }
-        if (x.context.contextActivities.other) {
-          for (let o of x.context.contextActivities.other) {
-            o = ActivityObject.replaceInvalidJson(o);
-          }
-        }
-      }
-    }
+  //   if (x.context) {
+  //     if (x.context.registration)
+  //       x.context.registration = replaceInvalidJson(x.context.registration);
+  //     if (x.context.instructor)
+  //       x.context.instructor = AgentObject.replaceInvalidJson(x.context.instructor);
+  //     if (x.context.team)
+  //       x.context.team = GroupObject.replaceInvalidJson(x.context.team);
+  //     if (x.context.contextActivities) {
+  //       if (x.context.contextActivities.parent) {
+  //         for (let p of x.context.contextActivities.parent) {
+  //           p = ActivityObject.replaceInvalidJson(p);
+  //         }
+  //       }
+  //       if (x.context.contextActivities.grouping) {
+  //         for (let g of x.context.contextActivities.grouping) {
+  //           g = ActivityObject.replaceInvalidJson(g);
+  //         }
+  //       }
+  //       if (x.context.contextActivities.category) {
+  //         for (let c of x.context.contextActivities.category) {
+  //           c = ActivityObject.replaceInvalidJson(c);
+  //         }
+  //       }
+  //       if (x.context.contextActivities.other) {
+  //         for (let o of x.context.contextActivities.other) {
+  //           o = ActivityObject.replaceInvalidJson(o);
+  //         }
+  //       }
+  //     }
+  //   }
 
-    if (x.result) {
-      if (x.result.response)
-        x.result.response = replaceInvalidJson(x.result.response);
-      if (x.result.duration)
-        x.result.duration = replaceInvalidJson(x.result.duration);
-    }
+  //   if (x.result) {
+  //     if (x.result.response)
+  //       x.result.response = replaceInvalidJson(x.result.response);
+  //     if (x.result.duration)
+  //       x.result.duration = replaceInvalidJson(x.result.duration);
+  //   }
 
-    if (x.attachments) {
-      for (let att of x.attachments) {
-        att = Attachment.replaceInvalidJson(att);
-      }
-    }
+  //   if (x.attachments) {
+  //     for (let att of x.attachments) {
+  //       att = Attachment.replaceInvalidJson(att);
+  //     }
+  //   }
 
-    if (x.stored)
-      x.stored = replaceInvalidJson(x.stored);
+  //   if (x.stored)
+  //     x.stored = replaceInvalidJson(x.stored);
 
-    if (x.timestamp)
-      x.timestamp = replaceInvalidJson(x.timestamp);
+  //   if (x.timestamp)
+  //     x.timestamp = replaceInvalidJson(x.timestamp);
 
-    return x;
-  }
+  //   return x;
+  // }
 
   static is(x: any): boolean {
     if (!x)
