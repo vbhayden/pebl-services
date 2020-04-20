@@ -91,6 +91,21 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         }
       }
       return true;
+    } else {
+      let request = payload;
+      if (request.thread && typeof request.thread === "string") {
+        if (!this.validateThread(request.thread))
+          return false;
+
+        if (request.options) {
+          if (!(request.options instanceof Object))
+            return false;
+          if (request.options.groupId && typeof request.options.groupId !== "string")
+            return false;
+          if (request.options.isPrivate && typeof request.options.isPrivate !== "boolean")
+            return false;
+        }
+      }
     }
 
     return false;
