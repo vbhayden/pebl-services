@@ -63,8 +63,8 @@ buildProdMC:
   script:
   - npm install
   - npm run compile
-  - echo $USMC_SERVER_CONFIG
-  - cp "$USMC_SERVER_CONFIG" dist/serverConfig.json
+  - echo $USMC
+  - cp "$USMC" dist/serverConfig.json
   # - cp "$PROD_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
