@@ -398,13 +398,12 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       payload: payload
                     }
                   }));
-                  return;
-                }
-
-                if (req.session) {
+                  processMessages(messages);
+                } else if (req.session) {
                   authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
                     if (isLoggedIn && payload) {
                       processMessage(ws, req, payload);
+                      processMessages(messages);
                     } else {
                       ws.send(JSON.stringify({
                         identity: username,
@@ -414,8 +413,6 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     }
                   });
                 }
-              } else {
-
               }
             };
 
