@@ -113,7 +113,6 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   addUserRoles(userId: string, roleIds: string[], callback: (data: boolean) => void): void {
     console.log(userId, roleIds);
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds, (added: number) => {
-      console.log("adding role", userId, roleIds, added);
       if (added > 0) {
         this.setLastModifiedPermissions(userId, Date.now() + "");
         for (let roleId of roleIds) {
