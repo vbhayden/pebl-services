@@ -74,7 +74,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       JSON.stringify(jobMessage),
       (didSet: boolean) => {
         if (didSet) {
-          console.log('Job started', jobMessage.jobType);
+          console.log('Job started', jobMessage.jobType, Date.now());
           this.dispatchJobMessage(jobMessage);
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
         } else {
@@ -164,7 +164,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   createIncomingQueue(callback: ((success: boolean) => void)): void {
-    this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES }, (err, resp) => {
+    this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
       if (err) {
         console.log(err);
         callback(false);
@@ -176,7 +176,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
-    this.rsmq.createQueue({ qname: sessionId }, (err, resp) => {
+    this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
       if (err) {
         console.log(err);
         callback(false);
@@ -242,7 +242,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchToLrs(message: JobMessage): void {
-    console.log('dispatch to LRS');
+    console.log('dispatch to LRS', Date.now());
 
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
@@ -251,8 +251,26 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           this.lrsManager.storeStatements(vals[0], () => {
             this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
             console.log('success');
-          }, () => {
-            console.log('failure');
+          }, (e) => {
+            console.log('lrs post failed', e);
+            if (!(e instanceof Error)) {
+              let errJson;
+              try {
+                errJson = JSON.parse(e.message);
+              } catch (e) {
+                console.log("LRS bad json parse", e);
+              }
+              let chunks = errJson.message.split(" ");
+              for (let chunk of chunks) {
+                if (chunk.length >= 36) {
+                  let stmt = vals[3][chunk]
+                  if (stmt) {
+                    this.sessionDataManager.removeBadLRSStatement(stmt);
+                    break;
+                  }
+                }
+              }
+            }
           });
         if (vals[1].length > 0)
           for (let activity of vals[1])
@@ -266,7 +284,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         message.jobType,
         () => {
           message.finished = true;
-          console.log("Job finished", message.jobType);
+          console.log("Job finished", message.jobType, Date.now());
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
         });
     });
@@ -372,7 +390,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             message.jobType,
             () => {
               message.finished = true;
-              console.log("Job finished", message.jobType);
+              console.log("Job finished", message.jobType, Date.now());
               this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
             });
         });

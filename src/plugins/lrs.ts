@@ -34,20 +34,28 @@ export class LRSPlugin implements LRS {
     return voidedStatements;
   }
 
-  parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[]] {
+  parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[], { [key: string]: string }] {
     let statements = [] as XApiStatement[];
     let activities = [] as Activity[];
     let profiles = [] as Profile[];
-    for (let string of strings) {
-      let obj = JSON.parse(string);
-      if (XApiStatement.is(obj))
-        statements.push(new XApiStatement(obj));
-      else if (Activity.is(obj))
-        activities.push(new Activity(obj));
-      else if (Profile.is(obj))
-        profiles.push(new Profile(obj));
+    let lookup: { [key: string]: string } = {};
+    for (let str of strings) {
+      let obj = JSON.parse(str);
+      if (XApiStatement.is(obj)) {
+        let x = new XApiStatement(obj);
+        statements.push(x);
+        lookup[x.id] = str;
+      } else if (Activity.is(obj)) {
+        let a = new Activity(obj);
+        activities.push(a);
+        lookup[a.id] = str;
+      } else if (Profile.is(obj)) {
+        let p = new Profile(obj);
+        profiles.push(p);
+        lookup[p.id] = str;
+      }
     }
-    return [statements, activities, profiles];
+    return [statements, activities, profiles, lookup];
   }
 
   getStatements(xApiQuery: XApiQuery, callback: ((stmts: XApiStatement[]) => void)): void {

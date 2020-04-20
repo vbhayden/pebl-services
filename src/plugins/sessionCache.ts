@@ -251,6 +251,16 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  removeBadLRSStatement(id: string): void {
+    this.redis.lrem('outgoingXapi', -1, id, (err, result) => {
+      if (err) {
+        console.log(err);
+      } else {
+
+      }
+    });
+  }
+
   queueForLrs(value: string): void {
     this.redis.rpush('outgoingXapi', value);
   }

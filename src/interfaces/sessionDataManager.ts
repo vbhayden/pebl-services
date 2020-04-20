@@ -26,5 +26,7 @@ export interface SessionDataManager {
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
   trimForLrs(count: number): void;
 
+  removeBadLRSStatement(id: string): void;
+
   broadcast(channel: string, message: string): void;
 }
