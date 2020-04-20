@@ -48,19 +48,27 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   }
 
   validateSaveNotifications(payload: { [key: string]: any }): boolean {
-    return false;
+    return false; //TODO
   }
 
   authorizeSaveNotifications(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteNotification(payload: { [key: string]: any }): boolean {
+    if (typeof payload.xId === "string")
+      return true;
     return false;
   }
 
   authorizeDeleteNotification(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
 
