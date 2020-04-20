@@ -1,7 +1,6 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { NavigationManager } from "../interfaces/navigationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { XApiStatement } from "../models/xapiStatement";
 import { generateUserNavigationsKey, generateNavigationsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -50,7 +49,7 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
     if (payload.navigations && Array.isArray(payload.navigations) && payload.navigations.length > 0) {
       for (let nav in payload.navigations) {
         if (Navigation.is(payload.navigations[nav]))
-          payload.navigations[nav] = Navigation.replaceInvalidJson(payload.navigations[nav]);
+          payload.navigations[nav] = new Navigation(payload.navigations[nav]);
         else
           return false;
       }
@@ -79,15 +78,14 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
     return canUser || canGroup;
   }
 
-
-  getNavigations(identity: string, callback: ((navigations: XApiStatement[]) => void)): void {
+  getNavigations(identity: string, callback: ((navigations: Navigation[]) => void)): void {
     this.sessionData.getHashValues(generateUserNavigationsKey(identity),
       (result: string[]) => {
-        callback(result.map((x) => new XApiStatement(JSON.parse(x))));
+        callback(result.map((x) => new Navigation(JSON.parse(x))));
       })
   }
 
-  saveNavigations(identity: string, navigations: XApiStatement[], callback: ((success: boolean) => void)): void {
+  saveNavigations(identity: string, navigations: Navigation[], callback: ((success: boolean) => void)): void {
     let arr = [];
     for (let navigation of navigations) {
       let navigationStr = JSON.stringify(navigation);

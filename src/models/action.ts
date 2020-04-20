@@ -41,10 +41,6 @@ export class Action extends XApiStatement {
     }
   }
 
-  static replaceInvalidJson(x: Action): Action {
-    return new Action(XApiStatement.replaceInvalidJson(x));
-  }
-
   static is(x: any): boolean {
     if (!XApiStatement.is(x))
       return false;
