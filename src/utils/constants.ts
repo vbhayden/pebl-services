@@ -238,3 +238,7 @@ export function generateTimestampForAnnotations(id: string): string {
 export function generateTimestampForReference(id: string): string {
   return 'timestamp:references:' + id;
 }
+
+export function generateTimestampForNotification(id: string): string {
+  return 'timestamp:notifications:' + id;
+}

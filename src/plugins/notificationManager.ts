@@ -1,8 +1,8 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { NotificationManager } from "../interfaces/notificationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { XApiStatement } from "../models/xapiStatement";
-import { generateUserNotificationsKey, generateNotificationsKey, generateBroadcastQueueForUserId } from "../utils/constants";
+import { XApiStatement, Voided } from "../models/xapiStatement";
+import { generateUserNotificationsKey, generateNotificationsKey, generateBroadcastQueueForUserId, generateTimestampForNotification } from "../utils/constants";
 import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -17,7 +17,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       this.validateGetNotifications.bind(this),
       this.authorizeGetNotifications.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getNotifications(payload.identity, dispatchCallback);
+        this.getNotifications(payload.identity, payload.timestamp, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveNotifications",
@@ -64,24 +64,33 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   }
 
 
-  getNotifications(identity: string, callback: ((notifications: XApiStatement[]) => void)): void {
-    this.sessionData.getHashValues(generateUserNotificationsKey(identity),
-      (result: string[]) => {
-        callback(result.map((x) => new XApiStatement(JSON.parse(x))));
-      })
+  getNotifications(identity: string, timestamp: number, callback: ((notifications: XApiStatement[]) => void)): void {
+    this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForNotification(identity), timestamp, (data) => {
+      this.sessionData.getHashMultiField(generateUserNotificationsKey(identity), data.map((x) => generateNotificationsKey(x)), (result) => {
+        callback(result.map(function(x) {
+          let obj = JSON.parse(x);
+          if (XApiStatement.is(obj))
+            return new XApiStatement(obj);
+          else
+            return new Voided(obj);
+        }));
+      });
+    });
   }
 
   saveNotifications(identity: string, notifications: XApiStatement[], callback: ((success: boolean) => void)): void {
     let arr = [];
+    let date = new Date();
     for (let notification of notifications) {
+      notification.stored = date.toISOString();
       let notificationStr = JSON.stringify(notification);
       arr.push(generateNotificationsKey(notification.id));
       arr.push(notificationStr);
-      this.sessionData.queueForLrs(notificationStr);
+      this.sessionData.addTimestampValue(generateTimestampForNotification(identity), date.getTime(), notification.id);
     }
     this.sessionData.setHashValues(generateUserNotificationsKey(identity), arr);
     this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
-      requestType: "newNotifications",
+      requestType: "getNotifications",
       data: notifications
     })));
     callback(true);
@@ -90,14 +99,24 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   deleteNotification(identity: string, id: string, callback: ((success: boolean) => void)): void {
     this.sessionData.getHashValue(generateUserNotificationsKey(identity), generateNotificationsKey(id), (data) => {
       if (data) {
-        this.sessionData.queueForLrsVoid(data);
+        let voided = new XApiStatement(JSON.parse(data)).toVoidRecord();
+        this.sessionData.addTimestampValue(generateTimestampForNotification(identity), new Date(voided.stored).getTime(), voided.id);
+        this.sessionData.setHashValues(generateUserNotificationsKey(identity), [generateNotificationsKey(voided.id), JSON.stringify(voided)]);
+        this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
+          requestType: "getNotifications",
+          data: voided
+        })));
       }
-      this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
-        generateNotificationsKey(id), (result: boolean) => {
-          if (!result) {
-            console.log("failed to remove notification", id);
-          }
-          callback(result);
+      this.sessionData.deleteSortedTimestampMember(generateTimestampForNotification(identity),
+        id,
+        (deleted: number) => {
+          this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
+            generateNotificationsKey(id), (result: boolean) => {
+              if (!result) {
+                console.log("failed to remove notification", id);
+              }
+              callback(result);
+            });
         });
     });
   }

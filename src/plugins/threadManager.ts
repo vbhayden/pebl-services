@@ -8,15 +8,18 @@ import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
 import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
+import { NotificationManager } from "../interfaces/notificationManager";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
   private groupManager: GroupManager;
+  private notificationManager: NotificationManager;
 
-  constructor(sessionData: SessionDataManager, groupManager: GroupManager) {
+  constructor(sessionData: SessionDataManager, groupManager: GroupManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
     this.groupManager = groupManager;
+    this.notificationManager = notificationManager;
 
     this.addMessageTemplate(new MessageTemplate("saveThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
@@ -271,13 +274,16 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.getSubscribedUsers(thread, (users) => {
       for (let user of users) {
-        if (user !== userId) //Don't send the message to the sender
+        if (user !== userId) { //Don't send the message to the sender
           this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
             requestType: "newThreadedMessage",
             data: message,
             thread: message.thread,
             options: { isPrivate: message.isPrivate, groupId: message.groupId }
           })));
+
+          this.notificationManager.saveNotifications(user, [message], (success) => { });
+        }
       }
     });
     callback(true);

@@ -7,13 +7,16 @@ import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Voided } from "../models/xapiStatement";
 import { ServiceMessage } from "../models/serviceMessage";
+import { NotificationManager } from "../interfaces/notificationManager";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
+  private notificationManager: NotificationManager;
 
-  constructor(sessionData: SessionDataManager) {
+  constructor(sessionData: SessionDataManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
+    this.notificationManager = notificationManager;
     this.addMessageTemplate(new MessageTemplate("getReferences",
       this.validateGetReferences.bind(this),
       this.authorizeGetReferences.bind(this),
@@ -102,8 +105,10 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
   saveReferences(identity: string, references: Reference[], callback: ((success: boolean) => void)): void {
     let arr = [];
     let date = new Date();
+    let notifs = [];
     for (let stmt of references) {
       stmt.stored = date.toISOString();
+      notifs.push(stmt);
       let stmtStr = JSON.stringify(stmt);
       arr.push(generateReferencesKey(stmt.id));
       arr.push(stmtStr);
@@ -114,6 +119,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
         data: stmt
       })));
     }
+    this.notificationManager.saveNotifications(identity, notifs, (success) => { });
     this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
     callback(true);
   }
