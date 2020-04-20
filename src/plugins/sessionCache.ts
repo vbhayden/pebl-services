@@ -267,7 +267,9 @@ export class RedisSessionDataCache implements SessionDataManager {
 
   queueForLrsVoid(value: string): void {
     let stmt = new XApiStatement(JSON.parse(value));
-    this.redis.rpush('outgoingXapi', JSON.stringify(stmt.toVoidRecord()));
+    let voided = stmt.toVoidRecord();
+    delete voided.id;
+    this.redis.rpush('outgoingXapi', JSON.stringify(voided));
   }
 
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
