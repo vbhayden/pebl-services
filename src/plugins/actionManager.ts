@@ -90,14 +90,14 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   }
 
   saveActions(identity: string, actions: Action[], callback: ((success: boolean) => void)): void {
-    let arr = [];
+    // let arr = [];
     for (let action of actions) {
       let actionStr = JSON.stringify(action);
-      arr.push(generateActionsKey(action.id));
-      arr.push(actionStr);
+      // arr.push(generateActionsKey(action.id));
+      // arr.push(actionStr);
       this.sessionData.queueForLrs(actionStr);
     }
-    this.sessionData.setHashValues(generateUserActionsKey(identity), arr);
+    // this.sessionData.setHashValues(generateUserActionsKey(identity), arr);
     callback(true);
   }
 
