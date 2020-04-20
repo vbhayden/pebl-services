@@ -105,6 +105,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           if (request.options.isPrivate && typeof request.options.isPrivate !== "boolean")
             return false;
         }
+
+        payload.requests = [request];
+        return true;
       }
     }
 
