@@ -85,14 +85,14 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   }
 
   saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
-    let arr = [];
+    // let arr = [];
     for (let session of sessions) {
       let sessionStr = JSON.stringify(session);
-      arr.push(generateSessionsKey(session.id));
-      arr.push(sessionStr);
+      // arr.push(generateSessionsKey(session.id));
+      // arr.push(sessionStr);
       this.sessionData.queueForLrs(sessionStr);
     }
-    this.sessionData.setHashValues(generateUserSessionsKey(identity), arr);
+    // this.sessionData.setHashValues(generateUserSessionsKey(identity), arr);
     callback(true);
   }
 

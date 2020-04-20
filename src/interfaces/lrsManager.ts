@@ -8,7 +8,7 @@ export interface LRS {
   storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void; //Store the specified statements into an LRS
   voidStatements(stmts: XApiStatement[]): void; //Void the specified statements in an LRS
 
-  parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[]];
+  parseStatements(strings: string[]): [XApiStatement[], Activity[], Profile[], { [key: string]: string }];
   getStatements(xApiQuery: XApiQuery, callback: ((stmts?: XApiStatement[]) => void)): void;
 
   storeActivity(activity: Activity, callback: ((success: boolean) => void)): void; //Store the specified activity into an LRS

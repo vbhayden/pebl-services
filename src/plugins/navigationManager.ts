@@ -86,14 +86,14 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
   }
 
   saveNavigations(identity: string, navigations: Navigation[], callback: ((success: boolean) => void)): void {
-    let arr = [];
+    // let arr = [];
     for (let navigation of navigations) {
       let navigationStr = JSON.stringify(navigation);
-      arr.push(generateNavigationsKey(navigation.id));
-      arr.push(navigationStr);
+      // arr.push(generateNavigationsKey(navigation.id));
+      // arr.push(navigationStr);
       this.sessionData.queueForLrs(navigationStr);
     }
-    this.sessionData.setHashValues(generateUserNavigationsKey(identity), arr);
+    // this.sessionData.setHashValues(generateUserNavigationsKey(identity), arr);
 
     callback(true);
   }
