@@ -8,15 +8,18 @@ import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
 import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
+import { NotificationManager } from "../interfaces/notificationManager";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
   private groupManager: GroupManager;
+  private notificationManager: NotificationManager;
 
-  constructor(sessionData: SessionDataManager, groupManager: GroupManager) {
+  constructor(sessionData: SessionDataManager, groupManager: GroupManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
     this.groupManager = groupManager;
+    this.notificationManager = notificationManager;
 
     this.addMessageTemplate(new MessageTemplate("saveThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
@@ -29,7 +32,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.validateGetThreadedMessages.bind(this),
       this.authorizeGetThreadedMessages.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getMessages(payload.identity, payload.thread, payload.timestamp, dispatchCallback, payload.options);
+        this.getMessages(payload.identity, payload.requests, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("subscribeThread",
@@ -70,24 +73,27 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   validateGetThreadedMessages(payload: { [key: string]: any }): boolean {
-    console.log(payload);
-    if (payload.thread && typeof payload.thread === "string") {
-      if (!this.validateThread(payload.thread))
-        return false;
+    if (payload.requests) {
+      for (let requestIndex in payload.requests) {
+        let request = payload.requests[requestIndex];
+        if (request.thread && typeof request.thread === "string") {
+          if (!this.validateThread(request.thread))
+            return false;
 
-      if (payload.options) {
-        if (!(payload.options instanceof Object))
-          return false;
-        if (payload.options.groupId && typeof payload.options.groupId !== "string")
-          return false;
-        if (payload.options.isPrivate && typeof payload.options.isPrivate !== "boolean")
-          return false;
+          if (request.options) {
+            if (!(request.options instanceof Object))
+              return false;
+            if (request.options.groupId && typeof request.options.groupId !== "string")
+              return false;
+            if (request.options.isPrivate && typeof request.options.isPrivate !== "boolean")
+              return false;
+          }
+        }
       }
-
       return true;
     }
+
     return false;
-    return true
   }
 
   authorizeGetThreadedMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -268,41 +274,58 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.getSubscribedUsers(thread, (users) => {
       for (let user of users) {
-        if (user !== userId) //Don't send the message to the sender
+        if (user !== userId) { //Don't send the message to the sender
           this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
             requestType: "newThreadedMessage",
             data: message,
             thread: message.thread,
             options: { isPrivate: message.isPrivate, groupId: message.groupId }
           })));
+
+          this.notificationManager.saveNotifications(user, [message], (success) => { });
+        }
       }
     });
     callback(true);
   }
 
-  getMessages(userId: string, baseThread: string, timestamp: number, callback: ((data: { [key: string]: any }) => void), options?: { [key: string]: any }): void {
-    let thread = baseThread;
-    if (options && options.groupId)
-      thread = this.getGroupScopedThread(thread, options.groupId);
-    else if (options && options.isPrivate)
-      thread = this.getPrivateScopedThread(thread, userId);
+  getMessages(userId: string, threadRequests: { [key: string]: any }[], callback: ((data: { [key: string]: any }[]) => void)): void {
+    let results: { [key: string]: any }[] = [];
 
-    this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp, (data) => {
-      this.sessionData.getHashMultiField(generateThreadKey(thread), data, (vals) => {
-        callback({
-          data: vals.map((val) => {
-            let obj = JSON.parse(val);
-            if (Message.is(obj))
-              return new Message(obj);
-            else
-              return new Voided(obj);
-          }),
-          thread: baseThread,
-          options: options,
-          requestType: "getThreadedMessages"
+    let processThreads = (threadRequests: { [key: string]: any }[]) => {
+      let threadRequest = threadRequests.pop();
+      if (threadRequest) {
+        let baseThread = threadRequest.thread;
+        let timestamp = threadRequest.timestamp;
+        let options = threadRequest.options;
+        let thread = baseThread;
+        if (options && options.groupId)
+          thread = this.getGroupScopedThread(thread, options.groupId);
+        else if (options && options.isPrivate)
+          thread = this.getPrivateScopedThread(thread, userId);
+
+        this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp, (data) => {
+          this.sessionData.getHashMultiField(generateThreadKey(thread), data, (vals) => {
+            results.push({
+              data: vals.map((val) => {
+                let obj = JSON.parse(val);
+                if (Message.is(obj))
+                  return new Message(obj);
+                else
+                  return new Voided(obj);
+              }),
+              thread: baseThread,
+              options: options
+            });
+            processThreads(threadRequests);
+          });
         });
-      });
-    });
+      } else {
+        callback(results);
+      }
+    };
+
+    processThreads(threadRequests);
   }
 
   deleteMessage(userId: string, baseThread: string, messageId: string, callback: ((success: boolean) => void), options?: { [key: string]: any }): void {

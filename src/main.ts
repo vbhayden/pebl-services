@@ -91,6 +91,7 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
 const roleManager: RoleManager = new DefaultRoleManager(redisCache, userManager);
@@ -102,9 +103,8 @@ const competencyManager: CompetencyManager = new DefaultCompetencyManager(redisC
 const membershipManager: MembershipManager = new DefaultMembershipManager(redisCache);
 const messageManager: MessageManager = new DefaultMessageManager(redisCache);
 const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
-const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
-const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupManager);
-const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache);
+const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupManager, notificationManager);
+const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache, notificationManager);
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
@@ -243,7 +243,7 @@ expressApp.disable('x-powered-by');
 
 expressApp.get('/', function(req: Request, res: Response) {
   console.log(req.session?.id)
-  res.send(`Hello World!, version ${config.version}`).end();
+  res.send('Hello World!, version ' + config.version).end();
 });
 
 expressApp.get('/login', function(req: Request, res: Response) {
@@ -330,7 +330,7 @@ expressApp.post('/validate', function(req: Request, res: Response) {
   authenticationManager.validate(req.body.token, res);
 });
 
-let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
+let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
   if (req && req.session) {
     let username = req.session.identity.preferred_username;
     authorizationManager.assemblePermissionSet(username,
@@ -340,7 +340,6 @@ let processIncomingMessages = (ws: WebSocket, req: Request, payload: { [key: str
           let authorized = authorizationManager.authorize(username,
             req.session.permissions,
             payload);
-          console.log("isAuthorized", authorized);
           if (authorized) {
             let serviceMessage = new ServiceMessage(username, payload, req.session.id);
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
@@ -386,24 +385,46 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
             messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
             messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
 
+            let processMessages = (messages: { [key: string]: any }[]) => {
+              let payload = messages.pop();
+              if (payload) {
+                if (!validationManager.validate(payload)) {
+                  ws.send(JSON.stringify({
+                    identity: username,
+                    requestType: "error",
+                    payload: {
+                      description: "Invalid Message",
+                      target: payload.id,
+                      payload: payload
+                    }
+                  }));
+                  return;
+                }
+
+                if (req.session) {
+                  authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
+                    if (isLoggedIn && payload) {
+                      processMessage(ws, req, payload);
+                    } else {
+                      ws.send(JSON.stringify({
+                        identity: username,
+                        requestType: "loggedOut"
+                      }));
+                      ws.close();
+                    }
+                  });
+                }
+              } else {
+
+              }
+            };
+
             ws.on('message', function(msg) {
               if (req.session) {
                 if (typeof msg === 'string') {
                   let payload: any;
                   try {
                     payload = JSON.parse(msg);
-                    if (!validationManager.validate(payload)) {
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "error",
-                        payload: {
-                          description: "Invalid Message",
-                          target: payload.id,
-                          payload: payload
-                        }
-                      }));
-                      return;
-                    }
                   } catch (e) {
                     console.log("Bad message", e);
                     ws.send(JSON.stringify({
@@ -417,17 +438,26 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     return;
                   }
 
-                  authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
-                    if (isLoggedIn) {
-                      processIncomingMessages(ws, req, payload);
-                    } else {
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "loggedOut"
-                      }));
-                      ws.close();
-                    }
-                  });
+                  if (!validationManager.isMessageFormat(payload)) {
+                    ws.send(JSON.stringify({
+                      identity: username,
+                      requestType: "error",
+                      payload: {
+                        description: "Invalid Message",
+                        target: payload.id,
+                        payload: payload
+                      }
+                    }));
+                  }
+
+                  let messages;
+                  if (payload.requestType == "bulkPush") {
+                    messages = payload.data;
+                  } else {
+                    messages = [payload];
+                  }
+
+                  processMessages(messages);
                 }
               } else {
                 console.log("Invalid Session, closing socket", username, sessionId);
