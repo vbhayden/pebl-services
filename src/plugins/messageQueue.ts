@@ -166,7 +166,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createIncomingQueue(callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
       if (err) {
-        console.log(err);
+        console.log("failed to create incoming queue", err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -178,7 +178,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
       if (err) {
-        console.log(err);
+        console.log("failed to create outgoing queue", err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -210,7 +210,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
     this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
-        console.log(err);
+        console.log("failed to enqueue incoming message", err);
         return callback(false);
       }
       callback(true);
@@ -221,7 +221,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          console.log(err);
+          console.log("failed to enqueue outgoing message", err);
           return callback(false);
         }
         callback(true);
