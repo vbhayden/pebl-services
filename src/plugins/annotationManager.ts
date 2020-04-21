@@ -8,6 +8,7 @@ import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
 import { ServiceMessage } from "../models/serviceMessage";
+import { auditLogger } from "../main";
 
 export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationManager {
 
@@ -248,7 +249,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
             generateAnnotationsKey(id), (result: boolean) => {
               if (!result) {
-                console.log("failed to remove annotation", id);
+                auditLogger.error("failed to remove annotation", identity, id);
               }
               callback(result);
             });
@@ -276,7 +277,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           this.sessionData.deleteHashValue('sharedAnnotations',
             generateSharedAnnotationsKey(id), (result: boolean) => {
               if (!result) {
-                console.log("failed to remove shared annotation", id);
+                auditLogger.error("failed to remove shared annotation", identity, id);
               }
               callback(result);
             });

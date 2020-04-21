@@ -1,6 +1,7 @@
 import * as https from 'https';
 import { Response } from 'express';
 import { IncomingMessage } from 'http';
+import { auditLogger } from '../main';
 
 export function postData(
   host: string,
@@ -33,7 +34,6 @@ export function postData(
     });
 
     resp.on("end", function() {
-      //Check for errors in response
       let data = dataArr.join("");
       let statusCode = 200;
       if (resp.statusCode) {
@@ -49,7 +49,7 @@ export function postData(
         if (resp.statusMessage) {
           message = resp.statusMessage;
         }
-        console.log("failed", message, data);
+        auditLogger.error("HTTP POST errored", statusCode, message, host, path, data);
         if (failCallback) {
           failCallback({
             error: message,
@@ -62,7 +62,7 @@ export function postData(
 
   req.on('error', function(e) {
     if (failCallback) {
-      console.log(e);
+      auditLogger.error("HTTP POST failed", host, path, e);
       failCallback(e);
     }
   });
@@ -100,7 +100,7 @@ export function getData(
     });
   req.on('error', function(e) {
     if (failCallback) {
-      console.log(e);
+      auditLogger.info("GET failed", e);
       failCallback(e);
     }
   });
@@ -111,7 +111,7 @@ export function deleteData(
   path: string,
   headers: { [key: string]: any },
   successCallback?: (incomingData: string) => void,
-  failCallback?: (e: Error) => void): void {
+  failCallback?: (e: Error | { [key: string]: any }) => void): void {
 
   var dataArr: string[] = [];
   const req = https.request(
@@ -129,14 +129,38 @@ export function deleteData(
         dataArr.push(data);
       });
       resp.on("end", function() {
-        if (successCallback) {
-          successCallback(dataArr.join(""));
+        let data = dataArr.join("");
+        let statusCode = 200;
+        if (resp.statusCode) {
+          statusCode = resp.statusCode;
+        }
+
+        if (statusCode < 300) {
+          if (successCallback) {
+            successCallback(data);
+          }
+        } else {
+          let statusMessage = "HTTP DELETE errored";
+          if (resp.statusMessage) {
+            statusMessage = resp.statusMessage;
+          }
+          auditLogger.error("HTTP DELETE errored", statusMessage)
+          if (failCallback) {
+            failCallback({
+              error: statusMessage,
+              message: {
+                host: host,
+                path: path,
+                data: data
+              }
+            });
+          }
         }
       });
     });
   req.on('error', function(e) {
     if (failCallback) {
-      console.log(e);
+      auditLogger.error("HTTP DELETE failed", e);
       failCallback(e);
     }
   });
@@ -154,6 +178,7 @@ export function validateAndRedirectUrl(validRedirectDomainLookup: { [key: string
         res.redirect(url);
       }
     } catch (e) {
+      auditLogger.error("Invalid URL redirect", session.id, url);
       res.status(400).end();
     }
   } else {

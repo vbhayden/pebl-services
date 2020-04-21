@@ -5,6 +5,7 @@ import { generateUserNavigationsKey, generateNavigationsKey } from "../utils/con
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Navigation } from "../models/navigation";
+import { auditLogger } from "../main";
 
 export class DefaultNavigationManager extends PeBLPlugin implements NavigationManager {
   private sessionData: SessionDataManager;
@@ -106,7 +107,7 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
       this.sessionData.deleteHashValue(generateUserNavigationsKey(identity),
         generateNavigationsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove navigation", id);
+            auditLogger.error("failed to remove navigation", identity, id);
           }
           callback(result);
         });

@@ -5,6 +5,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultEventManager extends PeBLPlugin implements EventManager {
 
@@ -115,7 +116,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
       this.sessionData.deleteHashValue(generateUserEventsKey(identity),
         generateEventsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove event", id);
+            auditLogger.error("failed to remove event", identity, id);
           }
           callback(result);
         });

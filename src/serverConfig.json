@@ -22,6 +22,8 @@
 
     "cookieSameSite": "none",
 
+    "debugging": true,
+
     "port": 8080,
     "useSSL": true,
     "usesProxy": false,

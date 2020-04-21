@@ -8,6 +8,7 @@ import { PermissionSet } from "../models/permission";
 import { Voided } from "../models/xapiStatement";
 import { ServiceMessage } from "../models/serviceMessage";
 import { NotificationManager } from "../interfaces/notificationManager";
+import { auditLogger } from "../main";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
@@ -115,7 +116,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
       this.sessionData.queueForLrs(stmtStr);
       this.sessionData.addTimestampValue(generateTimestampForReference(identity), date.getTime(), stmt.id);
       this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
-        requestType: "newAnnotation",
+        requestType: "newReference",
         data: stmt
       })));
     }
@@ -138,7 +139,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
           this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
             generateReferencesKey(id), (result: boolean) => {
               if (!result) {
-                console.log("failed to remove refernce", id);
+                auditLogger.error("failed to remove reference", identity, id);
               }
               callback(result);
             });
