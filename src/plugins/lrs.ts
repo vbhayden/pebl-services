@@ -15,7 +15,6 @@ export class LRSPlugin implements LRS {
   }
 
 
-
   storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void {
     stmts.forEach(function(rec) {
       delete rec.identity;
@@ -43,6 +42,10 @@ export class LRSPlugin implements LRS {
       let obj = JSON.parse(str);
       if (XApiStatement.is(obj)) {
         let x = new XApiStatement(obj);
+        if (x.id && (x.id.length > 36)) {
+          console.log("Parsing LRS statements, detected invalid xAPI id purging the id field", obj);
+          delete x.id;
+        }
         statements.push(x);
         lookup[x.id] = str;
       } else if (Activity.is(obj)) {

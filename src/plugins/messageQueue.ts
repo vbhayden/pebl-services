@@ -257,18 +257,42 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
               let errJson;
               try {
                 errJson = JSON.parse(e.message);
+                if (errJson.message) {
+                  console.log("LRS errors", errJson.message);
+                  let chunks = errJson.message.split(" ");
+                  for (let chunk of chunks) {
+                    if (chunk.length >= 36) {
+                      let stmt = vals[3][chunk]
+                      if (stmt) {
+                        console.log("Purging LRS stmt", stmt);
+                        this.sessionDataManager.removeBadLRSStatement(stmt);
+                      }
+                    }
+                  }
+                } else if (errJson.warnings) {
+                  console.log("LRS warnings", errJson.warnings);
+                  for (let warning of errJson.warnings) {
+                    let chunks = warning.split(" ");
+                    for (let chunk of chunks) {
+                      if (chunk.length >= 36) {
+                        if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
+                          let slimChunk = chunk.substring(2, chunk.length - 2);
+                          let stmt = vals[3][slimChunk];
+                          if (stmt) {
+                            console.log("Purging LRS stmt", stmt);
+                            // this.sessionDataManager.removeBadLRSStatement(stmt);
+                          }
+                        } else {
+                          console.log("Unknown warning chunk", chunk);
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  console.log("unknown lrs error", e);
+                }
               } catch (e) {
                 console.log("LRS bad json parse", e);
-              }
-              let chunks = errJson.message.split(" ");
-              for (let chunk of chunks) {
-                if (chunk.length >= 36) {
-                  let stmt = vals[3][chunk]
-                  if (stmt) {
-                    this.sessionDataManager.removeBadLRSStatement(stmt);
-                    break;
-                  }
-                }
               }
             }
           });
