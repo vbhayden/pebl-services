@@ -7,6 +7,7 @@ import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Voided } from "../models/xapiStatement";
 import { ServiceMessage } from "../models/serviceMessage";
+import { auditLogger } from "../main";
 
 export class DefaultMessageManager extends PeBLPlugin implements MessageManager {
 
@@ -109,7 +110,7 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
       this.sessionData.deleteHashValue(generateUserMessagesKey(identity),
         generateMessagesKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove message", id);
+            auditLogger.error("failed to remove message", identity, id);
           }
           callback(result);
         });

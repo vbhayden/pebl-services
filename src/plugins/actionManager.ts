@@ -5,6 +5,7 @@ import { Action } from "../models/action";
 import { generateUserActionsKey, generateActionsKey } from "../utils/constants";
 import { PermissionSet } from "../models/permission";
 import { MessageTemplate } from "../models/messageTemplate";
+import { auditLogger } from "../main";
 
 export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   private sessionData: SessionDataManager;
@@ -109,7 +110,7 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
       this.sessionData.deleteHashValue(generateUserActionsKey(identity),
         generateUserActionsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove action", id);
+            auditLogger.error("failed to remove action", identity, id);
             callback(false);
           } else
             callback(true);

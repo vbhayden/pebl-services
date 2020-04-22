@@ -5,6 +5,7 @@ import { Session } from "../models/session";
 import { generateUserSessionsKey, generateSessionsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
@@ -104,7 +105,7 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
       this.sessionData.deleteHashValue(generateUserSessionsKey(identity),
         generateSessionsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove membership", id);
+            auditLogger.error("failed to remove membership", identity, id);
           }
           callback(result);
         });

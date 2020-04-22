@@ -6,6 +6,7 @@ import { generateUserNotificationsKey, generateNotificationsKey, generateBroadca
 import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
   private sessionData: SessionDataManager;
@@ -121,7 +122,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
           this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
             generateNotificationsKey(id), (result: boolean) => {
               if (!result) {
-                console.log("failed to remove notification", id);
+                auditLogger.error("failed to remove notification", identity, id);
               }
               callback(result);
             });

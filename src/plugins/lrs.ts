@@ -6,6 +6,7 @@ import { XApiQuery } from '../models/xapiQuery';
 import { Activity } from '../models/activity';
 import { Profile } from '../models/profile';
 import { PREFIX_PEBL_THREAD } from '../utils/constants';
+import { auditLogger } from '../main';
 
 export class LRSPlugin implements LRS {
   private endpoint: Endpoint;
@@ -13,7 +14,6 @@ export class LRSPlugin implements LRS {
   constructor(endpoint: Endpoint) {
     this.endpoint = endpoint;
   }
-
 
 
   storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void {
@@ -43,6 +43,10 @@ export class LRSPlugin implements LRS {
       let obj = JSON.parse(str);
       if (XApiStatement.is(obj)) {
         let x = new XApiStatement(obj);
+        if (x.id && (x.id.length > 36)) {
+          auditLogger.error("Parsing LRS statements, detected invalid xAPI id purging the id field", obj);
+          delete x.id;
+        }
         statements.push(x);
         lookup[x.id] = str;
       } else if (Activity.is(obj)) {

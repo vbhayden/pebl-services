@@ -6,6 +6,7 @@ import { SET_ALL_ROLES, generateRoleToUsersKey } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
 
@@ -114,7 +115,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
       id,
       (deleted: boolean) => {
         if (!deleted) {
-          console.log("Failed to delete role", id);
+          auditLogger.error("Failed to delete role", id);
         }
         callback(deleted);
       });

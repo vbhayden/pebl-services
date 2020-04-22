@@ -5,6 +5,7 @@ import { ModuleEvent } from "../models/moduleEvent";
 import { generateUserModuleEventsKey, generateModuleEventsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEventsManager {
   private sessionData: SessionDataManager;
@@ -88,7 +89,7 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
       this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity),
         generateModuleEventsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove module event", id);
+            auditLogger.error("failed to remove module event", identity, id);
           }
           callback(result);
         });
