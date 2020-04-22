@@ -75,7 +75,7 @@ export function getData(
   path: string,
   headers: { [key: string]: any },
   successCallback?: (incomingData: string) => void,
-  failCallback?: (e: Error) => void): void {
+  failCallback?: (e: Error | { [key: string]: any }) => void): void {
 
   var dataArr: string[] = [];
   const req = https.get(
@@ -93,14 +93,34 @@ export function getData(
         dataArr.push(data);
       });
       resp.on("end", function() {
-        if (successCallback) {
-          successCallback(dataArr.join(""));
+        let data = dataArr.join("");
+        let statusCode = 200;
+        if (resp.statusCode) {
+          statusCode = resp.statusCode;
+        }
+
+        if (statusCode < 300) {
+          if (successCallback) {
+            successCallback(data);
+          }
+        } else {
+          let statusMessage = "HTTP GET errored";
+          if (resp.statusMessage) {
+            statusMessage = resp.statusMessage;
+          }
+          auditLogger.error("HTTP GET errored", statusCode, statusMessage, host, path, data)
+          if (failCallback) {
+            failCallback({
+              error: statusMessage,
+              message: data
+            });
+          }
         }
       });
     });
   req.on('error', function(e) {
     if (failCallback) {
-      auditLogger.info("GET failed", e);
+      auditLogger.info("GET failed", host, path, e);
       failCallback(e);
     }
   });
@@ -144,15 +164,11 @@ export function deleteData(
           if (resp.statusMessage) {
             statusMessage = resp.statusMessage;
           }
-          auditLogger.error("HTTP DELETE errored", statusMessage)
+          auditLogger.error("HTTP DELETE errored", statusCode, statusMessage, host, path, data)
           if (failCallback) {
             failCallback({
               error: statusMessage,
-              message: {
-                host: host,
-                path: path,
-                data: data
-              }
+              message: data
             });
           }
         }
@@ -160,7 +176,7 @@ export function deleteData(
     });
   req.on('error', function(e) {
     if (failCallback) {
-      auditLogger.error("HTTP DELETE failed", e);
+      auditLogger.error("HTTP DELETE failed", host, path, e);
       failCallback(e);
     }
   });
