@@ -8,6 +8,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { PermissionSet } from "../models/permission";
 import { SET_ALL_GROUPS, generateGroupToGroupMembershipKey, generateUserToGroupMembershipKey, generateGroupToUserMembersKey, generateGroupToGroupMembersKey } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
+import { auditLogger } from "../main";
 
 export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
@@ -69,17 +70,17 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
   }
 
   validateAddGroup(payload: { [key: string]: any }): boolean {
-    // if (!(payload.id instanceof String)) {
+    // if (!(typeof(payload.id) === 'string')) {
     //   return false;
     // }
-    // if (!(payload.groupName instanceof String)) {
+    // if (!(typeof(payload.groupName) === 'string')) {
     //   return false;
     // }
-    // if (!(payload.groupDescription instanceof String)) {
+    // if (!(typeof(payload.groupDescription) === 'string')) {
     //   return false;
     // }
     // if (payload.groupAvatar) {
-    //   if (!(payload.groupAvatar instanceof String)) {
+    //   if (!(typeof(payload.groupAvatar) === 'string')) {
     //     return false;
     //   }
     // }
@@ -155,7 +156,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       id,
       (deleted: boolean) => {
         if (!deleted) {
-          console.log("Failed to delete group", id);
+          auditLogger.error("Failed to delete group", id);
         }
         callback(deleted);
 
@@ -183,12 +184,12 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
                 this.sessionData.deleteValue(generateGroupToUserMembersKey(id),
                   (deleted: boolean) => {
                     if (!deleted) {
-                      console.log("Failed to delete group members", id);
+                      auditLogger.error("Failed to delete group members", id);
                     }
                     this.sessionData.deleteValue(generateGroupToGroupMembersKey(id),
                       (deleted: boolean) => {
                         if (!deleted) {
-                          console.log("Failed to delete group members", id);
+                          auditLogger.error("Failed to delete group members", id);
                         }
                       });
                   });
@@ -212,7 +213,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
         if (group !== undefined) {
           callback(Group.convert(group));
         } else {
-          console.log("failed to retreive group", id);
+          auditLogger.error("failed to retreive group", id);
         }
       });
   }
@@ -290,7 +291,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       memberUserId,
       (deleted: boolean) => {
         if (!deleted) {
-          console.log("failed to delete group member", groupId);
+          auditLogger.error("failed to delete group member", groupId, memberUserId);
         }
         callback(deleted);
       });
@@ -303,7 +304,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       memberGroupId,
       (deleted: boolean) => {
         if (!deleted) {
-          console.log("failed to delete group member", groupId);
+          auditLogger.error("failed to delete group member", groupId, memberGroupId);
         }
         callback(deleted);
       });

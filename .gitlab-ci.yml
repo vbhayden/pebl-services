@@ -55,15 +55,16 @@ buildQa:
 
 ########################
 
-buildProd:
+buildProdMC:
   stage: build
   only:
-    - master
+    - usmc
 
   script:
   - npm install
   - npm run compile
-  - cp "$PROD_SERVER_CONFIG" dist/serverConfig.json
+  - echo $USMC_SERVER_CONFIG
+  - cp "$USMC_SERVER_CONFIG" dist/serverConfig.json
   # - cp "$PROD_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
   - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
@@ -138,13 +139,13 @@ deployQa:
 
 ########################
 
-deployProd:
+deployProdMC:
   stage: deploy
   only:
-    - master
+    - usmc
   environment:
-    name: prod
-    url: https://services.peblproject.org
+    name: usmc
+    url: https://tecom.services.peblproject.org
   script:
    - apt-get update -y
    - apt-get install openssh-client -y
@@ -154,14 +155,14 @@ deployProd:
    - mkdir -p ~/.ssh
    - chmod 700 ~/.ssh
 
-   - echo "$PROD_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+   - echo "$USMC_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
    - chmod 644 ~/.ssh/known_hosts
 
-   - chmod 600 "$PROD_PRIVATE_KEY"
-   - ssh-add "$PROD_PRIVATE_KEY" > /dev/null
+   - chmod 600 "$USMC_PRIVATE_KEY"
+   - ssh-add "$USMC_PRIVATE_KEY" > /dev/null
 
-   - ssh -p22 $USERNAME@$PROD_SERVER_IP "rm -rf /srv/prodNode/*"
-   - scp -P22 -r dist $USERNAME@$PROD_SERVER_IP:/srv/prodNode/
-   - scp -P22 -r package.json $USERNAME@$PROD_SERVER_IP:/srv/prodNode/
-   - ssh -p22 $USERNAME@$PROD_SERVER_IP "cd /srv/prodNode && npm install --production"
-   - ssh -p22 $USERNAME@$PROD_SERVER_IP "date > /srv/prodNodeUpdated"
+   - ssh -p22 $USERNAME@$USMC_SERVER_IP "rm -rf /srv/prodNode/*"
+   - scp -P22 -r dist $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
+   - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
+   - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
+   - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"

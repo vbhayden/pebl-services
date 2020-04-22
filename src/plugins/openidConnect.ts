@@ -3,6 +3,7 @@ import { AuthenticationManager } from '../interfaces/authenticationManager'
 import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client";
 import { UserManager } from '../interfaces/userManager';
+import { auditLogger } from '../main';
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
@@ -23,7 +24,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           response_types: config.authenticationResponseTypes
         });
       }).catch((err: any) => {
-        console.log("openid failed to discover endpoint", err);
+        auditLogger.error("openid failed to discover endpoint", err);
       });
   }
 
@@ -33,7 +34,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then(function(result) {
           res.send(result).end();
         }).catch((e) => {
-          console.log("token validation failed", e);
+          auditLogger.error("token validation failed", e);
           res.send(503).end();
         });
     } else {
@@ -60,18 +61,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                     });
                 });
               } else {
-                console.log("No expiration date set on access token");
+                auditLogger.error("No expiration date set on access token");
                 this.clearActiveTokens(session, callback);
               }
             } else {
               this.clearActiveTokens(session, callback);
             }
           }).catch((e) => {
-            console.log("failed to refresh token", e);
+            auditLogger.error("failed to refresh token", e);
             this.clearActiveTokens(session, callback);
           });
       } else {
-        console.log("failed to refresh token, none stored");
+        auditLogger.error("failed to refresh token, none stored");
         callback(false);
       }
     }
@@ -158,7 +159,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               callback.send(userInfo).end();
             }
           }).catch((err) => {
-            console.log("Get Profiled failed", err);
+            auditLogger.error("Get Profiled failed", err);
             if (callback instanceof Function) {
               this.clearActiveTokens(session, callback);
             } else {
@@ -271,7 +272,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           }
 
-          console.log("adjusting", rolesToRemove, rolesToAdd);
+          auditLogger.debug("adjusting", rolesToRemove, rolesToAdd);
 
           removeRoles(rolesToRemove, () => {
             if (rolesToAdd.length > 0) {
@@ -283,7 +284,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
         } else {
-          console.log("adjusting, remove all", roleIds);
+          auditLogger.debug("adjusting, remove all", roleIds);
           removeRoles(roleIds, callback);
         }
       }
@@ -311,18 +312,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                       res.redirect(session.redirectUrl);
                     });
                 } else {
-                  console.log("Missing profile identity on redirect");
+                  auditLogger.error("Missing profile identity on redirect");
                 }
               });
             } else {
-              console.log("No expiration date set on access token");
+              auditLogger.error("No expiration date set on access token");
               res.status(503).end();
             }
           } else {
             res.status(401).end();
           }
         }).catch((err) => {
-          console.log("redirect failed", err);
+          auditLogger.error("redirect failed", err);
           res.status(401).end();
         });
     } else {
