@@ -1,6 +1,7 @@
 import { PluginManager } from "../interfaces/pluginManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PeBLPlugin } from "../models/peblPlugin";
+import { auditLogger } from "../main";
 
 
 export class DefaultPluginManager implements PluginManager {
@@ -24,7 +25,7 @@ export class DefaultPluginManager implements PluginManager {
       if (!this.registeredTemplates[messageTemplate.verb]) {
         this.registeredTemplates[messageTemplate.verb] = messageTemplate;
       } else {
-        console.log("Overwriting " + messageTemplate.verb);
+        auditLogger.error("Overwriting Plugin Message Template", messageTemplate.verb);
       }
     }
   }

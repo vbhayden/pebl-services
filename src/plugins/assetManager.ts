@@ -5,6 +5,7 @@ import { Asset } from "../models/asset";
 import { generateUserAssetKey, generateAssetsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
   private sessionData: SessionDataManager;
@@ -85,7 +86,7 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
       this.sessionData.deleteHashValue(generateUserAssetKey(identity),
         generateAssetsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove asset", id);
+            auditLogger.error("failed to remove asset", identity, id);
           }
           callback(result);
         });

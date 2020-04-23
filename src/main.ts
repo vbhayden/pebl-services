@@ -59,18 +59,34 @@ import { LRS } from "./interfaces/lrsManager";
 import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
 import { validateAndRedirectUrl } from "./utils/network";
+import { AuditLogManager } from "./interfaces/auditLogManager";
+import { DefaultAuditLogManager } from "./plugins/auditLogManager";
+
+export const auditLogger: AuditLogManager = new DefaultAuditLogManager();
+
+process.on('uncaughtException', (err) => {
+  auditLogger.error("uncaughtException", err);
+  auditLogger.flush();
+  process.exit(1);
+});
 
 let express = require('express');
 
 let expressApp = express();
 
 if (process.argv.length < 3) {
-  console.log("command should include a path to the server configuration json");
-  console.log("node <pathToScript> <pathToConfigurationJson>");
+  auditLogger.error("command should include a path to the server configuration json", process.argv);
+  auditLogger.error("node <pathToScript> <pathToConfigurationJson>");
   process.exit();
 }
-
-const config: { [key: string]: any } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+let config: { [key: string]: any };
+try {
+  config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  auditLogger.setDebug(config.debugging);
+} catch (e) {
+  auditLogger.error("Invalid config file", e);
+  process.exit(2);
+}
 
 let validRedirectDomainLookup: { [key: string]: boolean } = {};
 for (let validDomain of config.validRedirectDomains) {
@@ -138,12 +154,12 @@ roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.get
   () => {
     //     roleManager.getUsersByRole("systemAdmin",
     //       (userIds) => {
-    //         console.log(userIds);
+    //         auditLogger.debug(userIds);
     //         let processor = (userIds: string[]) => {
     //           let userId = userIds.pop();
     //           if (userId) {
     //             userManager.deleteUserRole(userId, "systemAdmin", () => {
-    //               console.log("Removing", userId);
+    //               auditLogger.debug("Removing", userId);
     //               processor(userIds);
     //             });
     //           } else {
@@ -201,7 +217,7 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
       }
     }
   } catch (e) {
-    // console.log("bad origin url", e);
+    auditLogger.debug("Bad origin url", e);
   }
   next();
 }
@@ -209,7 +225,7 @@ var allowCrossDomain = function(req: Request, res: Response, next: Function) {
 expressApp.use(allowCrossDomain);
 
 redisClient.on("error", function(error) {
-  console.error("Redis Client", error);
+  auditLogger.error("Redis Client", error);
 });
 
 expressApp.use(
@@ -242,7 +258,7 @@ expressApp.use(bodyParser.json());
 expressApp.disable('x-powered-by');
 
 expressApp.get('/', function(req: Request, res: Response) {
-  console.log(req.session?.id)
+  auditLogger.debug("sessionId", req.session?.id)
   res.send('Hello World!, version ' + config.version).end();
 });
 
@@ -251,7 +267,7 @@ expressApp.get('/login', function(req: Request, res: Response) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
-          console.log("logging in", req.session.id, isLoggedIn);
+          auditLogger.debug("logging in", req.session.id, isLoggedIn);
           if (isLoggedIn) {
             validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
           } else {
@@ -271,7 +287,7 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
-          console.log("redirect", req.session.id, isLoggedIn);
+          auditLogger.debug("redirect", req.session.id, isLoggedIn);
           if (isLoggedIn) {
             res.status(200).end();
           } else {
@@ -291,7 +307,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
-          console.log("logging out", req.session.id, isLoggedIn);
+          auditLogger.debug("logging out", req.session.id, isLoggedIn);
           if (isLoggedIn) {
             authenticationManager.logout(req, req.session, res);
           } else {
@@ -311,7 +327,7 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
-          console.log("user profile", req.session.id, isLoggedIn);
+          auditLogger.debug("user profile", req.session.id, isLoggedIn);
           if (isLoggedIn) {
             authenticationManager.getProfile(req.session, res);
           } else {
@@ -344,7 +360,7 @@ let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any
             let serviceMessage = new ServiceMessage(username, payload, req.session.id);
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
           } else {
-            console.log("Not authorized", username, payload);
+            auditLogger.error("Not authorized", username, payload);
             ws.send(JSON.stringify({
               identity: username,
               requestType: "error",
@@ -355,7 +371,7 @@ let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any
             }));
           }
         } else {
-          console.log("invalid session");
+          auditLogger.error("invalid session");
         }
       });
   }
@@ -423,7 +439,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   try {
                     payload = JSON.parse(msg);
                   } catch (e) {
-                    console.log("Bad message", e);
+                    auditLogger.error("Bad message", req.session.id, e);
                     ws.send(JSON.stringify({
                       identity: username,
                       requestType: "error",
@@ -457,7 +473,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   processMessages(messages);
                 }
               } else {
-                console.log("Invalid Session, closing socket", username, sessionId);
+                auditLogger.error("Invalid Session, closing socket", username, sessionId);
                 ws.close();
               }
             });
@@ -481,5 +497,5 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 });
 
 httpsServer.listen(config.port, function() {
-  console.log(`listening on port ${config.port}, version ${config.version}`);
+  auditLogger.info(`listening on port ${config.port}, version ${config.version}`);
 });

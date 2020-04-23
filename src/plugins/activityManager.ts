@@ -6,6 +6,7 @@ import { ProgramAction } from "../models/programAction";
 import { generateUserActivitiesKey, generateActivitiesKey, generateUserActivityEventsKey, generateActivityEventsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { auditLogger } from "../main";
 
 export class DefaultActivityManager extends PeBLPlugin implements ActivityManager {
   private sessionData: SessionDataManager;
@@ -136,7 +137,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       generateActivitiesKey(id),
       (result: boolean) => {
         if (!result) {
-          console.log("failed to delete activity", id);
+          auditLogger.error("failed to delete activity", identity, id);
         }
         callback(result);
       });
@@ -171,7 +172,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       this.sessionData.deleteHashValue(generateUserActivitiesKey(identity),
         generateActivityEventsKey(id), (result: boolean) => {
           if (!result) {
-            console.log("failed to remove activity event", id);
+            auditLogger.error("failed to remove activity event", identity, id);
           }
           callback(result);
         });

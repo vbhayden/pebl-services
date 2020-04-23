@@ -11,6 +11,7 @@ import * as WebSocket from 'ws';
 import RedisSMQ = require("rsmq");
 import { PluginManager } from '../interfaces/pluginManager';
 import { JobMessage } from '../models/job';
+import { auditLogger } from '../main';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
   private lrsManager: LRS;
@@ -74,11 +75,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       JSON.stringify(jobMessage),
       (didSet: boolean) => {
         if (didSet) {
-          console.log('Job started', jobMessage.jobType, Date.now());
+          auditLogger.info('Job started', jobMessage);
           this.dispatchJobMessage(jobMessage);
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
         } else {
-          console.log('Job already started', jobMessage.jobType);
+          auditLogger.info('Job already started', jobMessage);
           if (startup) {
             this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS,
               jobMessage.jobType,
@@ -153,7 +154,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           } else {
             this.sessionDataManager.getSetValues(SET_ALL_JOBS,
               (jobs: string[]) => {
-                console.log("Available jobs", jobs);
+                auditLogger.info("Available jobs", jobs);
                 jobs.map((job) => this.processJob(JobMessage.parse(job), true));
               });
           }
@@ -166,7 +167,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createIncomingQueue(callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
       if (err) {
-        console.log(err);
+        auditLogger.error("failed to create incoming queue", err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -178,7 +179,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
       if (err) {
-        console.log(err);
+        auditLogger.error("failed to create outgoing queue", err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -210,7 +211,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
     this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
-        console.log(err);
+        auditLogger.error("failed to enqueue incoming message", err);
         return callback(false);
       }
       callback(true);
@@ -221,7 +222,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          console.log(err);
+          auditLogger.error("failed to enqueue outgoing message", err);
           return callback(false);
         }
         callback(true);
@@ -232,43 +233,66 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchJobMessage(message: JobMessage): void {
+    auditLogger.info('dispatch job', message);
     if (message.jobType === 'cleanup') {
       this.dispatchCleanup(message);
     } else if (message.jobType === 'lrsSync') {
       this.dispatchToLrs(message);
     } else {
-      console.log("unknown dispatch target", message);
+      auditLogger.error("unknown dispatch target", message);
     }
   }
 
   dispatchToLrs(message: JobMessage): void {
-    console.log('dispatch to LRS', Date.now());
-
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
         let vals = this.lrsManager.parseStatements(values);
         if (vals[0].length > 0)
           this.lrsManager.storeStatements(vals[0], () => {
             this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
-            console.log('success');
+            auditLogger.info('job success', message);
           }, (e) => {
-            console.log('lrs post failed', e);
+            auditLogger.error('lrs post failed', e);
             if (!(e instanceof Error)) {
               let errJson;
               try {
                 errJson = JSON.parse(e.message);
-              } catch (e) {
-                console.log("LRS bad json parse", e);
-              }
-              let chunks = errJson.message.split(" ");
-              for (let chunk of chunks) {
-                if (chunk.length >= 36) {
-                  let stmt = vals[3][chunk]
-                  if (stmt) {
-                    this.sessionDataManager.removeBadLRSStatement(stmt);
-                    break;
+                if (errJson.message) {
+                  auditLogger.error("LRS parsed errors", errJson.message);
+                  let chunks = errJson.message.split(" ");
+                  for (let chunk of chunks) {
+                    if (chunk.length >= 36) {
+                      let stmt = vals[3][chunk]
+                      if (stmt) {
+                        auditLogger.error("Purging LRS stmt", stmt);
+                        this.sessionDataManager.removeBadLRSStatement(stmt);
+                      }
+                    }
                   }
+                } else if (errJson.warnings) {
+                  auditLogger.error("LRS warnings", errJson.warnings);
+                  for (let warning of errJson.warnings) {
+                    let chunks = warning.split(" ");
+                    for (let chunk of chunks) {
+                      if (chunk.length >= 36) {
+                        if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
+                          let slimChunk = chunk.substring(2, chunk.length - 2);
+                          let stmt = vals[3][slimChunk];
+                          if (stmt) {
+                            auditLogger.error("Purging LRS stmt", stmt);
+                            // this.sessionDataManager.removeBadLRSStatement(stmt);
+                          }
+                        } else {
+                          auditLogger.error("Unknown warning chunk", chunk);
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  auditLogger.error("unknown lrs error", e);
                 }
+              } catch (e) {
+                auditLogger.error("LRS bad json parse", e);
               }
             }
           });
@@ -284,7 +308,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         message.jobType,
         () => {
           message.finished = true;
-          console.log("Job finished", message.jobType, Date.now());
+          auditLogger.info("Job finished", message);
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
         });
     });
@@ -314,7 +338,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (messageTemplate) {
       messageTemplate.action(message.payload, dispatchCallback);
     } else {
-      console.log("bad message template");
+      auditLogger.error("bad message template", message);
     }
   }
 
@@ -323,7 +347,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (success && message.messageId) {
         this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
           if (err) {
-            console.log(err);
+            auditLogger.error("failed to delete message from incoming queue", err);
           }
         });
       }
@@ -390,7 +414,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             message.jobType,
             () => {
               message.finished = true;
-              console.log("Job finished", message.jobType, Date.now());
+              auditLogger.info("Job finished", message);
               this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
             });
         });
