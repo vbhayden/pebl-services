@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { Issuer, Client, TokenSet } from "openid-client";
 import { UserManager } from '../interfaces/userManager';
 import { auditLogger } from '../main';
+import { LogCategory, Severity } from '../utils/constants';
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
@@ -24,7 +25,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           response_types: config.authenticationResponseTypes
         });
       }).catch((err: any) => {
-        auditLogger.error("openid failed to discover endpoint", err);
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDDiscoveryFail", err);
       });
   }
 
@@ -34,10 +35,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then(function(result) {
           res.send(result).end();
         }).catch((e) => {
-          auditLogger.error("token validation failed", e);
-          res.send(503).end();
+          auditLogger.report(LogCategory.AUTH, Severity.NOTICE, "TokenValidationFail", e);
+          res.send(403).end();
         });
     } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "ValidateNoAuthClient", token);
       res.status(503).end();
     }
   }
@@ -61,20 +63,23 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                     });
                 });
               } else {
-                auditLogger.error("No expiration date set on access token");
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id);
                 this.clearActiveTokens(session, callback);
               }
             } else {
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id);
               this.clearActiveTokens(session, callback);
             }
           }).catch((e) => {
-            auditLogger.error("failed to refresh token", e);
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, e);
             this.clearActiveTokens(session, callback);
           });
       } else {
-        auditLogger.error("failed to refresh token, none stored");
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id);
         callback(false);
       }
+    } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id);
     }
   }
 
@@ -87,14 +92,17 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           if (this.config.validRedirectDomainLookup[hostname]) {
             session.redirectUrl = redirectUrl;
           } else {
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
             res.status(400).end();
             return;
           }
         } catch (e) {
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
           res.status(400).end();
           return;
         }
       } else {
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
         res.status(400).end();
         return;
       }
@@ -107,23 +115,25 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         code_challenge_method: 'S256'
       }));
     } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "LoginNoAuthClient", session.id);
       res.status(503).end();
     }
   }
 
   logout(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
-
       if (session.activeTokens) {
         let redirectUrl = req.query.redirectUrl;
         if (redirectUrl) {
           try {
             let hostname = new URL(redirectUrl).hostname;
             if (!this.config.validRedirectDomainLookup[hostname]) {
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LogoutInvalidRedirect", session.id, redirectUrl);
               res.status(400).end();
               return;
             }
           } catch (e) {
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LogoutInvalidRedirect", session.id, redirectUrl);
             res.status(400).end();
             return;
           }
@@ -143,6 +153,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         res.redirect(session.redirectUrl);
       }
     } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "LogoutNoAuthClient", session.id);
       res.status(503).end();
     }
   }
@@ -159,7 +170,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               callback.send(userInfo).end();
             }
           }).catch((err) => {
-            auditLogger.error("Get Profiled failed", err);
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, err);
             if (callback instanceof Function) {
               this.clearActiveTokens(session, callback);
             } else {
@@ -169,12 +180,15 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
       } else {
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id);
         if (callback instanceof Function) {
           callback(false);
         } else {
           callback.status(401).end();
         }
       }
+    } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id);
     }
   }
 
@@ -272,7 +286,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           }
 
-          auditLogger.debug("adjusting", rolesToRemove, rolesToAdd);
+          auditLogger.report(LogCategory.AUTH, Severity.DEBUG, "AdjustingRoles", userId, rolesToRemove, rolesToAdd);
 
           removeRoles(rolesToRemove, () => {
             if (rolesToAdd.length > 0) {
@@ -284,7 +298,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
         } else {
-          auditLogger.debug("adjusting, remove all", roleIds);
+          auditLogger.report(LogCategory.AUTH, Severity.DEBUG, "AdjustRolesRemoveAll", roleIds);
           removeRoles(roleIds, callback);
         }
       }
@@ -312,21 +326,23 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                       res.redirect(session.redirectUrl);
                     });
                 } else {
-                  auditLogger.error("Missing profile identity on redirect");
+                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id);
                 }
               });
             } else {
-              auditLogger.error("No expiration date set on access token");
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id);
               res.status(503).end();
             }
           } else {
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id);
             res.status(401).end();
           }
         }).catch((err) => {
-          auditLogger.error("redirect failed", err);
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "redirectFail", session.id, err);
           res.status(401).end();
         });
     } else {
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RedirectNoAuthClient", session.id);
       res.status(503).end();
     }
   }

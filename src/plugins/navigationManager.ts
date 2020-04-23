@@ -1,7 +1,7 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { NavigationManager } from "../interfaces/navigationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { generateUserNavigationsKey, generateNavigationsKey } from "../utils/constants";
+import { generateUserNavigationsKey, generateNavigationsKey, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Navigation } from "../models/navigation";
@@ -107,7 +107,7 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
       this.sessionData.deleteHashValue(generateUserNavigationsKey(identity),
         generateNavigationsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove navigation", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelNavigationFail", identity, id);
           }
           callback(result);
         });

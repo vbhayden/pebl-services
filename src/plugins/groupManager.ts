@@ -6,7 +6,7 @@ import { Group } from "../models/group";
 // import { GroupRole } from "../models/groupRole";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { PermissionSet } from "../models/permission";
-import { SET_ALL_GROUPS, generateGroupToGroupMembershipKey, generateUserToGroupMembershipKey, generateGroupToUserMembersKey, generateGroupToGroupMembersKey } from "../utils/constants";
+import { SET_ALL_GROUPS, generateGroupToGroupMembershipKey, generateUserToGroupMembershipKey, generateGroupToUserMembersKey, generateGroupToGroupMembersKey, LogCategory, Severity } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
 import { auditLogger } from "../main";
 
@@ -156,7 +156,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       id,
       (deleted: boolean) => {
         if (!deleted) {
-          auditLogger.error("Failed to delete group", id);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupFail", id);
         }
         callback(deleted);
 
@@ -184,12 +184,12 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
                 this.sessionData.deleteValue(generateGroupToUserMembersKey(id),
                   (deleted: boolean) => {
                     if (!deleted) {
-                      auditLogger.error("Failed to delete group members", id);
+                      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
                     }
                     this.sessionData.deleteValue(generateGroupToGroupMembersKey(id),
                       (deleted: boolean) => {
                         if (!deleted) {
-                          auditLogger.error("Failed to delete group members", id);
+                          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
                         }
                       });
                   });
@@ -213,7 +213,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
         if (group !== undefined) {
           callback(Group.convert(group));
         } else {
-          auditLogger.error("failed to retreive group", id);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "GetGroupFail", id);
         }
       });
   }
@@ -291,7 +291,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       memberUserId,
       (deleted: boolean) => {
         if (!deleted) {
-          auditLogger.error("failed to delete group member", groupId, memberUserId);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemUserFail", groupId, memberUserId);
         }
         callback(deleted);
       });
@@ -304,7 +304,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
       memberGroupId,
       (deleted: boolean) => {
         if (!deleted) {
-          auditLogger.error("failed to delete group member", groupId, memberGroupId);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemGroupFail", groupId, memberGroupId);
         }
         callback(deleted);
       });

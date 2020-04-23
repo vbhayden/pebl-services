@@ -4,6 +4,8 @@ import { RoleManager } from "../interfaces/roleManager";
 import { PluginManager } from "../interfaces/pluginManager";
 import { PermissionSet } from "../models/permission";
 import { Role } from "../models/role";
+import { auditLogger } from "../main";
+import { LogCategory, Severity } from "../utils/constants";
 
 export class DefaultAuthorizationManager {
 
@@ -52,7 +54,8 @@ export class DefaultAuthorizationManager {
                   });
                 } else {
                   session.lastModifiedPermissions = lastModified;
-                  session.permissions = new PermissionSet(userPermissions, groupPermissions)
+                  session.permissions = new PermissionSet(userPermissions, groupPermissions);
+                  auditLogger.report(LogCategory.AUTH, Severity.INFO, "AssembledPermissions", session.id, roleIds);
                   session.save(() => {
                     callback();
                   })

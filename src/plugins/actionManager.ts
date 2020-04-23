@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { ActionManager } from "../interfaces/actionManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Action } from "../models/action";
-import { generateUserActionsKey, generateActionsKey } from "../utils/constants";
+import { generateUserActionsKey, generateActionsKey, LogCategory, Severity } from "../utils/constants";
 import { PermissionSet } from "../models/permission";
 import { MessageTemplate } from "../models/messageTemplate";
 import { auditLogger } from "../main";
@@ -110,7 +110,7 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
       this.sessionData.deleteHashValue(generateUserActionsKey(identity),
         generateUserActionsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove action", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
             callback(false);
           } else
             callback(true);

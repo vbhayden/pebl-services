@@ -2,6 +2,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { RedisClient } from 'redis';
 import { XApiStatement } from '../models/xapiStatement';
 import { auditLogger } from '../main';
+import { LogCategory, Severity } from '../utils/constants';
 
 export class RedisSessionDataCache implements SessionDataManager {
   private redis: RedisClient;
@@ -17,7 +18,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   setHashValues(key: string, values: string[], callback?: (worked: "OK") => void): void {
     this.redis.hmset(key, values, (err, result) => {
       if (err) {
-        auditLogger.error("Redis setHashValues", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisSetHashVals", err);
       }
       if (callback)
         callback(result);
@@ -27,7 +28,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   setHashValue(key: string, field: string, value: string, callback?: (fields: number) => void): void {
     this.redis.hset(key, field, value, (err, result) => {
       if (err) {
-        auditLogger.error("Redis setHashValue", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisSetHashValue", err);
       }
       if (callback)
         callback(result);
@@ -37,7 +38,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   setHashValueIfNotExisting(key: string, field: string, value: string, callback?: (didSet: boolean) => void): void {
     this.redis.hsetnx(key, field, value, (err, result) => {
       if (err) {
-        auditLogger.error("Redis setHashValueIfNotExisting", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisSetHashValIfNotExist", err);
       }
       if (callback)
         callback(result == 1);
@@ -47,7 +48,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getHashValues(key: string, callback: (data: string[]) => void): void {
     this.redis.hvals(key, (err, result) => {
       if (err) {
-        auditLogger.error("Redis getHashValues", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashVals", err);
         callback([]);
       } else {
         callback(result);
@@ -58,7 +59,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getHashKeys(key: string, callback: (data: string[]) => void): void {
     this.redis.hvals(key, (err, result) => {
       if (err) {
-        auditLogger.error("Redis getHashKeys", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashKeys", err);
         callback([]);
       } else {
         callback(result);
@@ -70,7 +71,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     if (field.length != 0) {
       this.redis.hmget(key, ...field, (err, result) => {
         if (err) {
-          auditLogger.error("Redis getHashMultiField", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiField", err);
         }
         callback(result);
       });
@@ -86,7 +87,7 @@ export class RedisSessionDataCache implements SessionDataManager {
       for (let key of keys) {
         batch.hvals(key, (err, resp) => {
           if (err) {
-            auditLogger.error("Redis getHashMultiKeys", err);
+            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiKeys", err);
             obj[key] = [];
           } else {
             obj[key] = resp;
@@ -95,7 +96,7 @@ export class RedisSessionDataCache implements SessionDataManager {
       }
       batch.exec((err, resp) => {
         if (err) {
-          auditLogger.error("Redis getHashMultiKeys batch", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiKeysBatch", err);
           callback({});
         } else {
           callback(obj);
@@ -109,7 +110,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getHashValue(key: string, field: string, callback: (data?: string) => void): void {
     this.redis.hget(key, field, (err, result) => {
       if (err) {
-        auditLogger.error("Redis getHashValue", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashValue", err);
         callback(undefined);
       } else {
         callback(result);
@@ -120,7 +121,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   deleteValue(key: string, callback: (deleted: boolean) => void): void {
     this.redis.del(key, (err) => {
       if (err) {
-        auditLogger.error("Redis deleteValue", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteValue", err);
         if (callback !== undefined) {
           callback(false);
         }
@@ -137,7 +138,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     if (value instanceof Array) {
       this.redis.sadd(key, ...value, (err, result) => {
         if (err) {
-          auditLogger.error("Redis addSetValue", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisAddSetValue", err);
           if (callback)
             callback(-1);
         } else {
@@ -148,7 +149,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     } else {
       this.redis.sadd(key, value, (err, result) => {
         if (err) {
-          auditLogger.error("Redis addSetValue single", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisAddSetValueSingle", err);
           if (callback)
             callback(-1);
         } else {
@@ -162,7 +163,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getSetValues(key: string, callback: (data: string[]) => void): void {
     this.redis.smembers(key, (err, result) => {
       if (err) {
-        auditLogger.error("Redis getSetValues", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetSetVals", err);
         callback([]);
       } else {
         callback(result);
@@ -175,7 +176,7 @@ export class RedisSessionDataCache implements SessionDataManager {
       //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)          
       this.redis.srem(key, ...value, (err) => {
         if (err) {
-          auditLogger.error("Redis deleteSetValue", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteSetValue", err);
           if (callback !== undefined) {
             callback(false);
           }
@@ -188,7 +189,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     } else {
       this.redis.srem(key, value, (err) => {
         if (err) {
-          auditLogger.error("Redis deleteSetValue single", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteSetValueSingle", err);
           if (callback !== undefined) {
             callback(false);
           }
@@ -204,7 +205,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
     this.redis.hdel(key, field, (err, result) => {
       if (err) {
-        auditLogger.error("Redis deleteHashValue", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteHashValue", err);
         if (callback !== undefined) {
           callback(false);
         }
@@ -219,7 +220,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getHashValuesForFields(key: string, fields: string[], callback: ((data: string[]) => void)): void {
     this.redis.hmget(key, fields, (err, result) => {
       if (err) {
-        auditLogger.error("Redis getHashValuesForFields", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashValsForFields", err);
         callback([]);
       } else {
         callback(result);
@@ -234,7 +235,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)) {
     this.redis.zrangebyscore(key, timestamp, '+inf', (err, resp) => {
       if (err) {
-        auditLogger.error("Redis getValuesGreaterThanTimestamp", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetValsMoreThanTime", err);
         callback([]);
       } else
         callback(resp);
@@ -244,7 +245,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void {
     this.redis.zrem(key, memberId, (err, result) => {
       if (err) {
-        auditLogger.error("deleteSortedTimestampMember", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelSortedTimeMem", err);
         callback(-1);
       } else {
         callback(result);
@@ -255,9 +256,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   removeBadLRSStatement(id: string): void {
     this.redis.lrem('outgoingXapi', -1, id, (err, result) => {
       if (err) {
-        auditLogger.error("removeBadLRSStatement", err);
-      } else {
-
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelBadLRSStmt", err);
       }
     });
   }
@@ -276,7 +275,7 @@ export class RedisSessionDataCache implements SessionDataManager {
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void {
     this.redis.lrange('outgoingXapi', 0, count, (err, resp) => {
       if (err) {
-        auditLogger.error("Redis retrieveForLrs", err);
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetForLrs", err);
         callback(undefined);
       } else {
         callback(resp);

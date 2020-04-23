@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { ReferenceManager } from "../interfaces/referenceManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Reference } from "../models/reference";
-import { generateUserReferencesKey, generateReferencesKey, generateTimestampForReference, generateBroadcastQueueForUserId } from "../utils/constants";
+import { generateUserReferencesKey, generateReferencesKey, generateTimestampForReference, generateBroadcastQueueForUserId, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { Voided } from "../models/xapiStatement";
@@ -139,7 +139,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
           this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
             generateReferencesKey(id), (result: boolean) => {
               if (!result) {
-                auditLogger.error("failed to remove reference", identity, id);
+                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelReferenceFail", identity, id);
               }
               callback(result);
             });

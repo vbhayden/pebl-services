@@ -6,7 +6,7 @@
     "privateKeyPath": "./localhost.key",
     "certificatePath": "./localhost.crt",
 
-    "version": "REPLACEMEVERSION",
+    "version": "VERSION",
 
     "authenticationUrl": "https://dev.keycloak.eduworks.com/auth/realms/master",
     "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
@@ -23,6 +23,7 @@
     "cookieSameSite": "none",
 
     "debugging": true,
+    "usingSyslogFormat": true,
 
     "port": 8080,
     "useSSL": true,

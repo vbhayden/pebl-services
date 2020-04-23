@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
+import { generateUserEventsKey, generateEventsKey, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { auditLogger } from "../main";
@@ -116,7 +116,7 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
       this.sessionData.deleteHashValue(generateUserEventsKey(identity),
         generateEventsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove event", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelEventFail", identity, id);
           }
           callback(result);
         });

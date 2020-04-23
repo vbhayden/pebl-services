@@ -3,7 +3,7 @@ import { ActivityManager } from "../interfaces/activityManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Activity } from "../models/activity";
 import { ProgramAction } from "../models/programAction";
-import { generateUserActivitiesKey, generateActivitiesKey, generateUserActivityEventsKey, generateActivityEventsKey } from "../utils/constants";
+import { generateUserActivitiesKey, generateActivitiesKey, generateUserActivityEventsKey, generateActivityEventsKey, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { auditLogger } from "../main";
@@ -137,7 +137,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       generateActivitiesKey(id),
       (result: boolean) => {
         if (!result) {
-          auditLogger.error("failed to delete activity", identity, id);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActivityFail", identity, id);
         }
         callback(result);
       });
@@ -172,7 +172,7 @@ export class DefaultActivityManager extends PeBLPlugin implements ActivityManage
       this.sessionData.deleteHashValue(generateUserActivitiesKey(identity),
         generateActivityEventsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove activity event", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActivityEvtFail", identity, id);
           }
           callback(result);
         });

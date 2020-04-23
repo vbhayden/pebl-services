@@ -2,6 +2,7 @@ import { PluginManager } from "../interfaces/pluginManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PeBLPlugin } from "../models/peblPlugin";
 import { auditLogger } from "../main";
+import { LogCategory, Severity } from "../utils/constants";
 
 
 export class DefaultPluginManager implements PluginManager {
@@ -23,9 +24,10 @@ export class DefaultPluginManager implements PluginManager {
     let messageTemplates = plugin.getMessageTemplates();
     for (let messageTemplate of messageTemplates) {
       if (!this.registeredTemplates[messageTemplate.verb]) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "AddPluginVerb", messageTemplate.verb)
         this.registeredTemplates[messageTemplate.verb] = messageTemplate;
       } else {
-        auditLogger.error("Overwriting Plugin Message Template", messageTemplate.verb);
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "OverwrotePluginMsgTemplate", messageTemplate.verb);
       }
     }
   }

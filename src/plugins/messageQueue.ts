@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS } from '../utils/constants';
+import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -75,11 +75,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       JSON.stringify(jobMessage),
       (didSet: boolean) => {
         if (didSet) {
-          auditLogger.info('Job started', jobMessage);
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobStarted', jobMessage);
           this.dispatchJobMessage(jobMessage);
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
         } else {
-          auditLogger.info('Job already started', jobMessage);
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobAlreadyStarted', jobMessage);
           if (startup) {
             this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS,
               jobMessage.jobType,
@@ -154,7 +154,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           } else {
             this.sessionDataManager.getSetValues(SET_ALL_JOBS,
               (jobs: string[]) => {
-                auditLogger.info("Available jobs", jobs);
+                auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "AvailableJobs", jobs);
                 jobs.map((job) => this.processJob(JobMessage.parse(job), true));
               });
           }
@@ -167,7 +167,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createIncomingQueue(callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
       if (err) {
-        auditLogger.error("failed to create incoming queue", err);
+        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateInQueueFail", err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -179,7 +179,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
     this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
       if (err) {
-        auditLogger.error("failed to create outgoing queue", err);
+        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateOutQueueFail", sessionId, err);
         callback(false);
       } else if (resp === 1) {
         callback(true);
@@ -211,7 +211,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
     this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
-        auditLogger.error("failed to enqueue incoming message", err);
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err);
         return callback(false);
       }
       callback(true);
@@ -222,7 +222,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          auditLogger.error("failed to enqueue outgoing message", err);
+          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err);
           return callback(false);
         }
         callback(true);
@@ -233,13 +233,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchJobMessage(message: JobMessage): void {
-    auditLogger.info('dispatch job', message);
+    auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobDispatch', message);
     if (message.jobType === 'cleanup') {
       this.dispatchCleanup(message);
     } else if (message.jobType === 'lrsSync') {
       this.dispatchToLrs(message);
     } else {
-      auditLogger.error("unknown dispatch target", message);
+      auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "UnknownJobTarget", message);
     }
   }
 
@@ -250,27 +250,25 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         if (vals[0].length > 0)
           this.lrsManager.storeStatements(vals[0], () => {
             this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
-            auditLogger.info('job success', message);
+            auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobSuccess', message);
           }, (e) => {
-            auditLogger.error('lrs post failed', e);
+            auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, 'LRSPostFailed', e);
             if (!(e instanceof Error)) {
               let errJson;
               try {
                 errJson = JSON.parse(e.message);
                 if (errJson.message) {
-                  auditLogger.error("LRS parsed errors", errJson.message);
                   let chunks = errJson.message.split(" ");
                   for (let chunk of chunks) {
                     if (chunk.length >= 36) {
                       let stmt = vals[3][chunk]
                       if (stmt) {
-                        auditLogger.error("Purging LRS stmt", stmt);
+                        auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSDelStmt", stmt);
                         this.sessionDataManager.removeBadLRSStatement(stmt);
                       }
                     }
                   }
                 } else if (errJson.warnings) {
-                  auditLogger.error("LRS warnings", errJson.warnings);
                   for (let warning of errJson.warnings) {
                     let chunks = warning.split(" ");
                     for (let chunk of chunks) {
@@ -279,20 +277,20 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
                           let slimChunk = chunk.substring(2, chunk.length - 2);
                           let stmt = vals[3][slimChunk];
                           if (stmt) {
-                            auditLogger.error("Purging LRS stmt", stmt);
+                            // auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "", stmt);
                             // this.sessionDataManager.removeBadLRSStatement(stmt);
                           }
                         } else {
-                          auditLogger.error("Unknown warning chunk", chunk);
+                          auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", chunk);
                         }
                       }
                     }
                   }
                 } else {
-                  auditLogger.error("unknown lrs error", e);
+                  auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "LRSUnknownError", e);
                 }
               } catch (e) {
-                auditLogger.error("LRS bad json parse", e);
+                auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "LRSBadJsonParse", e);
               }
             }
           });
@@ -308,7 +306,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         message.jobType,
         () => {
           message.finished = true;
-          auditLogger.info("Job finished", message);
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
           this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
         });
     });
@@ -338,7 +336,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (messageTemplate) {
       messageTemplate.action(message.payload, dispatchCallback);
     } else {
-      auditLogger.error("bad message template", message);
+      auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "CacheBadMsgTemplate", message);
     }
   }
 
@@ -347,7 +345,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (success && message.messageId) {
         this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
           if (err) {
-            auditLogger.error("failed to delete message from incoming queue", err);
+            auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DelMsgInQueueFail", err);
           }
         });
       }
@@ -414,7 +412,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             message.jobType,
             () => {
               message.finished = true;
-              auditLogger.info("Job finished", message);
+              auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
               this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
             });
         });

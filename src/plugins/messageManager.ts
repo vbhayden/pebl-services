@@ -1,7 +1,7 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Message } from "../models/message";
-import { generateUserMessagesKey, generateMessagesKey, generateBroadcastQueueForUserId, generateTimestampForUserId } from "../utils/constants";
+import { generateUserMessagesKey, generateMessagesKey, generateBroadcastQueueForUserId, generateTimestampForUserId, LogCategory, Severity } from "../utils/constants";
 import { MessageManager } from "../interfaces/messageManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -110,7 +110,7 @@ export class DefaultMessageManager extends PeBLPlugin implements MessageManager 
       this.sessionData.deleteHashValue(generateUserMessagesKey(identity),
         generateMessagesKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove message", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelMsgFail", identity, id);
           }
           callback(result);
         });

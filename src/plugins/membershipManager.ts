@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MembershipManager } from "../interfaces/membershipManager";
 import { Membership } from "../models/membership";
-import { generateUserMembershipKey, generateMembershipsKey } from "../utils/constants";
+import { generateUserMembershipKey, generateMembershipsKey, Severity, LogCategory } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { auditLogger } from "../main";
@@ -87,7 +87,7 @@ export class DefaultMembershipManager extends PeBLPlugin implements MembershipMa
       this.sessionData.deleteHashValue(generateUserMembershipKey(identity),
         generateMembershipsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove membership", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelMembershipFail", identity, id);
           }
           callback(result);
         });
