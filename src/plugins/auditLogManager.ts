@@ -78,14 +78,14 @@ export class DefaultAuditLogManager {
 
   /* 
    * @param message must be 27 or fewer characters otherwise it will be truncated to 27
-  */
+   */
   report(system: LogCategory, severity: Severity, message: string, ...data: any[] | { [key: string]: any }[] | string[]) {
     if (this.debugging) {
       if (this.writeOutHandlers[severity]) {
         clearTimeout(this.writeOutHandlers[severity]);
       }
       this.logBuffers[severity].push(this.syslogFormat(system, severity, new Date(), message, JSON.stringify(data)));
-      if (this.logBuffers[severity].length > this.MAX_BUFFER_ENTRIES) {
+      if (this.debugging || (this.logBuffers[severity].length > this.MAX_BUFFER_ENTRIES)) {
         this.flush(severity);
       } else {
         this.writeOutHandlers[severity] = setTimeout(() => {

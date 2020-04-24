@@ -204,7 +204,7 @@ if (config.useSSL) {
 expressApp = require('express-ws')(expressApp, httpsServer).app;
 
 // Potentially needed for CORS
-var allowCrossDomain = function(req: Request, res: Response, next: Function) {
+var allowCrossDomain = (req: Request, res: Response, next: Function) => {
   let originUrl = <string>req.headers["origin"];
   try {
     if (originUrl) {
@@ -229,31 +229,39 @@ redisClient.on("error", function(error) {
 });
 
 expressApp.use(
-  expressSession({
-    store: new RedisSessionStore({ client: redisClient, ttl: config.sessionTTL }),
-    secret: config.sessionSecret,
-    cookie: {
-      secure: config.useSSL,
-      httpOnly: true,
-      maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
-      sameSite: config.cookieSameSite
-    },
-    name: "s",
-    proxy: config.usesProxy,
-    saveUninitialized: false,
-    resave: false
-  })
+  expressSession(
+    {
+      store: new RedisSessionStore({ client: redisClient, ttl: config.sessionTTL }),
+      secret: config.sessionSecret,
+      cookie: {
+        secure: config.useSSL,
+        httpOnly: true,
+        maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
+        sameSite: config.cookieSameSite
+      },
+      name: "s",
+      proxy: config.usesProxy,
+      saveUninitialized: false,
+      resave: false
+    }
+  )
 );
-
-// Make sure session exists
-// expressApp.use(function(req: Request, res: Response, next: Function) {
-//     if (!req.session) {
-//         return next(new Error("error"));
-//     }
-// });
 
 expressApp.use(bodyParser.urlencoded({ extended: false }));
 expressApp.use(bodyParser.json());
+
+expressApp.use((req: Request, res: Response, next: Function) => {
+  auditLogger.report(LogCategory.NETWORK,
+    Severity.INFO,
+    "ClientConnection",
+    req.ip,
+    req.method,
+    req.httpVersion,
+    req.originalUrl,
+    req.secure,
+    req.session ? req.session.id : "noSession");
+  next();
+});
 
 expressApp.disable('x-powered-by');
 

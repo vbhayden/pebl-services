@@ -243,6 +243,16 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     }
   }
 
+  private clearActiveJob(message: JobMessage): void {
+    this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
+      message.jobType,
+      () => {
+        message.finished = true;
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
+        this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
+      });
+  }
+
   dispatchToLrs(message: JobMessage): void {
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
       if (values) {
@@ -251,6 +261,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           this.lrsManager.storeStatements(vals[0], () => {
             this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
             auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobSuccess', message);
+            this.clearActiveJob(message);
           }, (e) => {
             auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, 'LRSPostFailed', e);
             if (!(e instanceof Error)) {
@@ -293,6 +304,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
                 auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "LRSBadJsonParse", e);
               }
             }
+            this.clearActiveJob(message);
           });
         if (vals[1].length > 0)
           for (let activity of vals[1])
@@ -300,15 +312,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         if (vals[2].length > 0)
           for (let profile of vals[2])
             this.lrsManager.storeProfile(profile, (success) => { });
+      } else {
+        this.clearActiveJob(message);
       }
-
-      this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
-        message.jobType,
-        () => {
-          message.finished = true;
-          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
-          this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
-        });
     });
   }
 
@@ -396,6 +402,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.rsmq.listQueues((err, queues) => {
       if (err) {
         //TODO
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "SessionCleanupFail", message);
+        this.clearActiveJob(message);
       } else {
         scanAll('0', 'sess:*', [], (sessions: string[]) => {
           let filtered = queues.filter((queue: string) => {
@@ -408,13 +416,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             this.removeOutgoingQueue(queue);
           }
 
-          this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
-            message.jobType,
-            () => {
-              message.finished = true;
-              auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
-              this.redisClient.publish(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
-            });
+          this.clearActiveJob(message);
         });
       }
     });
