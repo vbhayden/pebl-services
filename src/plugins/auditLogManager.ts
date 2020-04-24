@@ -65,7 +65,7 @@ export class DefaultAuditLogManager {
     if (this.usingSyslogFormat) {
       str.push(" " + process.pid); // process id
     }
-    str.push(" " + facility + " " + msgID.trim().substr(0, 27)); //message type
+    str.push(" " + facility + msgID.trim().substr(0, 27)); //message type
     if (this.usingSyslogFormat) {
       str.push(" -"); //structured data
       str.push(" BOM" + data); //unstructured msg
@@ -77,7 +77,7 @@ export class DefaultAuditLogManager {
   }
 
   /* 
-   * @param message must be 27 or fewer characters otherwise it will be truncated to 27
+   * @param message must be 27 or fewer characters and no spaces otherwise it will be truncated to 27
    */
   report(system: LogCategory, severity: Severity, message: string, ...data: any[] | { [key: string]: any }[] | string[]) {
     if (this.debugging) {
