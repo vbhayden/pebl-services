@@ -42,6 +42,7 @@ export function postData(
       }
 
       if (statusCode < 300) {
+        auditLogger.report(LogCategory.NETWORK, Severity.INFO, "HTTPPOST", statusCode, host, path);
         if (successCallback) {
           successCallback(data);
         }
@@ -101,6 +102,7 @@ export function getData(
         }
 
         if (statusCode < 300) {
+          auditLogger.report(LogCategory.NETWORK, Severity.INFO, "HTTPGET", statusCode, host, path)
           if (successCallback) {
             successCallback(data);
           }
@@ -157,6 +159,7 @@ export function deleteData(
         }
 
         if (statusCode < 300) {
+          auditLogger.report(LogCategory.NETWORK, Severity.INFO, "HTTPDELETE", statusCode, host, path)
           if (successCallback) {
             successCallback(data);
           }

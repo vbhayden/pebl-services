@@ -409,6 +409,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 
   if (!validRedirectDomainLookup[origin]) {
     ws.terminate();
+    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadRedirect", req.session?.id, originUrl);
     return;
   } else {
     if (req.session) {
@@ -515,6 +516,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
           }
         });
     } else {
+      auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSNoSession");
       ws.terminate();
     }
   }
