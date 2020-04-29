@@ -21,7 +21,7 @@ export enum SyslogFacility {
 export class DefaultAuditLogManager {
   private logBuffers: string[][];
   private debugging: boolean;
-  private writeOutHandlers: NodeJS.Timeout[];
+  private writeOutHandlers: (NodeJS.Timeout | undefined)[];
 
   private readonly MAX_BUFFER_ENTRIES = 3000;
   private readonly TIMEOUT_FLUSH = 20 * 1000;
@@ -80,24 +80,23 @@ export class DefaultAuditLogManager {
    * @param message must be 27 or fewer characters and no spaces otherwise it will be truncated to 27
    */
   report(system: LogCategory, severity: Severity, message: string, ...data: any[] | { [key: string]: any }[] | string[]) {
-    if (this.debugging) {
-      if (this.writeOutHandlers[severity]) {
-        clearTimeout(this.writeOutHandlers[severity]);
-      }
-      this.logBuffers[severity].push(this.syslogFormat(system, severity, new Date(), message, JSON.stringify(data)));
-      if (this.debugging || (this.logBuffers[severity].length > this.MAX_BUFFER_ENTRIES)) {
-        this.flush(severity);
-      } else {
-        this.writeOutHandlers[severity] = setTimeout(() => {
-          this.flush.bind(this)(severity);
-        },
-          this.TIMEOUT_FLUSH);
-      }
+    this.logBuffers[severity].push(this.syslogFormat(system, severity, new Date(), message, JSON.stringify(data)));
+    if (this.debugging || (this.logBuffers[severity].length > this.MAX_BUFFER_ENTRIES)) {
+      this.flush(severity);
+    } else if (!this.writeOutHandlers[severity]) {
+      this.writeOutHandlers[severity] = setTimeout(() => {
+        this.flush.bind(this)(severity);
+      },
+        this.TIMEOUT_FLUSH);
     }
   }
 
   flush(severity?: Severity): void {
     if (severity !== undefined) {
+      if (this.writeOutHandlers[severity]) {
+        clearTimeout(<NodeJS.Timeout>this.writeOutHandlers[severity]);
+        this.writeOutHandlers[severity] = undefined;
+      }
       if (severity > Severity.ERROR) {
         console.log(this.logBuffers[severity].join("\n"));
       } else {

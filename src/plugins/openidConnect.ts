@@ -17,7 +17,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     this.userManager = userManager;
     OpenIDClient.Issuer.discover(config.authenticationUrl)
       .then((issued: Issuer<Client>) => {
-
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "FoundIssuerClient", config.authenticationUrl, config.authenticationClientId, config.authenticationRedirectURIs, config.authenticationResponseTypes)
         this.activeClient = new issued.Client({
           client_id: config.authenticationClientId,
           client_secret: config.authenticationClientSecret,
@@ -33,6 +33,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (this.activeClient) {
       this.activeClient.introspect(token)
         .then(function(result) {
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "ValidatedToken", result.username, result.client_id, result.exp, result.active, result.iss, result.scope);
           res.send(result).end();
         }).catch((e) => {
           auditLogger.report(LogCategory.AUTH, Severity.NOTICE, "TokenValidationFail", e);
@@ -59,6 +60,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                   this.adjustUserPermissions(session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
+                      if (refreshed) {
+                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.identity.preferred_username);
+                      } else {
+                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id);
+                      }
                       callback(refreshed);
                     });
                 });
@@ -138,11 +144,13 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             return;
           }
 
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggingOutRedirect", session.id, session.identity.preferred_username, redirectUrl);
           res.redirect(this.activeClient.endSessionUrl({
             id_token_hint: session.activeTokens.id_token,
             post_logout_redirect_uri: redirectUrl
           }));
         } else {
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggingOut", session.id, session.identity.preferred_username);
           res.redirect(this.activeClient.endSessionUrl({
             id_token_hint: session.activeTokens.id_token,
             post_logout_redirect_uri: session.redirectUrl
@@ -150,6 +158,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         }
         this.clearActiveTokens(session);
       } else {
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggingOutNoTokens", session.id);
         res.redirect(session.redirectUrl);
       }
     } else {
@@ -164,6 +173,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         this.activeClient.userinfo(session.activeTokens.access_token)
           .then(function(userInfo) {
             session.identity = userInfo;
+            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.identity.preferred_username);
             if (callback instanceof Function) {
               callback(true);
             } else {
@@ -323,10 +333,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                   this.adjustUserPermissions(session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
+                      auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.identity.preferred_username);
                       res.redirect(session.redirectUrl);
                     });
                 } else {
                   auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id);
+                  res.status(401).end();
                 }
               });
             } else {
