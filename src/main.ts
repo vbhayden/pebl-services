@@ -409,7 +409,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 
   if (!validRedirectDomainLookup[origin]) {
     ws.terminate();
-    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadRedirect", req.session?.id, originUrl);
+    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, originUrl);
     return;
   } else {
     if (req.session) {
