@@ -57,7 +57,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                 let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
                 session.refreshTokenExpiration = Date.now() + refreshExpiration;
                 this.getProfile(session, (refreshed: boolean) => {
-                  this.adjustUserPermissions(session.identity.preferred_username,
+                  this.adjustUserPermissions(session.id, session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
                       if (refreshed) {
@@ -113,6 +113,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         return;
       }
 
+      auditLogger.report(LogCategory.AUTH, Severity.INFO, "FirstLoginLeg", session.id);
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
       res.redirect(this.activeClient.authorizationUrl({
@@ -249,7 +250,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     return true;
   }
 
-  private adjustUserPermissions(userId: string, accessToken: string, callback: () => void): void {
+  private adjustUserPermissions(sessionId: string, userId: string, accessToken: string, callback: () => void): void {
 
     this.userManager.getUserRoles(userId, (roleIds: string[]) => {
       let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
@@ -296,8 +297,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           }
 
-          auditLogger.report(LogCategory.AUTH, Severity.DEBUG, "AdjustingRoles", userId, rolesToRemove, rolesToAdd);
-
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", sessionId, userId, rolesToRemove, rolesToAdd);
           removeRoles(rolesToRemove, () => {
             if (rolesToAdd.length > 0) {
               this.userManager.addUserRoles(userId, rolesToAdd, (added: boolean) => {
@@ -308,7 +308,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
         } else {
-          auditLogger.report(LogCategory.AUTH, Severity.DEBUG, "AdjustRolesRemoveAll", roleIds);
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", sessionId, roleIds);
           removeRoles(roleIds, callback);
         }
       }
@@ -330,7 +330,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               session.refreshTokenExpiration = Date.now() + refreshExpiration;
               this.getProfile(session, (found) => {
                 if (found) {
-                  this.adjustUserPermissions(session.identity.preferred_username,
+                  this.adjustUserPermissions(session.id, session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
                       auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.identity.preferred_username);
