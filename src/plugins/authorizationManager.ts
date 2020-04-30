@@ -58,7 +58,7 @@ export class DefaultAuthorizationManager {
                   auditLogger.report(LogCategory.AUTH, Severity.INFO, "AssembledPermissions", session.id, roleIds);
                   session.save(() => {
                     callback();
-                  })
+                  });
                 }
               }
 

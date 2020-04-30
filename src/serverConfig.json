@@ -18,7 +18,7 @@
     "redisAuth": "dbzka4DMsskV6dWfjRc5XFiBHnCuDKTM47gp9vE5vTakhmCsry3xAZPNAsu5kHqusN5d76kR3gH92tobtUwAmVokfwhMNM8dxw599RgLpavQYse5",
 
     "sessionSecret": "SVpgmRd9xtMaeZbr6zgS8Fsai9LQbkbTTp3528cFFjQkMhAj7x8huBMGuz7cYch72E7VyVjPaUo",
-    "sessionTTL": 259200,
+    "sessionTTL": 3600,
 
     "cookieSameSite": "none",
 
