@@ -374,11 +374,17 @@ let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any
           let authorized = authorizationManager.authorize(username,
             req.session.permissions,
             payload);
+
+          if (authorized) {
+            auditLogger.report(LogCategory.AUTH, Severity.INFO, "MsgAuthorized", req.session.id, username, payload);
+          } else {
+            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "MsgNotAuthorized", req.session.id, username, payload);
+          }
+
           if (authorized) {
             let serviceMessage = new ServiceMessage(username, payload, req.session.id);
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "ProcessMsgAuthFail", username, payload);
             ws.send(JSON.stringify({
               identity: username,
               requestType: "error",
