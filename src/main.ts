@@ -60,8 +60,9 @@ import { LRSPlugin } from "./plugins/lrs";
 import { Endpoint } from "./models/endpoint";
 import { validateAndRedirectUrl } from "./utils/network";
 import { AuditLogManager } from "./interfaces/auditLogManager";
-import { DefaultAuditLogManager } from "./plugins/auditLogManager";
+import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
+import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 
 let express = require('express');
 
@@ -80,13 +81,20 @@ try {
   process.exit(2);
 }
 
-export const auditLogger: AuditLogManager = new DefaultAuditLogManager(config);
+let alm: AuditLogManager;
+if (config["usingSyslogFormat"]) {
+  alm = new SyslogAuditLogManager(config);
+} else {
+  alm = new ConsoleAuditLogManager(config);
+}
 
 process.on('uncaughtException', (err) => {
   auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "uncaughtException", err);
   auditLogger.flush();
   process.exit(1);
 });
+
+export const auditLogger: AuditLogManager = alm;
 
 let validRedirectDomainLookup: { [key: string]: boolean } = {};
 for (let validDomain of config.validRedirectDomains) {
@@ -257,9 +265,13 @@ expressApp.use((req: Request, res: Response, next: Function) => {
     req.ip,
     req.method,
     req.httpVersion,
-    req.originalUrl,
-    req.secure,
+    req.headers["origin"],
+    req.url,
     req.session ? req.session.id : "noSession");
+
+  if (req.session) {
+    req.session.ip = req.ip;
+  }
   next();
 });
 
@@ -282,12 +294,12 @@ expressApp.get('/login', function(req: Request, res: Response) {
             authenticationManager.login(req, req.session, res);
           }
         } else {
-          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession");
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession", req.ip);
           res.status(503).end();
         }
       });
   } else {
-    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession");
+    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession", req.ip);
     res.status(503).end();
   }
 });
@@ -299,18 +311,18 @@ expressApp.get('/redirect', function(req: Request, res: Response) {
         if (req.session) {
           auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLRedirect", req.session.id, isLoggedIn);
           if (isLoggedIn) {
-            auditLogger.report(LogCategory.NETWORK, Severity.INFO, "URLRedirectLoggedIn");
+            auditLogger.report(LogCategory.NETWORK, Severity.INFO, "URLRedirectLoggedIn", req.session.id, req.session.ip);
             res.status(200).end();
           } else {
             authenticationManager.redirect(req, req.session, res);
           }
         } else {
-          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession");
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession", req.ip);
           res.status(503).end();
         }
       });
   } else {
-    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession");
+    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession", req.ip);
     res.status(503).end();
   }
 });
@@ -327,12 +339,12 @@ expressApp.get('/logout', function(req: Request, res: Response) {
             validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
           }
         } else {
-          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession");
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
           res.status(503).end();
         }
       });
   } else {
-    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession");
+    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
     res.status(503).end();
   }
 });
@@ -346,22 +358,22 @@ expressApp.get('/user/profile', function(req: Request, res: Response) {
           if (isLoggedIn) {
             authenticationManager.getProfile(req.session, res);
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileAuthFail", req.session.id);
+            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileAuthFail", req.session.id, req.session.ip);
             res.status(401).end();
           }
         } else {
-          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession");
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession", req.ip);
           res.status(503).end();
         }
       });
   } else {
-    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession");
+    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession", req.ip);
     res.status(503).end();
   }
 });
 
 expressApp.post('/validate', function(req: Request, res: Response) {
-  authenticationManager.validate(req.body.token, res);
+  authenticationManager.validate(req.body.token, req, res);
 });
 
 let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
@@ -376,9 +388,9 @@ let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any
             payload);
 
           if (authorized) {
-            auditLogger.report(LogCategory.AUTH, Severity.INFO, "MsgAuthorized", req.session.id, username, payload);
+            auditLogger.report(LogCategory.MESSAGE, Severity.INFO, "MsgAuthorized", req.session.id, req.session.ip, username, payload);
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "MsgNotAuthorized", req.session.id, username, payload);
+            auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, payload);
           }
 
           if (authorized) {
@@ -415,7 +427,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
 
   if (!validRedirectDomainLookup[origin]) {
     ws.terminate();
-    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, originUrl);
+    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;
   } else {
     if (req.session) {
@@ -432,7 +444,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               let payload = messages.pop();
               if (payload) {
                 if (!validationManager.validate(payload)) {
-                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId);
+                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip);
                   ws.send(JSON.stringify({
                     identity: username,
                     requestType: "error",
@@ -449,7 +461,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       processMessage(ws, req, payload);
                       processMessages(messages);
                     } else {
-                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId);
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId, req.ip);
                       ws.send(JSON.stringify({
                         identity: username,
                         requestType: "loggedOut"
@@ -468,7 +480,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   try {
                     payload = JSON.parse(msg);
                   } catch (e) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, e);
+                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
                     ws.send(JSON.stringify({
                       identity: username,
                       requestType: "error",
@@ -481,7 +493,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   }
 
                   if (!validationManager.isMessageFormat(payload)) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id);
+                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
                     ws.send(JSON.stringify({
                       identity: username,
                       requestType: "error",
@@ -503,7 +515,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                   processMessages(messages);
                 }
               } else {
-                auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId);
+                auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
                 ws.close();
               }
             });
@@ -513,7 +525,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               messageQueue.unsubscribeNotifications(username);
             });
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.WARNING, "ProcessMsgInvalidAuth");
+            auditLogger.report(LogCategory.AUTH, Severity.WARNING, "ProcessMsgInvalidAuth", req.ip);
             ws.send(JSON.stringify({
               identity: "guest",
               requestType: "loggedOut"
@@ -522,7 +534,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
           }
         });
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSNoSession");
+      auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSNoSession", req.ip);
       ws.terminate();
     }
   }

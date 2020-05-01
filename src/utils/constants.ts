@@ -266,7 +266,7 @@ export const SeverityToReadable = [
   "debug"
 ];
 
-export const severityEnums: number[] = [
+export const severityEnums: Severity[] = [
   Severity.EMERGENCY,
   Severity.ALERT,
   Severity.CRITICAL,
@@ -286,3 +286,13 @@ export enum LogCategory {
   STORAGE = "stor",
   PLUGIN = "plug"
 }
+
+export const logCategoriesEnums: LogCategory[] = [
+  LogCategory.SYSTEM,
+  LogCategory.AUTH,
+  LogCategory.MESSAGE,
+  LogCategory.FILE_SYSTEM,
+  LogCategory.NETWORK,
+  LogCategory.STORAGE,
+  LogCategory.SYSTEM
+];

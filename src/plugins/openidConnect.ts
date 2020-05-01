@@ -29,18 +29,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       });
   }
 
-  validate(token: string, res: Response): void {
+  validate(token: string, req: Request, res: Response): void {
     if (this.activeClient) {
       this.activeClient.introspect(token)
         .then(function(result) {
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "ValidatedToken", result.username, result.client_id, result.exp, result.active, result.iss, result.scope);
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "ValidatedToken", req.ip, req.headers["origin"], result.username, result.client_id, result.exp, result.active, result.iss, result.scope);
           res.send(result).end();
         }).catch((e) => {
-          auditLogger.report(LogCategory.AUTH, Severity.NOTICE, "TokenValidationFail", e);
+          auditLogger.report(LogCategory.AUTH, Severity.NOTICE, "TokenValidationFail", req.ip, req.headers["origin"], e);
           res.send(403).end();
         });
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "ValidateNoAuthClient", token);
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "ValidateNoAuthClient", req.ip, req.headers["origin"], token);
       res.status(503).end();
     }
   }
@@ -57,35 +57,35 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                 let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
                 session.refreshTokenExpiration = Date.now() + refreshExpiration;
                 this.getProfile(session, (refreshed: boolean) => {
-                  this.adjustUserPermissions(session.id, session.identity.preferred_username,
+                  this.adjustUserPermissions(session, session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
                       if (refreshed) {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.identity.preferred_username);
+                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
                       } else {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id);
+                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id, session.ip);
                       }
                       callback(refreshed);
                     });
                 });
               } else {
-                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id);
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
                 this.clearActiveTokens(session, callback);
               }
             } else {
-              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id);
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id, session.ip);
               this.clearActiveTokens(session, callback);
             }
           }).catch((e) => {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, e);
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, session.ip, e);
             this.clearActiveTokens(session, callback);
           });
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id);
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
         callback(false);
       }
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id);
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
     }
   }
 
@@ -98,22 +98,22 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           if (this.config.validRedirectDomainLookup[hostname]) {
             session.redirectUrl = redirectUrl;
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect", session.id, session.ip);
             res.status(400).end();
             return;
           }
         } catch (e) {
-          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect", session.id, session.ip);
           res.status(400).end();
           return;
         }
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect");
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect", session.id, session.ip);
         res.status(400).end();
         return;
       }
 
-      auditLogger.report(LogCategory.AUTH, Severity.INFO, "FirstLoginLeg", session.id);
+      auditLogger.report(LogCategory.AUTH, Severity.INFO, "FirstLoginLeg", session.id, session.ip);
       session.codeVerifier = OpenIDClient.generators.codeVerifier();
       let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
       res.redirect(this.activeClient.authorizationUrl({
@@ -122,7 +122,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         code_challenge_method: 'S256'
       }));
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "LoginNoAuthClient", session.id);
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "LoginNoAuthClient", session.id, session.ip);
       res.status(503).end();
     }
   }
@@ -174,14 +174,14 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         this.activeClient.userinfo(session.activeTokens.access_token)
           .then(function(userInfo) {
             session.identity = userInfo;
-            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.identity.preferred_username);
+            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
             if (callback instanceof Function) {
               callback(true);
             } else {
               callback.send(userInfo).end();
             }
           }).catch((err) => {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, err);
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
             if (callback instanceof Function) {
               this.clearActiveTokens(session, callback);
             } else {
@@ -191,7 +191,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id);
+        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id, session.ip);
         if (callback instanceof Function) {
           callback(false);
         } else {
@@ -199,7 +199,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         }
       }
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id);
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id, session.ip);
     }
   }
 
@@ -250,7 +250,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     return true;
   }
 
-  private adjustUserPermissions(sessionId: string, userId: string, accessToken: string, callback: () => void): void {
+  private adjustUserPermissions(session: Express.Session, userId: string, accessToken: string, callback: () => void): void {
 
     this.userManager.getUserRoles(userId, (roleIds: string[]) => {
       let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
@@ -297,7 +297,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           }
 
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", sessionId, userId, rolesToRemove, rolesToAdd);
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
           removeRoles(rolesToRemove, () => {
             if (rolesToAdd.length > 0) {
               this.userManager.addUserRoles(userId, rolesToAdd, (added: boolean) => {
@@ -308,7 +308,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             }
           });
         } else {
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", sessionId, roleIds);
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
           removeRoles(roleIds, callback);
         }
       }
@@ -330,31 +330,31 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               session.refreshTokenExpiration = Date.now() + refreshExpiration;
               this.getProfile(session, (found) => {
                 if (found) {
-                  this.adjustUserPermissions(session.id, session.identity.preferred_username,
+                  this.adjustUserPermissions(session, session.identity.preferred_username,
                     session.activeTokens.access_token,
                     () => {
-                      auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.identity.preferred_username);
+                      auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
                       res.redirect(session.redirectUrl);
                     });
                 } else {
-                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id);
+                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id, session.ip);
                   res.status(401).end();
                 }
               });
             } else {
-              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id);
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
               res.status(503).end();
             }
           } else {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id);
+            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id, session.ip);
             res.status(401).end();
           }
         }).catch((err) => {
-          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "redirectFail", session.id, err);
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "redirectFail", session.id, session.ip, err);
           res.status(401).end();
         });
     } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RedirectNoAuthClient", session.id);
+      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RedirectNoAuthClient", session.id, session.ip);
       res.status(503).end();
     }
   }

@@ -22,6 +22,10 @@
 
     "cookieSameSite": "none",
 
+    "logFileDirectory": "./logging/",
+    "logFileSizeLimit": "10MB",
+    "logFileRotation": 7,
+
     "debugging": true,
     "usingSyslogFormat": true,
 
