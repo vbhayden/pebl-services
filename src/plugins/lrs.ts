@@ -5,7 +5,7 @@ import { XApiStatement, Voided } from '../models/xapiStatement';
 import { XApiQuery } from '../models/xapiQuery';
 import { Activity } from '../models/activity';
 import { Profile } from '../models/profile';
-import { PREFIX_PEBL_THREAD } from '../utils/constants';
+import { PREFIX_PEBL_THREAD, LogCategory, Severity } from '../utils/constants';
 import { auditLogger } from '../main';
 
 export class LRSPlugin implements LRS {
@@ -44,7 +44,7 @@ export class LRSPlugin implements LRS {
       if (XApiStatement.is(obj)) {
         let x = new XApiStatement(obj);
         if (x.id && (x.id.length > 36)) {
-          auditLogger.error("Parsing LRS statements, detected invalid xAPI id purging the id field", obj);
+          auditLogger.report(LogCategory.NETWORK, Severity.WARNING, "LRSInvalidxAPIID", x);
           delete x.id;
         }
         statements.push(x);

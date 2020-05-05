@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 export interface AuthenticationManager {
-  validate(token: string, res: Response): void;
+  validate(token: string, req: Request, res: Response): void;
   refresh(session: Express.Session, callback: (refreshed: boolean) => void): void;
   login(req: Request, session: Express.Session, res: Response): void;
   logout(req: Request, session: Express.Session, res: Response): void;

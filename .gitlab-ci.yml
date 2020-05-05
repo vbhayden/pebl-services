@@ -26,8 +26,8 @@ buildDev:
   - cp "$DEV_SERVER_CONFIG" dist/serverConfig.json
   - cp "$DEV_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always)
-  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
@@ -46,8 +46,8 @@ buildQa:
   - cp "$QA_SERVER_CONFIG" dist/serverConfig.json
   # - cp "$QA_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags  --always)
-  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  # - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
@@ -67,8 +67,8 @@ buildProdMC:
   - cp "$USMC_SERVER_CONFIG" dist/serverConfig.json
   # - cp "$PROD_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
-  - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/REPLACEMEVERSION/$LAST_TAG/" dist/serverConfig2.json
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  # - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/

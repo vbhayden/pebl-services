@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { AssetManager } from "../interfaces/assetManager";
 import { Asset } from "../models/asset";
-import { generateUserAssetKey, generateAssetsKey } from "../utils/constants";
+import { generateUserAssetKey, generateAssetsKey, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { auditLogger } from "../main";
@@ -86,7 +86,7 @@ export class DefaultAssetManager extends PeBLPlugin implements AssetManager {
       this.sessionData.deleteHashValue(generateUserAssetKey(identity),
         generateAssetsKey(id), (result: boolean) => {
           if (!result) {
-            auditLogger.error("failed to remove asset", identity, id);
+            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelAssetFail", identity, id);
           }
           callback(result);
         });

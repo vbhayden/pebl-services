@@ -3,7 +3,7 @@ import { AnnotationManager } from "../interfaces/annotationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
-import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS } from "../utils/constants";
+import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
@@ -249,7 +249,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
             generateAnnotationsKey(id), (result: boolean) => {
               if (!result) {
-                auditLogger.error("failed to remove annotation", identity, id);
+                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelAnnotationFail", identity, id);
               }
               callback(result);
             });
@@ -277,7 +277,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
           this.sessionData.deleteHashValue('sharedAnnotations',
             generateSharedAnnotationsKey(id), (result: boolean) => {
               if (!result) {
-                auditLogger.error("failed to remove shared annotation", identity, id);
+                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelSharedAnnotationFail", identity, id);
               }
               callback(result);
             });

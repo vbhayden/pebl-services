@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { NotificationManager } from "../interfaces/notificationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement, Voided } from "../models/xapiStatement";
-import { generateUserNotificationsKey, generateNotificationsKey, generateBroadcastQueueForUserId, generateTimestampForNotification } from "../utils/constants";
+import { generateUserNotificationsKey, generateNotificationsKey, generateBroadcastQueueForUserId, generateTimestampForNotification, LogCategory, Severity } from "../utils/constants";
 import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -122,7 +122,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
           this.sessionData.deleteHashValue(generateUserNotificationsKey(identity),
             generateNotificationsKey(id), (result: boolean) => {
               if (!result) {
-                auditLogger.error("failed to remove notification", identity, id);
+                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "delNotificationFail", identity, id);
               }
               callback(result);
             });

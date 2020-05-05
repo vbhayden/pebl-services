@@ -242,3 +242,57 @@ export function generateTimestampForReference(id: string): string {
 export function generateTimestampForNotification(id: string): string {
   return 'timestamp:notifications:' + id;
 }
+
+
+export enum Severity {
+  EMERGENCY = 0, // system isn't working
+  ALERT = 1, // system needs attention
+  CRITICAL = 2, // code path has failed
+  ERROR = 3, // code path has failed, but can recover
+  WARNING = 4, // unusual conditions
+  NOTICE = 5, // normal but unlikely
+  INFO = 6, // normal
+  DEBUG = 7 // extra information
+}
+
+export const SeverityToReadable = [
+  "emergency",
+  "alert",
+  "critical",
+  "error",
+  "warning",
+  "notice",
+  "info",
+  "debug"
+];
+
+export const severityEnums: Severity[] = [
+  Severity.EMERGENCY,
+  Severity.ALERT,
+  Severity.CRITICAL,
+  Severity.ERROR,
+  Severity.WARNING,
+  Severity.NOTICE,
+  Severity.INFO,
+  Severity.DEBUG
+];
+
+export enum LogCategory {
+  SYSTEM = "sys",
+  AUTH = "auth",
+  MESSAGE = "msg",
+  FILE_SYSTEM = "fs",
+  NETWORK = "net",
+  STORAGE = "stor",
+  PLUGIN = "plug"
+}
+
+export const logCategoriesEnums: LogCategory[] = [
+  LogCategory.SYSTEM,
+  LogCategory.AUTH,
+  LogCategory.MESSAGE,
+  LogCategory.FILE_SYSTEM,
+  LogCategory.NETWORK,
+  LogCategory.STORAGE,
+  LogCategory.SYSTEM
+];

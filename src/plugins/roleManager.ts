@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { RoleManager } from "../interfaces/roleManager";
 import { Role } from "../models/role";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_ROLES, generateRoleToUsersKey } from "../utils/constants";
+import { SET_ALL_ROLES, generateRoleToUsersKey, LogCategory, Severity } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -115,7 +115,7 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
       id,
       (deleted: boolean) => {
         if (!deleted) {
-          auditLogger.error("Failed to delete role", id);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelRoleFail", id);
         }
         callback(deleted);
       });

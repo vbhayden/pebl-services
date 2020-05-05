@@ -4,7 +4,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
-import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS } from "../utils/constants";
+import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, Severity, LogCategory } from "../utils/constants";
 import { auditLogger } from "../main";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
@@ -105,14 +105,14 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   deleteUserProfile(id: string, callback: (data: any) => void): void {
     this.sessionData.deleteHashValue(SET_ALL_USERS, id, (deleted: boolean) => {
       if (!deleted) {
-        auditLogger.error("failed to delete user profile", id);
+        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserProfileFail", id);
       }
       callback(deleted);
     });
   }
 
   addUserRoles(userId: string, roleIds: string[], callback: (data: boolean) => void): void {
-    auditLogger.debug(userId, roleIds);
+    auditLogger.report(LogCategory.PLUGIN, Severity.DEBUG, "AddUserRoles", userId, roleIds);
     this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds, (added: number) => {
       if (added > 0) {
         this.setLastModifiedPermissions(userId, Date.now() + "");
@@ -133,12 +133,12 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   deleteUserRole(userId: string, roleId: string, callback: (deleted: boolean) => void): void {
     this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
       if (!deleted) {
-        auditLogger.error("failed to delete user role", userId, roleId);
+        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
       }
 
       this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId, (deleted: boolean) => {
         if (!deleted) {
-          auditLogger.error("failed to delete user role 2", userId, roleId);
+          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
         }
         this.setLastModifiedPermissions(userId, Date.now() + "");
         callback(deleted);
