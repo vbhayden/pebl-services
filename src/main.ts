@@ -89,7 +89,7 @@ if (config["usingSyslogFormat"]) {
 }
 
 process.on('uncaughtException', (err) => {
-  auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "uncaughtException", err);
+  auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "uncaughtException", err.stack);
   auditLogger.flush();
   process.exit(1);
 });
