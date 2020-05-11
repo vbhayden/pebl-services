@@ -294,6 +294,5 @@ export const logCategoriesEnums: LogCategory[] = [
   LogCategory.FILE_SYSTEM,
   LogCategory.NETWORK,
   LogCategory.STORAGE,
-  LogCategory.SYSTEM,
   LogCategory.PLUGIN
 ];
