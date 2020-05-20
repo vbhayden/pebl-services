@@ -24,7 +24,7 @@
         "@types/express-session": "^1.17.0",
         "@types/express-ws": "^3.0.0",
         "@types/node": "^13.9.8",
-        "@types/redis": "^2.8.17",
+        "@types/redis": "^2.8.21",
         "@types/ws": "^7.2.3",
         "ts-loader": "^6.2.2",
         "ts-node-dev": "^1.0.0-pre.44",
