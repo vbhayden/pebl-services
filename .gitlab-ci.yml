@@ -24,10 +24,8 @@ buildDev:
   - npm install
   - npm run compile
   - cp "$DEV_SERVER_CONFIG" dist/serverConfig.json
-  - cp "$DEV_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always)
   - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
-  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
@@ -44,10 +42,26 @@ buildQa:
   - npm install
   - npm run compile
   - cp "$QA_SERVER_CONFIG" dist/serverConfig.json
-  # - cp "$QA_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags  --always)
   - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
+  artifacts:
+    paths:
+    - dist/
+    - package.json
+
+########################
+
+buildExtensionQa:
+  stage: build
+  only:
+    - extensionQA
+
+  script:
+  - npm install
+  - npm run compile
+  - cp "$QA_EXTENSION_SERVER_CONFIG" dist/serverConfig.json
+  - LAST_TAG=$(git describe --tags  --always)
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
   artifacts:
     paths:
     - dist/
@@ -63,16 +77,31 @@ buildProdMC:
   script:
   - npm install
   - npm run compile
-  - echo $USMC_SERVER_CONFIG
   - cp "$USMC_SERVER_CONFIG" dist/serverConfig.json
-  # - cp "$PROD_SERVER_CONFIG2" dist/serverConfig2.json
   - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
   - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
-  # - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig2.json
   artifacts:
     paths:
     - dist/
     - package.json
+    
+########################
+
+buildProdExtension:
+  stage: build
+  only:
+    - extensionProd
+
+  script:
+  - npm install
+  - npm run compile
+  - cp "$PROD_EXTENSION_SERVER_CONFIG" dist/serverConfig.json
+  - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  artifacts:
+    paths:
+    - dist/
+    - package.json    
 
 
 ########################
@@ -137,6 +166,37 @@ deployQa:
    - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && npm install --production"
    - ssh -p22 $USERNAME@$QA_SERVER_IP "date > /srv/qaNodeUpdated"
 
+
+########################
+
+deployExtensionQA:
+  stage: deploy
+  only:
+    - extensionQA
+  environment:
+    name: extensionQA
+    url: https://qa.services.extension.peblproject.org
+  script:
+   - apt-get update -y
+   - apt-get install openssh-client -y
+
+   - eval $(ssh-agent -s)
+
+   - mkdir -p ~/.ssh
+   - chmod 700 ~/.ssh
+
+   - echo "$QA_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+   - chmod 644 ~/.ssh/known_hosts
+
+   - chmod 600 "$QA_EXTENSION_PRIVATE_KEY"
+   - ssh-add "$QA_EXTENSION_PRIVATE_KEY" > /dev/null
+
+   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "rm -rf /srv/qaNode/*"
+   - scp -P22 -r dist $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
+   - scp -P22 -r package.json $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
+   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "cd /srv/qaNode && npm install --production"
+   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "date > /srv/qaNodeUpdated"
+
 ########################
 
 deployProdMC:
@@ -166,3 +226,33 @@ deployProdMC:
    - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"
+   
+########################
+
+deployProdExtension:
+  stage: deploy
+  only:
+    - extensionProd
+  environment:
+    name: extensionProd
+    url: https://services.extension.peblproject.org
+  script:
+   - apt-get update -y
+   - apt-get install openssh-client -y
+
+   - eval $(ssh-agent -s)
+
+   - mkdir -p ~/.ssh
+   - chmod 700 ~/.ssh
+
+   - echo "$PROD_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+   - chmod 644 ~/.ssh/known_hosts
+
+   - chmod 600 "$PROD_EXTENSION_PRIVATE_KEY"
+   - ssh-add "$PROD_EXTENSION_PRIVATE_KEY" > /dev/null
+
+   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "rm -rf /srv/prodNode/*"
+   - scp -P22 -r dist $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
+   - scp -P22 -r package.json $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
+   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "cd /srv/prodNode && npm install --production"
+   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "date > /srv/prodNodeUpdated"
