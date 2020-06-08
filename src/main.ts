@@ -63,6 +63,7 @@ import { AuditLogManager } from "./interfaces/auditLogManager";
 import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
+import { LinkedInAuthentication } from "./plugins/linkedInAuth";
 
 let express = require('express');
 
@@ -192,7 +193,13 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
 
 messageQueue.initialize();
 
-const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config, userManager);
+let am: AuthenticationManager;
+if (config.authenticationMethod && (config.authenticationMethod.toLowerCase() === "linkedin")) {
+  am = new LinkedInAuthentication(config, userManager);
+} else {
+  am = new OpenIDConnectAuthentication(config, userManager);
+}
+const authenticationManager: AuthenticationManager = am;
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
