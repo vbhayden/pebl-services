@@ -145,7 +145,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
                 let emailObj = JSON.parse(email);
                 session.identity = profileObj;
                 profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
-                profileObj.preferred_username = profileObj.emailAddress + "-" + profileObj.id;
+                profileObj.preferred_username = profileObj.email + "-" + profileObj.id;
                 if (callback instanceof Function) {
                   callback(true);
                 } else {
