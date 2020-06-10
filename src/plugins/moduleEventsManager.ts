@@ -48,20 +48,20 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   }
 
   validateSaveModuleEvents(payload: { [key: string]: any }): boolean {
-    if (payload.smts && Array.isArray(payload.smts) && payload.smts.length > 0) {
-      for (let event in payload.smts) {
-        if (ModuleRating.is(payload.smts[event]))
-          payload.smts[event] = new ModuleRating(payload.smts[event]);
-        else if (ModuleFeedback.is(payload.stmts[event]))
-          payload.smts[event] = new ModuleFeedback(payload.stmts[event]);
-        else if (ModuleExample.is(payload.stmts[event]))
-          payload.stmts[event] = new ModuleExample(payload.stmts[event]);
-        else if (ModuleExampleRating.is(payload.stmts[event]))
-          payload.stmts[event] = new ModuleExampleRating(payload.stmts[event]);
-        else if (ModuleExampleFeedback.is(payload.stmts[event]))
-          payload.stmts[event] = new ModuleExampleFeedback(payload.stmts[event]);
-        else if (ModuleRemovedEvent.is(payload.stmts[event]))
-          payload.stmts[event] = new ModuleRemovedEvent(payload.stmts[event]);
+    if (payload.events && Array.isArray(payload.events) && payload.events.length > 0) {
+      for (let event in payload.events) {
+        if (ModuleRating.is(payload.events[event]))
+          payload.events[event] = new ModuleRating(payload.events[event]);
+        else if (ModuleFeedback.is(payload.events[event]))
+          payload.events[event] = new ModuleFeedback(payload.events[event]);
+        else if (ModuleExample.is(payload.events[event]))
+          payload.events[event] = new ModuleExample(payload.events[event]);
+        else if (ModuleExampleRating.is(payload.events[event]))
+          payload.events[event] = new ModuleExampleRating(payload.events[event]);
+        else if (ModuleExampleFeedback.is(payload.events[event]))
+          payload.events[event] = new ModuleExampleFeedback(payload.events[event]);
+        else if (ModuleRemovedEvent.is(payload.events[event]))
+          payload.events[event] = new ModuleRemovedEvent(payload.events[event]);
         else
           return false;
       }
