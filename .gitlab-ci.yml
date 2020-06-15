@@ -267,7 +267,6 @@ deployProdADL:
    - chmod 644 ~/.ssh/known_hosts
 
    - chmod 600 "$ADL_PRIVATE_KEY"
-   - ssh-add  > /dev/null
 
    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "rm -rf /srv/prodNode/*"
    - scp -i "$ADL_PRIVATE_KEY" -P22 -r dist $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
