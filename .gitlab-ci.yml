@@ -69,6 +69,24 @@ buildExtensionQa:
 
 ########################
 
+buildProdADL:
+  stage: build
+  only:
+    - adl
+
+  script:
+  - npm install
+  - npm run compile
+  - cp "$ADL_SERVER_CONFIG" dist/serverConfig.json
+  - LAST_TAG=$(git describe --tags --always | cut -d '-' -f1)
+  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  artifacts:
+    paths:
+    - dist/
+    - package.json
+    
+########################
+
 buildProdMC:
   stage: build
   only:
@@ -226,6 +244,35 @@ deployProdMC:
    - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"
+   
+########################
+
+deployProdADL:
+  stage: deploy
+  only:
+    - adl
+  environment:
+    name: adl
+    url: https://adl.services.peblproject.org
+  script:
+   - apt-get update -y
+   - apt-get install openssh-client -y
+
+   - eval $(ssh-agent -s)
+
+   - mkdir -p ~/.ssh
+   - chmod 700 ~/.ssh
+
+   - echo "$ADL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+   - chmod 644 ~/.ssh/known_hosts
+
+   - chmod 600 "$ADL_PRIVATE_KEY"
+
+   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "rm -rf /srv/prodNode/*"
+   - scp -i "$ADL_PRIVATE_KEY" -P22 -r dist $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
+   - scp -i "$ADL_PRIVATE_KEY" -P22 -r package.json $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
+   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "cd /srv/prodNode && npm install --production"
+   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "date > /srv/prodNodeUpdated"
    
 ########################
 

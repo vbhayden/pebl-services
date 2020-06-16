@@ -1,7 +1,7 @@
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { ModuleEventsManager } from "../interfaces/moduleEventsManager";
-import { ModuleEvent } from "../models/moduleEvent";
+import { ModuleEvent, ModuleRating, ModuleFeedback, ModuleExample, ModuleExampleRating, ModuleExampleFeedback, ModuleRemovedEvent } from "../models/moduleEvent";
 import { generateUserModuleEventsKey, generateModuleEventsKey, LogCategory, Severity } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -37,27 +37,57 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   }
 
   validateGetModuleEvents(payload: { [key: string]: any }): boolean {
-    return false;
+    return true;
   }
 
   authorizeGetModuleEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateSaveModuleEvents(payload: { [key: string]: any }): boolean {
+    if (payload.events && Array.isArray(payload.events) && payload.events.length > 0) {
+      for (let event in payload.events) {
+        if (ModuleRating.is(payload.events[event]))
+          payload.events[event] = new ModuleRating(payload.events[event]);
+        else if (ModuleFeedback.is(payload.events[event]))
+          payload.events[event] = new ModuleFeedback(payload.events[event]);
+        else if (ModuleExample.is(payload.events[event]))
+          payload.events[event] = new ModuleExample(payload.events[event]);
+        else if (ModuleExampleRating.is(payload.events[event]))
+          payload.events[event] = new ModuleExampleRating(payload.events[event]);
+        else if (ModuleExampleFeedback.is(payload.events[event]))
+          payload.events[event] = new ModuleExampleFeedback(payload.events[event]);
+        else if (ModuleRemovedEvent.is(payload.events[event]))
+          payload.events[event] = new ModuleRemovedEvent(payload.events[event]);
+        else
+          return false;
+      }
+      return true;
+    }
     return false;
   }
 
   authorizeSaveModuleEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateDeleteModuleEvent(payload: { [key: string]: any }): boolean {
+    if (payload.xId && typeof payload.xId == "string")
+      return true;
     return false;
   }
 
   authorizeDeleteModuleEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   getModuleEvents(identity: string, callback: ((events: ModuleEvent[]) => void)): void {
@@ -70,14 +100,10 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
   }
 
   saveModuleEvents(identity: string, events: ModuleEvent[], callback: ((success: boolean) => void)): void {
-    let arr = [];
-    for (let event of events) {
-      let eventStr = JSON.stringify(event);
-      arr.push(generateModuleEventsKey(event.id));
-      arr.push(eventStr);
-      this.sessionData.queueForLrs(eventStr);
+    for (let stmt of events) {
+      let stmtStr = JSON.stringify(stmt);
+      this.sessionData.queueForLrs(stmtStr);
     }
-    this.sessionData.setHashValues(generateUserModuleEventsKey(identity), arr);
     callback(true);
   }
 
