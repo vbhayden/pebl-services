@@ -133,10 +133,21 @@ const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCach
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
-const lrsManager: LRS = new LRSPlugin(new Endpoint({
-  url: config.lrsUrl,
-  headers: config.lrsHeaders
-}));
+
+let e;
+try {
+  let url = new URL(config.lrsUrl);
+  e = new Endpoint({
+    host: url.host,
+    path: url.pathname,
+    headers: config.lrsHeaders
+  });
+} catch (e) {
+  auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "Invalid LRS address", config.lrsUrl, e.stack);
+  auditLogger.flush();
+  process.exit(1);
+}
+const lrsManager: LRS = new LRSPlugin(e);
 
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(pluginManager, groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
