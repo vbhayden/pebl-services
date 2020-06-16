@@ -224,7 +224,7 @@ var allowCrossDomain = (req: Request, res: Response, next: Function) => {
   try {
     if (originUrl) {
       let origin = new URL(originUrl).hostname;
-      if (validRedirectDomainLookup[origin]) {
+      if (validRedirectDomainLookup[origin] || validRedirectDomainLookup["*"]) {
         res.header('Access-Control-Allow-Origin', originUrl);
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
