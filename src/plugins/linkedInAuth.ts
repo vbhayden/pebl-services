@@ -61,7 +61,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
       if (redirectUrl) {
         try {
           let hostname = new URL(redirectUrl).hostname;
-          if (this.config.validRedirectDomainLookup[hostname]) {
+          if (this.config.validRedirectDomainLookup[hostname] || this.config.validRedirectDomainLookup["*"]) {
             session.redirectUrl = redirectUrl;
           } else {
             auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect", session.id, session.ip, hostname);
@@ -98,7 +98,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
         if (redirectUrl) {
           try {
             let hostname = new URL(redirectUrl).hostname;
-            if (!this.config.validRedirectDomainLookup[hostname]) {
+            if (!this.config.validRedirectDomainLookup[hostname] && !this.config.validRedirectDomainLookup["*"]) {
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LogoutInvalidRedirect", session.id, redirectUrl);
               res.status(400).end();
               return;

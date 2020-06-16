@@ -443,7 +443,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     origin = "null";
   }
 
-  if (!validRedirectDomainLookup[origin]) {
+  if (!validRedirectDomainLookup[origin] && !validRedirectDomainLookup["*"]) {
     ws.terminate();
     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;
