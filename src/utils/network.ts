@@ -194,7 +194,7 @@ export function validateAndRedirectUrl(validRedirectDomainLookup: { [key: string
   if (url) {
     try {
       let origin = new URL(url).hostname;
-      if (validRedirectDomainLookup[origin]) {
+      if (validRedirectDomainLookup[origin] || validRedirectDomainLookup["*"]) {
         auditLogger.report(LogCategory.AUTH, Severity.INFO, "RedirectingURL", session.id, url);
         res.redirect(url);
       }
