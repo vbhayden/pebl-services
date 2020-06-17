@@ -146,9 +146,10 @@ export class LinkedInAuthentication implements AuthenticationManager {
                 session.identity = profileObj;
                 profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
                 profileObj.preferred_username = profileObj.id;
-                profileObj.name = profileObj.firstName + " " + profileObj.lastName;
-                profileObj.given_name = profileObj.firstName;
-                profileObj.family_name = profileObj.lastName;
+                profileObj.given_name = profileObj.firstName.localized[profileObj.firstName.preferredLocale.language + "_" + profileObj.firstName.preferredLocale.country];
+                profileObj.family_name = profileObj.lastName.localized[profileObj.lastName.preferredLocale.language + "_" + profileObj.lastName.preferredLocale.country];
+                profileObj.name = profileObj.given_name + " " + profileObj.family_name;
+
                 if (callback instanceof Function) {
                   callback(true);
                 } else {
