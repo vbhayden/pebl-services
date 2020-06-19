@@ -1,13 +1,14 @@
 import { AuthenticationManager } from '../interfaces/authenticationManager'
 
 import { Request, Response } from 'express';
-import { Issuer, Client, TokenSet } from "openid-client";
+import { Client, TokenSet } from "openid-client";
 import { UserManager } from '../interfaces/userManager';
 import { auditLogger } from '../main';
 import { LogCategory, Severity } from '../utils/constants';
+import { getData } from '../utils/network';
 let OpenIDClient = require("openid-client")
 
-export class OpenIDConnectAuthentication implements AuthenticationManager {
+export class LinkedInAuthentication implements AuthenticationManager {
   private activeClient: Client | null = null;
   private config: { [key: string]: any };
   private userManager: UserManager;
@@ -15,30 +16,25 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   constructor(config: { [key: string]: any }, userManager: UserManager) {
     this.config = config;
     this.userManager = userManager;
-    OpenIDClient.Issuer.discover(config.authenticationUrl)
-      .then((issued: Issuer<Client>) => {
-        auditLogger.report(LogCategory.AUTH, Severity.INFO, "FoundIssuerClient", config.authenticationUrl, config.authenticationClientId, config.authenticationRedirectURIs, config.authenticationResponseTypes, config.authenticationMethod)
-        this.activeClient = new issued.Client({
-          client_id: config.authenticationClientId,
-          client_secret: config.authenticationClientSecret,
-          redirect_uris: config.authenticationRedirectURIs,
-          response_types: config.authenticationResponseTypes
-        });
-      }).catch((err: any) => {
-        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDDiscoveryFail", err);
-      });
+    auditLogger.report(LogCategory.AUTH, Severity.INFO, "StaticIssuerClient", "https://www.linkedin.com", config.authenticationClientId, config.authenticationRedirectURIs, config.authenticationResponseTypes, config.authenticationMethod);
+    let issuer = new OpenIDClient.Issuer({
+      issuer: "linkedIn",
+      authorization_endpoint: "https://www.linkedin.com/oauth/v2/authorization",
+      token_endpoint: "https://www.linkedin.com/oauth/v2/accessToken",
+      token_endpoint_auth_methods_supported: "client_secret_post"
+    });
+    this.activeClient = new issuer.Client({
+      client_id: config.authenticationClientId,
+      client_secret: config.authenticationClientSecret,
+      redirect_uris: config.authenticationRedirectURIs,
+      response_types: config.authenticationResponseTypes
+    });
   }
 
   validate(token: string, req: Request, res: Response): void {
     if (this.activeClient) {
-      this.activeClient.introspect(token)
-        .then(function(result) {
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "ValidatedToken", req.ip, req.headers["origin"], result.username, result.client_id, result.exp, result.active, result.iss, result.scope);
-          res.send(result).end();
-        }).catch((e) => {
-          auditLogger.report(LogCategory.AUTH, Severity.NOTICE, "TokenValidationFail", req.ip, req.headers["origin"], e);
-          res.send(403).end();
-        });
+      auditLogger.report(LogCategory.AUTH, Severity.INFO, "ValidateNotAvailable", req.ip, req.headers["origin"], token);
+      res.status(501).end();
     } else {
       auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "ValidateNoAuthClient", req.ip, req.headers["origin"], token);
       res.status(503).end();
@@ -48,38 +44,8 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   refresh(session: Express.Session, callback: (refreshed: boolean) => void): void {
     if (this.activeClient) {
       if (session.activeTokens) {
-        this.activeClient.refresh(session.activeTokens.refresh_token)
-          .then((tokenSet) => {
-            if (Object.keys(tokenSet).length != 0) {
-              session.activeTokens = tokenSet;
-              if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
-                session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-                let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-                session.refreshTokenExpiration = Date.now() + refreshExpiration;
-                this.getProfile(session, (refreshed: boolean) => {
-                  this.adjustUserPermissions(session, session.identity.preferred_username,
-                    session.activeTokens.access_token,
-                    () => {
-                      if (refreshed) {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
-                      } else {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id, session.ip);
-                      }
-                      callback(refreshed);
-                    });
-                });
-              } else {
-                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
-                this.clearActiveTokens(session, callback);
-              }
-            } else {
-              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id, session.ip);
-              this.clearActiveTokens(session, callback);
-            }
-          }).catch((e) => {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, session.ip, e);
-            this.clearActiveTokens(session, callback);
-          });
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "RefreshNotAvailable", session.id, session.ip);
+        callback(false);
       } else {
         auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
         callback(false);
@@ -113,13 +79,11 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         return;
       }
 
+      session.state = OpenIDClient.generators.state();
       auditLogger.report(LogCategory.AUTH, Severity.INFO, "FirstLoginLeg", session.id, session.ip);
-      session.codeVerifier = OpenIDClient.generators.codeVerifier();
-      let codeChallenge = OpenIDClient.generators.codeChallenge(session.codeVerifier)
       res.redirect(this.activeClient.authorizationUrl({
         scope: this.config.authenticationScope,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256'
+        state: session.state
       }));
     } else {
       auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "LoginNoAuthClient", session.id, session.ip);
@@ -146,16 +110,10 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           }
 
           auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggingOutRedirect", session.id, session.identity.preferred_username, redirectUrl);
-          res.redirect(this.activeClient.endSessionUrl({
-            id_token_hint: session.activeTokens.id_token,
-            post_logout_redirect_uri: redirectUrl
-          }));
+          res.redirect(redirectUrl);
         } else {
           auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggingOut", session.id, session.identity.preferred_username);
-          res.redirect(this.activeClient.endSessionUrl({
-            id_token_hint: session.activeTokens.id_token,
-            post_logout_redirect_uri: session.redirectUrl
-          }));
+          res.redirect(session.redirectUrl);
         }
         this.clearActiveTokens(session);
       } else {
@@ -171,16 +129,45 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
     if (this.activeClient) {
       if (session.activeTokens) {
-        this.activeClient.userinfo(session.activeTokens.access_token)
-          .then(function(userInfo) {
-            session.identity = userInfo;
-            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
-            if (callback instanceof Function) {
-              callback(true);
-            } else {
-              callback.send(userInfo).end();
-            }
-          }).catch((err) => {
+        getData("api.linkedin.com",
+          "/v2/me?projection=(id,firstName,lastName,profilePicture(displayImage~:playableStreams),address,organizations,phoneNumbers)",
+          {
+            "Authorization": "Bearer " + session.activeTokens.access_token
+          },
+          (profile) => {
+            let profileObj = JSON.parse(profile);
+            getData("api.linkedin.com",
+              "/v2/emailAddress?q=members&projection=(elements*(handle~))",
+              {
+                "Authorization": "Bearer " + session.activeTokens.access_token
+              },
+              (email) => {
+                let emailObj = JSON.parse(email);
+                session.identity = profileObj;
+                profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
+                profileObj.preferred_username = profileObj.id;
+                profileObj.given_name = profileObj.firstName.localized[profileObj.firstName.preferredLocale.language + "_" + profileObj.firstName.preferredLocale.country];
+                profileObj.family_name = profileObj.lastName.localized[profileObj.lastName.preferredLocale.language + "_" + profileObj.lastName.preferredLocale.country];
+                profileObj.name = profileObj.given_name + " " + profileObj.family_name;
+
+                if (callback instanceof Function) {
+                  callback(true);
+                } else {
+                  callback.send(profileObj).end();
+                }
+              },
+              (err) => {
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthEmailFail", session.id, session.ip, err);
+                if (callback instanceof Function) {
+                  this.clearActiveTokens(session, callback);
+                } else {
+                  this.clearActiveTokens(session, () => {
+                    callback.status(401).end();
+                  });
+                }
+              });
+          },
+          (err) => {
             auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
             if (callback instanceof Function) {
               this.clearActiveTokens(session, callback);
@@ -206,7 +193,6 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: false) => void): void {
     delete session.activeTokens;
     delete session.accessTokenExpiration;
-    delete session.refreshTokenExpiration;
     session.save(() => {
       if (callback) callback(false);
     });
@@ -215,19 +201,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
     if (session.activeTokens) {
       if (this.isAccessTokenExpired(session)) {
-        if (this.isRefreshTokenExpired(session)) {
-          this.clearActiveTokens(session, callback);
-        } else {
-          this.refresh(session, (refreshed: boolean) => {
-            session.save(() => {
-              if (refreshed) {
-                callback(true);
-              } else {
-                this.clearActiveTokens(session, callback);
-              }
-            });
-          });
-        }
+        this.clearActiveTokens(session, callback);
       } else {
         callback(true);
       }
@@ -243,91 +217,30 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     return true;
   }
 
-  private isRefreshTokenExpired(session: Express.Session): boolean {
-    if (session.refreshTokenExpiration) {
-      return ((session.refreshTokenExpiration - Date.now()) <= 0);
-    }
-    return true;
-  }
-
   private adjustUserPermissions(session: Express.Session, userId: string, accessToken: string, callback: () => void): void {
 
-    this.userManager.getUserRoles(userId, (roleIds: string[]) => {
-      let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
-
-      let removeRoles = (roles: string[], done: () => void) => {
-        let role = roles.pop();
-        if (role) {
-          this.userManager.deleteUserRole(userId,
-            role,
-            () => {
-              removeRoles(roles, done);
-            });
-        } else {
-          done();
-        }
+    let arr = ["systemAdmin"];
+    this.userManager.addUserRoles(userId, arr, (added: boolean) => {
+      if (added) {
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, arr);
       }
-      if (accessTokenObject.resource_access) {
-        let rolesToRemove: string[] = [];
-        let rolesToAdd: string[] = [];
-        let ps = accessTokenObject.resource_access["PeBL-Services"];
-        if (ps && ps.roles) {
-          for (let incomingRole of ps.roles) {
-            let found = false;
-            for (let roleId of roleIds) {
-              if (roleId === incomingRole) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              rolesToAdd.push(incomingRole);
-            }
-          }
-          for (let roleId of roleIds) {
-            let found = false;
-            for (let incomingRole of ps.roles) {
-              if (roleId === incomingRole) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              rolesToRemove.push(roleId);
-            }
-          }
-
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
-          removeRoles(rolesToRemove, () => {
-            if (rolesToAdd.length > 0) {
-              this.userManager.addUserRoles(userId, rolesToAdd, (added: boolean) => {
-                callback();
-              });
-            } else {
-              callback();
-            }
-          });
-        } else {
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
-          removeRoles(roleIds, callback);
-        }
-      }
+      callback();
     });
   }
 
   redirect(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
-      this.activeClient.callback(
+
+      this.activeClient.oauthCallback(
         this.config.authenticationRedirectURIs[0],
         this.activeClient.callbackParams(req),
-        { code_verifier: session.codeVerifier })
-        .then((tokenSet: TokenSet) => {
+        {
+          state: session.state
+        }).then((tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
-            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+            if (tokenSet.expires_at) {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-              session.refreshTokenExpiration = Date.now() + refreshExpiration;
               this.getProfile(session, (found) => {
                 if (found) {
                   this.adjustUserPermissions(session, session.identity.preferred_username,
@@ -342,6 +255,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                 }
               });
             } else {
+              console.log(tokenSet);
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
               res.status(503).end();
             }

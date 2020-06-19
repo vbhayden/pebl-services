@@ -63,6 +63,7 @@ import { AuditLogManager } from "./interfaces/auditLogManager";
 import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
+import { LinkedInAuthentication } from "./plugins/linkedInAuth";
 
 let express = require('express');
 
@@ -132,10 +133,21 @@ const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCach
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
-const lrsManager: LRS = new LRSPlugin(new Endpoint({
-  url: config.lrsUrl,
-  headers: config.lrsHeaders
-}));
+
+let e;
+try {
+  let url = new URL(config.lrsUrl);
+  e = new Endpoint({
+    host: url.host,
+    path: url.pathname,
+    headers: config.lrsHeaders
+  });
+} catch (e) {
+  auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "Invalid LRS address", config.lrsUrl, e.stack);
+  auditLogger.flush();
+  process.exit(1);
+}
+const lrsManager: LRS = new LRSPlugin(e);
 
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(pluginManager, groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
@@ -192,7 +204,13 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
 
 messageQueue.initialize();
 
-const authenticationManager: AuthenticationManager = new OpenIDConnectAuthentication(config, userManager);
+let am: AuthenticationManager;
+if (config.authenticationMethod && (config.authenticationMethod.toLowerCase() === "linkedin")) {
+  am = new LinkedInAuthentication(config, userManager);
+} else {
+  am = new OpenIDConnectAuthentication(config, userManager);
+}
+const authenticationManager: AuthenticationManager = am;
 
 if (config.useSSL) {
   privKey = fs.readFileSync(config.privateKeyPath, "utf8");
@@ -217,7 +235,7 @@ var allowCrossDomain = (req: Request, res: Response, next: Function) => {
   try {
     if (originUrl) {
       let origin = new URL(originUrl).hostname;
-      if (validRedirectDomainLookup[origin]) {
+      if (validRedirectDomainLookup[origin] || validRedirectDomainLookup["*"]) {
         res.header('Access-Control-Allow-Origin', originUrl);
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -425,7 +443,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     origin = "null";
   }
 
-  if (!validRedirectDomainLookup[origin]) {
+  if (!validRedirectDomainLookup[origin] && !validRedirectDomainLookup["*"]) {
     ws.terminate();
     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;
