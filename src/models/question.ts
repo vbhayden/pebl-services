@@ -1,0 +1,74 @@
+import { XApiStatement, ActivityObject } from "./xapiStatement";
+import { PREFIX_PEBL, PREFIX_PEBL_THREAD } from "../utils/constants";
+
+export class Question extends XApiStatement {
+
+  readonly book: string;
+
+  readonly score?: number;
+  readonly min?: number;
+  readonly max?: number;
+
+  readonly activityId?: string;
+
+  readonly completion?: boolean;
+  readonly success?: boolean;
+
+  readonly answers?: string[];
+  readonly prompt?: string;
+
+  readonly response?: string;
+
+  constructor(raw: { [key: string]: any }) {
+    super(raw);
+
+    let object = this.object as ActivityObject;
+
+    this.book = object.id;
+    if (this.book.indexOf(PREFIX_PEBL) != -1)
+      this.book = this.book.substring(this.book.indexOf(PREFIX_PEBL) + PREFIX_PEBL.length);
+    else if (this.book.indexOf(PREFIX_PEBL_THREAD) != -1)
+      this.book = this.book.substring(this.book.indexOf(PREFIX_PEBL_THREAD) + PREFIX_PEBL_THREAD.length);
+
+    if (this.result) {
+      if (this.result.score) {
+        if (this.result.score.raw)
+          this.score = this.result.score.raw;
+        if (this.result.score.min)
+          this.min = this.result.score.min;
+        if (this.result.score.max)
+          this.max = this.result.score.max;
+      }
+
+      if (this.result.completion)
+        this.completion = this.result.completion;
+      if (this.result.success)
+        this.success = this.result.success;
+      if (this.result.response)
+        this.response = this.result.response;
+    }
+
+    if (object.definition) {
+      if (object.definition.description)
+        this.prompt = object.definition.description["en-US"];
+
+      this.activityId = object.id;
+
+      if (object.definition.choices) {
+        let choices = object.definition.choices;
+        this.answers = [];
+        for (let key of Object.keys(choices) as any) {
+          this.answers.push(choices[key].description["en-US"]);
+        }
+      }
+
+    }
+
+  }
+
+  static is(x: XApiStatement): boolean {
+    let verb = x.verb.display["en-US"];
+    return (verb == "attempted");
+  }
+
+}

@@ -1,6 +1,6 @@
 export const NAMESPACE_USER_MESSAGES = "user-";
 export const PREFIX_PEBL_THREAD = "peblThread://";
-export const PREFIX_PEBL = "pebl://";
+export const PREFIX_PEBL = "";
 export const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.html#";
 
 // export const USER_PREFIX = "user-";
@@ -35,6 +35,8 @@ export const KEY_ROLES = 'roles';
 export const KEY_GROUPS = 'groups';
 export const KEY_USERS = 'users';
 export const KEY_NAVIGATIONS = 'navigations';
+export const KEY_QUIZES = "quizes";
+export const KEY_QUESTIONS = "questions";
 
 export const LRS_SYNC_TIMEOUT = 30000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
@@ -124,6 +126,14 @@ export function generateUserNavigationsKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_NAVIGATIONS;
 }
 
+export function generateUserQuizesKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_QUIZES;
+}
+
+export function generateUserQuestionsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_QUESTIONS;
+}
+
 //groups
 export function generateGroupToUserMembersKey(groupId: string): string {
   return 'group:' + groupId + ':user:membership';
@@ -193,6 +203,14 @@ export function generateSessionsKey(id: string): string {
 
 export function generateNavigationsKey(id: string): string {
   return 'navigation:' + id;
+}
+
+export function generateQuizesKey(id: string): string {
+  return 'quiz:' + id;
+}
+
+export function generateQuestionsKey(id: string): string {
+  return 'question:' + id;
 }
 
 export function generateBroadcastQueueForUserId(id: string): string {

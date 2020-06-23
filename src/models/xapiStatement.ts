@@ -221,9 +221,9 @@ class SubStatementObject {
   }
 }
 
-class InteractionComponent {
+export class InteractionComponent {
   id: string;
-  description?: { [key: string]: string };
+  description: { [key: string]: string };
 
   constructor(raw: { [key: string]: any }) {
     this.id = raw.id;
