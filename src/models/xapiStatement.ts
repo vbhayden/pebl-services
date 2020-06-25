@@ -360,6 +360,9 @@ export class ActivityObject {
     if (typeof x.id !== "string")
       return false;
 
+    if (!x.id.includes('://'))
+      return false;
+
     if (x.definition) {
       if (typeof x.definition !== "object")
         return false;
