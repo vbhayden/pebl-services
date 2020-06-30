@@ -170,6 +170,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateInQueueFail", err);
         callback(false);
       } else if (resp === 1) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateInQueue", err);
         callback(true);
       }
       this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
@@ -182,6 +183,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateOutQueueFail", sessionId, err);
         callback(false);
       } else if (resp === 1) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateOutQueue", sessionId, err);
         callback(true);
       }
       this.sessionSocketMap[sessionId] = websocket;
@@ -211,7 +213,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
     this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err);
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err, message.sessionId);
         return callback(false);
       }
       callback(true);
@@ -222,7 +224,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err);
+          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId);
           return callback(false);
         }
         callback(true);
