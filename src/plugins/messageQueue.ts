@@ -224,7 +224,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType);
+          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
           return callback(false);
         }
         callback(true);
