@@ -385,7 +385,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   receiveOutgoingMessages(sessionId: string, socket: WebSocket) {
     this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
       if (this.isQueueMessage(resp)) {
-        socket.send(JSON.stringify(ServiceMessage.parse(resp.message).payload));
+        if (socket.readyState === 1) {
+          socket.send(JSON.stringify(ServiceMessage.parse(resp.message).payload));
+        }
         this.rsmq.deleteMessage({ qname: sessionId, id: resp.id }, function(err, resp) {
           //TODO
         });
