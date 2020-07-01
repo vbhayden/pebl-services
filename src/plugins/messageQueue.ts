@@ -55,7 +55,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
-        this.receiveOutgoingMessages(sessionId);
+        let socket = this.sessionSocketMap[sessionId];
+        if (socket && socket.readyState === 1) {
+          this.receiveOutgoingMessages(sessionId, socket);
+        }
       }
     });
   }
@@ -225,9 +228,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
           auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
-          return callback(false);
+          callback(false);
+        } else {
+          callback(true);
         }
-        callback(true);
       });
     } else {
       callback(false);
@@ -353,7 +357,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToClient(message: ServiceMessage): void {
     this.enqueueOutgoingMessage(message, (success) => {
-      if (success && message.messageId) {
+      if (message.messageId) {
+        if (!success) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DroppingOutgoingMsg", message.messageId, message.sessionId, message.getRequestType());
+        }
         this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
           if (err) {
             auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DelMsgInQueueFail", err);
@@ -375,18 +382,16 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  receiveOutgoingMessages(sessionId: string) {
+  receiveOutgoingMessages(sessionId: string, socket: WebSocket) {
     this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
       if (this.isQueueMessage(resp)) {
-        let socket = this.sessionSocketMap[sessionId];
-        if (socket && socket.readyState === 1) {
-          socket.send(JSON.stringify(ServiceMessage.parse(resp.message).payload));
-          this.rsmq.deleteMessage({ qname: sessionId, id: resp.id }, function(err, resp) {
-            //TODO
-          });
-        }
+        socket.send(JSON.stringify(ServiceMessage.parse(resp.message).payload));
+        this.rsmq.deleteMessage({ qname: sessionId, id: resp.id }, function(err, resp) {
+          //TODO
+        });
+
         //Call function again until no messages are received
-        this.receiveOutgoingMessages(sessionId);
+        this.receiveOutgoingMessages(sessionId, socket);
       }
     });
   }
