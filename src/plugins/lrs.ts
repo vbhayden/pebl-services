@@ -16,13 +16,19 @@ export class LRSPlugin implements LRS {
   }
 
   storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void {
+
+    let stmtSet: { [key: string]: XApiStatement } = {};
     stmts.forEach(function(rec) {
       delete rec.identity;
       rec = rec.toXAPI();
+      if (rec.id && stmtSet[rec.id]) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DupedxAPIID", rec.id);
+      }
+      stmtSet[rec.id] = rec;
     });
 
     let path = this.endpoint.path + "statements";
-    network.postData(this.endpoint.host, path, this.endpoint.headers, JSON.stringify(stmts), successCb, failureCb);
+    network.postData(this.endpoint.host, path, this.endpoint.headers, JSON.stringify(Object.values(stmtSet)), successCb, failureCb);
   }
 
   voidStatements(stmts: XApiStatement[]): Voided[] {
@@ -42,12 +48,15 @@ export class LRSPlugin implements LRS {
       let obj = JSON.parse(str);
       if (XApiStatement.is(obj)) {
         let x = new XApiStatement(obj);
-        if (x.id && (x.id.length > 36)) {
-          auditLogger.report(LogCategory.NETWORK, Severity.WARNING, "LRSInvalidxAPIID", x);
-          delete x.id;
+        if (x.id) {
+          if (x.id.length > 36) {
+            auditLogger.report(LogCategory.NETWORK, Severity.WARNING, "LRSInvalidxAPIID", x);
+            delete x.id;
+          } else {
+            lookup[x.id] = str;
+          }
         }
         statements.push(x);
-        lookup[x.id] = str;
       } else if (Activity.is(obj)) {
         let a = new Activity(obj);
         activities.push(a);
