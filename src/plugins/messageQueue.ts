@@ -55,7 +55,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
-        this.receiveOutgoingMessages(sessionId);
+        let socket = this.sessionSocketMap[sessionId];
+        if (socket && socket.readyState === 1) {
+          this.receiveOutgoingMessages(sessionId, socket);
+        }
       }
     });
   }
@@ -170,6 +173,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateInQueueFail", err);
         callback(false);
       } else if (resp === 1) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateInQueue", err);
         callback(true);
       }
       this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
@@ -182,6 +186,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateOutQueueFail", sessionId, err);
         callback(false);
       } else if (resp === 1) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateOutQueue", sessionId, err);
         callback(true);
       }
       this.sessionSocketMap[sessionId] = websocket;
@@ -211,7 +216,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
     this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
       if (err) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err);
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err, message.sessionId);
         return callback(false);
       }
       callback(true);
@@ -222,10 +227,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (message.sessionId) {
       this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
         if (err) {
-          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err);
-          return callback(false);
+          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
+          callback(false);
+        } else {
+          callback(true);
         }
-        callback(true);
       });
     } else {
       callback(false);
@@ -351,7 +357,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   dispatchToClient(message: ServiceMessage): void {
     this.enqueueOutgoingMessage(message, (success) => {
-      if (success && message.messageId) {
+      if (message.messageId) {
+        if (!success) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DroppingOutgoingMsg", message.messageId, message.sessionId, message.getRequestType());
+        }
         this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
           if (err) {
             auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DelMsgInQueueFail", err);
@@ -373,18 +382,18 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  receiveOutgoingMessages(sessionId: string) {
+  receiveOutgoingMessages(sessionId: string, socket: WebSocket) {
     this.rsmq.receiveMessage({ qname: sessionId }, (err, resp) => {
       if (this.isQueueMessage(resp)) {
-        let socket = this.sessionSocketMap[sessionId];
-        if (socket && socket.readyState === 1) {
+        if (socket.readyState === 1) {
           socket.send(JSON.stringify(ServiceMessage.parse(resp.message).payload));
-          this.rsmq.deleteMessage({ qname: sessionId, id: resp.id }, function(err, resp) {
-            //TODO
-          });
         }
+        this.rsmq.deleteMessage({ qname: sessionId, id: resp.id }, function(err, resp) {
+          //TODO
+        });
+
         //Call function again until no messages are received
-        this.receiveOutgoingMessages(sessionId);
+        this.receiveOutgoingMessages(sessionId, socket);
       }
     });
   }

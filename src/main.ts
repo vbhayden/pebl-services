@@ -51,6 +51,8 @@ import { ReferenceManager } from "./interfaces/referenceManager";
 import { DefaultReferenceManager } from "./plugins/referenceManager";
 import { ActionManager } from "./interfaces/actionManager";
 import { DefaultActionManager } from "./plugins/actionManager";
+import { QuizManager } from "./interfaces/quizManager";
+import { DefaultQuizManager } from "./plugins/quizManager";
 import { SessionManager } from "./interfaces/sessionManager";
 import { DefaultSessionManager } from "./plugins/sessionManager";
 import { NavigationManager } from "./interfaces/navigationManager";
@@ -131,6 +133,7 @@ const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(
 const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupManager, notificationManager);
 const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache, notificationManager);
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
+const quizManager: QuizManager = new DefaultQuizManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
 
@@ -167,6 +170,7 @@ pluginManager.register(notificationManager);
 pluginManager.register(threadManager);
 pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
+pluginManager.register(quizManager);
 pluginManager.register(sessionManager);
 pluginManager.register(navigationManager);
 

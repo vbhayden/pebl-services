@@ -16,7 +16,9 @@
         "compile": "tsfmt -r && tsc",
         "dev": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
         "dev2": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig2.json",
-        "start": "node ./dist/main.js ./src/serverConfig.json"
+        "devMigrate": "ts-node-dev --inspect --respawn --transpileOnly src/migrate.ts ./src/serverConfig.json",
+        "start": "node ./dist/main.js ./src/serverConfig.json",
+        "migrate": "node ./dist/migrate.js ./src/serverConfig.json"
     },
     "devDependencies": {
         "@types/connect-redis": "0.0.13",
