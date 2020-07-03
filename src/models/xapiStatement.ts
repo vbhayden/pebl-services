@@ -26,7 +26,7 @@ class Verb {
   }
 }
 
-class AgentObject {
+export class AgentObject {
   objectType: string;
   name?: string;
   mbox?: string;

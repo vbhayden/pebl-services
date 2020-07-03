@@ -1,5 +1,5 @@
 import { XApiStatement, ActivityObject } from "./xapiStatement";
-import { PREFIX_PEBL, PREFIX_PEBL_THREAD } from "../utils/constants";
+import { PREFIX_PEBL_EXTENSION, PREFIX_PEBL, PREFIX_PEBL_THREAD } from "../utils/constants";
 
 export class Quiz extends XApiStatement {
 
@@ -53,6 +53,14 @@ export class Quiz extends XApiStatement {
       this.quizName = object.definition.description["en-US"];
 
     this.activityId = object.id;
+    if (object.definition) {
+      let extensions = object.definition.extensions;
+      if (extensions) {
+        if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
+          this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
+      }
+    }
+
   }
 
   static is(x: XApiStatement): boolean {

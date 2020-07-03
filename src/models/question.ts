@@ -1,5 +1,5 @@
 import { XApiStatement, ActivityObject } from "./xapiStatement";
-import { PREFIX_PEBL, PREFIX_PEBL_THREAD } from "../utils/constants";
+import { PREFIX_PEBL_EXTENSION, PREFIX_PEBL, PREFIX_PEBL_THREAD } from "../utils/constants";
 
 export class Question extends XApiStatement {
 
@@ -60,6 +60,12 @@ export class Question extends XApiStatement {
         for (let key of Object.keys(choices) as any) {
           this.answers.push(choices[key].description["en-US"]);
         }
+      }
+
+      let extensions = object.definition.extensions;
+      if (extensions) {
+        if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
+          this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
       }
 
     }
