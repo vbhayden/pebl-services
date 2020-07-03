@@ -37,6 +37,8 @@ export class Action extends XApiStatement {
         this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
         this.idref = extensions[PREFIX_PEBL_EXTENSION + "idref"];
         this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
+        if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
+          this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
       }
     }
   }

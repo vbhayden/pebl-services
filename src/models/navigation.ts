@@ -30,6 +30,8 @@ export class Navigation extends XApiStatement {
     if (extensions) {
       this.firstCfi = extensions[PREFIX_PEBL_EXTENSION + "firstCfi"];
       this.lastCfi = extensions[PREFIX_PEBL_EXTENSION + "lastCfi"];
+      if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
+        this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
     }
   }
 
