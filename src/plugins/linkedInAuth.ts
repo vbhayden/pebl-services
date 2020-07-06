@@ -61,7 +61,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
       if (redirectUrl) {
         try {
           let hostname = new URL(redirectUrl).hostname;
-          if (this.config.validRedirectDomainLookup[hostname]) {
+          if (this.config.validRedirectDomainLookup[hostname] || this.config.validRedirectDomainLookup["*"]) {
             session.redirectUrl = redirectUrl;
           } else {
             auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LoginInvalidRedirect", session.id, session.ip, hostname);
@@ -98,7 +98,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
         if (redirectUrl) {
           try {
             let hostname = new URL(redirectUrl).hostname;
-            if (!this.config.validRedirectDomainLookup[hostname]) {
+            if (!this.config.validRedirectDomainLookup[hostname] && !this.config.validRedirectDomainLookup["*"]) {
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "LogoutInvalidRedirect", session.id, redirectUrl);
               res.status(400).end();
               return;
@@ -145,7 +145,11 @@ export class LinkedInAuthentication implements AuthenticationManager {
                 let emailObj = JSON.parse(email);
                 session.identity = profileObj;
                 profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
-                profileObj.preferred_username = profileObj.emailAddress + "-" + profileObj.id;
+                profileObj.preferred_username = profileObj.id;
+                profileObj.given_name = profileObj.firstName.localized[profileObj.firstName.preferredLocale.language + "_" + profileObj.firstName.preferredLocale.country];
+                profileObj.family_name = profileObj.lastName.localized[profileObj.lastName.preferredLocale.language + "_" + profileObj.lastName.preferredLocale.country];
+                profileObj.name = profileObj.given_name + " " + profileObj.family_name;
+
                 if (callback instanceof Function) {
                   callback(true);
                 } else {

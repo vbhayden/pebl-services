@@ -51,6 +51,8 @@ import { ReferenceManager } from "./interfaces/referenceManager";
 import { DefaultReferenceManager } from "./plugins/referenceManager";
 import { ActionManager } from "./interfaces/actionManager";
 import { DefaultActionManager } from "./plugins/actionManager";
+import { QuizManager } from "./interfaces/quizManager";
+import { DefaultQuizManager } from "./plugins/quizManager";
 import { SessionManager } from "./interfaces/sessionManager";
 import { DefaultSessionManager } from "./plugins/sessionManager";
 import { NavigationManager } from "./interfaces/navigationManager";
@@ -131,12 +133,24 @@ const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(
 const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupManager, notificationManager);
 const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache, notificationManager);
 const actionManager: ActionManager = new DefaultActionManager(redisCache);
+const quizManager: QuizManager = new DefaultQuizManager(redisCache);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
-const lrsManager: LRS = new LRSPlugin(new Endpoint({
-  url: config.lrsUrl,
-  headers: config.lrsHeaders
-}));
+
+let e;
+try {
+  let url = new URL(config.lrsUrl);
+  e = new Endpoint({
+    host: url.host,
+    path: url.pathname,
+    headers: config.lrsHeaders
+  });
+} catch (e) {
+  auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "Invalid LRS address", config.lrsUrl, e.stack);
+  auditLogger.flush();
+  process.exit(1);
+}
+const lrsManager: LRS = new LRSPlugin(e);
 
 const authorizationManager: AuthorizationManager = new DefaultAuthorizationManager(pluginManager, groupManager, userManager, roleManager);
 const validationManager: ValidationManager = new DefaultValidationManager(pluginManager);
@@ -156,6 +170,7 @@ pluginManager.register(notificationManager);
 pluginManager.register(threadManager);
 pluginManager.register(referenceManager);
 pluginManager.register(actionManager);
+pluginManager.register(quizManager);
 pluginManager.register(sessionManager);
 pluginManager.register(navigationManager);
 
@@ -224,7 +239,7 @@ var allowCrossDomain = (req: Request, res: Response, next: Function) => {
   try {
     if (originUrl) {
       let origin = new URL(originUrl).hostname;
-      if (validRedirectDomainLookup[origin]) {
+      if (validRedirectDomainLookup[origin] || validRedirectDomainLookup["*"]) {
         res.header('Access-Control-Allow-Origin', originUrl);
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -432,7 +447,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     origin = "null";
   }
 
-  if (!validRedirectDomainLookup[origin]) {
+  if (!validRedirectDomainLookup[origin] && !validRedirectDomainLookup["*"]) {
     ws.terminate();
     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;

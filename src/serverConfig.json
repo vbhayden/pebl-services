@@ -29,16 +29,14 @@
     "logFileRotation": 7,
 
     "debugging": true,
-    "usingSyslogFormat": true,
+    "usingSyslogFormat": false,
 
     "port": 8080,
     "useSSL": true,
     "usesProxy": false,
-    "lrsUrl": "lrs.peblproject.com",
+    "lrsUrl": "https://lrs.peblproject.com/data/xapi",
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",
     	"Authorization": "Basic NmEwZGJhOTAwMGRjMGZhNmEyZDQwMmNlZmI1NWE1YWE4YzAwZDQ3MTpjM2E5MDAxYzJjYTkyOTY3NWFjODBhMTVhODkwNzdlZDgwMTA0OTQ4"
-    },
-
-    "systemAdmins": ["mile.divovic", "mile.divovic2"]
+    }
 }

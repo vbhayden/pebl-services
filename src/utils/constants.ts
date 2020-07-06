@@ -35,12 +35,14 @@ export const KEY_ROLES = 'roles';
 export const KEY_GROUPS = 'groups';
 export const KEY_USERS = 'users';
 export const KEY_NAVIGATIONS = 'navigations';
+export const KEY_QUIZES = "quizes";
+export const KEY_QUESTIONS = "questions";
 
-export const LRS_SYNC_TIMEOUT = 30000;
+export const LRS_SYNC_TIMEOUT = 5000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const JOB_BUFFER_TIMEOUT = 30000;
 
-export const LRS_SYNC_LIMIT = 500;
+export const LRS_SYNC_LIMIT = 75;
 
 
 export const QUEUE_REALTIME_BROADCAST_PREFIX = "realtime:userid:";
@@ -124,6 +126,14 @@ export function generateUserNavigationsKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_NAVIGATIONS;
 }
 
+export function generateUserQuizesKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_QUIZES;
+}
+
+export function generateUserQuestionsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_QUESTIONS;
+}
+
 //groups
 export function generateGroupToUserMembersKey(groupId: string): string {
   return 'group:' + groupId + ':user:membership';
@@ -193,6 +203,14 @@ export function generateSessionsKey(id: string): string {
 
 export function generateNavigationsKey(id: string): string {
   return 'navigation:' + id;
+}
+
+export function generateQuizesKey(id: string): string {
+  return 'quiz:' + id;
+}
+
+export function generateQuestionsKey(id: string): string {
+  return 'question:' + id;
 }
 
 export function generateBroadcastQueueForUserId(id: string): string {
