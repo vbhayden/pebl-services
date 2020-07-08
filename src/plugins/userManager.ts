@@ -2,8 +2,6 @@ import { UserManager } from "../interfaces/userManager";
 import { UserProfile } from "../models/userProfile";
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { MessageTemplate } from "../models/messageTemplate";
-import { PermissionSet } from "../models/permission";
 import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, Severity, LogCategory } from "../utils/constants";
 import { auditLogger } from "../main";
 
@@ -14,81 +12,81 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   constructor(redisCache: SessionDataManager) {
     super();
     this.sessionData = redisCache;
-    this.addMessageTemplate(new MessageTemplate("addUserProfile",
-      this.validateAddUserProfile.bind(this),
-      this.authorizeAddUserProfile.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.addUserProfile(payload.id, payload.userName, dispatchCallback, payload.userEmail);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("addUserProfile",
+    //   this.validateAddUserProfile.bind(this),
+    //   this.authorizeAddUserProfile.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.addUserProfile(payload.id, payload.userName, dispatchCallback, payload.userEmail);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
-      this.validateDeleteUserProfile.bind(this),
-      this.authorizeDeleteUserProfile.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteUserProfile(payload.id, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteUserProfile",
+    //   this.validateDeleteUserProfile.bind(this),
+    //   this.authorizeDeleteUserProfile.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.deleteUserProfile(payload.id, dispatchCallback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("updateUserProfile",
-      this.validateUpdateUserProfile.bind(this),
-      this.authorizeUpdateUserProfile.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.updateUserProfile(payload.id, dispatchCallback, payload.userName, payload.userEmail);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("updateUserProfile",
+    //   this.validateUpdateUserProfile.bind(this),
+    //   this.authorizeUpdateUserProfile.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.updateUserProfile(payload.id, dispatchCallback, payload.userName, payload.userEmail);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("getUserProfile",
-      this.validateGetUserProfile.bind(this),
-      this.authorizeGetUserProfile.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getUserProfile(payload.id, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getUserProfile",
+    //   this.validateGetUserProfile.bind(this),
+    //   this.authorizeGetUserProfile.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.getUserProfile(payload.id, dispatchCallback);
+    //   }));
 
-    this.addMessageTemplate(new MessageTemplate("getUsers",
-      this.validateGetUsers.bind(this),
-      this.authorizeGetUsers.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getUsers(dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getUsers",
+    //   this.validateGetUsers.bind(this),
+    //   this.authorizeGetUsers.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.getUsers(dispatchCallback);
+    //   }));
   }
 
-  validateAddUserProfile(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateAddUserProfile(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateDeleteUserProfile(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateDeleteUserProfile(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateUpdateUserProfile(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateUpdateUserProfile(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateGetUserProfile(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateGetUserProfile(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateGetUsers(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateGetUsers(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeAddUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeAddUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeDeleteUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeDeleteUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeGetUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeGetUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeUpdateUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeUpdateUserProfile(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeGetUsers(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeGetUsers(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
   // Add a user with the specified metadata
   addUserProfile(id: string, userName: string, callback: (data: any) => void, userEmail?: string): void {

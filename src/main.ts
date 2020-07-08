@@ -520,7 +520,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       identity: username,
                       requestType: "error",
                       payload: {
-                        description: "Invalid Message",
+                        description: "Invalid Message Format",
                         target: payload.id,
                         payload: payload
                       }

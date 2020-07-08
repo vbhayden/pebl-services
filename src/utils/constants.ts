@@ -38,7 +38,7 @@ export const KEY_NAVIGATIONS = 'navigations';
 export const KEY_QUIZES = "quizes";
 export const KEY_QUESTIONS = "questions";
 
-export const LRS_SYNC_TIMEOUT = 5000;
+export const LRS_SYNC_TIMEOUT = 1500;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const JOB_BUFFER_TIMEOUT = 30000;
 
