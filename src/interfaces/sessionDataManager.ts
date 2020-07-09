@@ -16,6 +16,7 @@ export interface SessionDataManager {
   addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void;
   getSetValues(key: string, callback: (data: string[]) => void): void;
   deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void;
+  unionSetValues(key: string | string[], callback: (data: string[]) => void): void;
 
   addTimestampValue(key: string, timestamp: number, value: string): void;
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;

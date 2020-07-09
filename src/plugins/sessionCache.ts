@@ -171,6 +171,17 @@ export class RedisSessionDataCache implements SessionDataManager {
     })
   }
 
+  unionSetValues(key: string | string[], callback: (data: string[]) => void): void {
+    this.redis.sunion(key, (err, result) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisUnionSetVals", err);
+        callback([]);
+      } else {
+        callback(result);
+      }
+    })
+  }
+
   deleteSetValue(key: string, value: (string | string[]), callback?: (deleted: boolean) => void): void {
     if (value instanceof Array) {
       //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)          

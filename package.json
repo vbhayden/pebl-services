@@ -9,6 +9,7 @@
         "express-session": "^1.17.0",
         "express-ws": "^4.0.0",
         "openid-client": "^3.14.1",
+        "pg": "^8.2.2",
         "redis": "^3.0.2",
         "rsmq": "^0.12.0"
     },

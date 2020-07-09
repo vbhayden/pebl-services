@@ -1,7 +1,7 @@
 {
     "serverName": "localhost",
 
-    "validRedirectDomains": ["localhost"],
+    "validRedirectDomains": ["localhost", "eduweb.vedbyte.com"],
 
     "privateKeyPath": "./localhost.key",
     "certificatePath": "./localhost.crt",
@@ -9,7 +9,7 @@
     "version": "VERSION",
 
     "authenticationUrl": "https://dev.keycloak.eduworks.com/auth/realms/master",
-    "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
+    "authenticationClientSecret": "fdc6e002-ad07-4c85-8af5-0d747a893906",
     "authenticationClientId": "PeBL-Services",
     "authenticationRedirectURIs": ["https://localhost:8080/redirect"],
     "authenticationResponseTypes": ["code"],

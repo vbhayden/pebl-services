@@ -398,6 +398,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
+  private archiveUserId(userId: string): void {
+    this.redisClient.archive(userId);
+  }
+
+  private restoreUserId(userId: string): void {
+    this.redisClient.restore(userId);
+  }
+
   private dispatchCleanup(message: JobMessage): void {
     let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
       this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
