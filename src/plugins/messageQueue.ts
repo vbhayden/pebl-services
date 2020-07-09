@@ -12,6 +12,7 @@ import RedisSMQ = require("rsmq");
 import { PluginManager } from '../interfaces/pluginManager';
 import { JobMessage } from '../models/job';
 import { auditLogger } from '../main';
+import { ArchiveManager } from '../interfaces/archiveManager';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
   private lrsManager: LRS;
@@ -23,8 +24,15 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private pluginManager: PluginManager;
   private timeouts: { [key: string]: NodeJS.Timeout }
   private sessionDataManager: SessionDataManager;
+  private archiveManager: ArchiveManager;
 
-  constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager, sessionDataManager: SessionDataManager, lrsManager: LRS) {
+  constructor(redisConfig: { [key: string]: any },
+    pluginManager: PluginManager,
+    sessionDataManager: SessionDataManager,
+    lrsManager: LRS,
+    archiveManager: ArchiveManager) {
+
+    this.archiveManager = archiveManager;
     this.lrsManager = lrsManager;
     this.rsmq = new RedisSMQ(redisConfig);
     this.redisClient = redisConfig.client;
@@ -402,11 +410,47 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   private archiveUserId(userId: string): void {
-    this.redisClient.archive(userId);
+    this.archiveManager.setUserArchived(userId, true);
   }
 
   private restoreUserId(userId: string): void {
-    this.redisClient.restore(userId);
+    this.archiveManager.setUserArchived(userId, false);
+  }
+
+  private archiveUsers(): void {
+    let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
+      this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
+        cursor = result[0];
+        accumulator.push(...result[1]);
+        if (cursor !== '0') {
+          scanAll(cursor, pattern, accumulator, callback);
+        } else {
+          callback(accumulator);
+        }
+      });
+    }
+
+    this.rsmq.listQueues((err, queues) => {
+      if (err) {
+        //TODO
+        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "SessionCleanupFail", message);
+        this.clearActiveJob(message);
+      } else {
+        scanAll('0', 'sess:*', [], (sessions: string[]) => {
+          let filtered = queues.filter((queue: string) => {
+            if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
+              return false;
+            return !(sessions.includes('sess:' + queue));
+          });
+
+          for (let queue of filtered) {
+            this.removeOutgoingQueue(queue);
+          }
+
+          this.clearActiveJob(message);
+        });
+      }
+    });
   }
 
   private dispatchCleanup(message: JobMessage): void {

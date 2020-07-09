@@ -27,6 +27,13 @@ export interface SessionDataManager {
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
   trimForLrs(count: number): void;
 
+  dumpKey(key: string, callback: (data?: string) => void): void;
+  dumpKeys(key: string[], callback: (data?: { [key: string]: string }) => void): void;
+  restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
+  restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
+  removeKey(key: string, callback?: (deleted: boolean) => void);
+  removeKeys(keys: string[], callback?: (deleted: boolean[]) => void);
+
   removeBadLRSStatement(id: string): void;
 
   broadcast(channel: string, message: string): void;

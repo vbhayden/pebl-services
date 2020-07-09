@@ -10,6 +10,7 @@ export const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.ht
 
 // const competenciesKey = 'competencies';
 
+export const SET_ALL_ARCHIVE_USERS = "archived:users";
 export const SET_ALL_GROUPS = "groups:all";
 export const SET_ALL_ROLES = "roles:all";
 export const SET_ALL_USERS = "users:all";
@@ -38,6 +39,7 @@ export const KEY_NAVIGATIONS = 'navigations';
 export const KEY_QUIZES = "quizes";
 export const KEY_QUESTIONS = "questions";
 
+// export const LRS_SYNC_TIMEOUT = 300000;
 export const LRS_SYNC_TIMEOUT = 1500;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const JOB_BUFFER_TIMEOUT = 30000;

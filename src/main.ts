@@ -66,7 +66,8 @@ import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 import { LinkedInAuthentication } from "./plugins/linkedInAuth";
-import { Message } from "./models/message";
+import { DefaultArchiveManager } from "./plugins/archiveManager";
+import { ArchiveManager } from "./interfaces/archiveManager";
 
 let express = require('express');
 
@@ -119,6 +120,7 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const archiveManager: ArchiveManager = new DefaultArchiveManager(redisClient, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
@@ -205,7 +207,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   },
   ns: 'rsmq',
   realtime: true
-}, pluginManager, redisCache, lrsManager);
+}, pluginManager, redisCache, lrsManager, archiveManager);
 
 messageQueue.initialize();
 

@@ -297,4 +297,66 @@ export class RedisSessionDataCache implements SessionDataManager {
   trimForLrs(count: number): void {
     this.redis.ltrim('outgoingXapi', count + 1, -1);
   }
+
+  dumpKey(key: string, callback: (data?: string) => void): void {
+    this.redis.dump(key, (err, data) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
+        callback(undefined);
+      } else {
+        callback(data);
+      }
+    });
+  }
+
+  dumpKeys(keys: string[], callback: (data?: { [key: string]: string }) => void): void {
+    if (keys.length != 0) {
+      let obj = {} as { [key: string]: string };
+      let multi = this.redis.multi();
+      for (let key of keys) {
+        multi.dump(key, (err, resp) => {
+          if (err) {
+            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKeys", err);
+          } else {
+            obj[key] = resp;
+          }
+        });
+      }
+      multi.exec((err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiKeysBatch", err);
+          callback({});
+        } else {
+          callback(obj);
+        }
+      });
+    } else {
+      callback({});
+    }
+
+    this.redis.dump(key, (err, data) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
+        callback(undefined);
+      } else {
+        callback(data);
+      }
+    });
+  }
+
+
+  restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void {
+    this.redis.restore(key, ttl, data, (err, data) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
+        if (callback) {
+          callback(false);
+        }
+      } else {
+        if (callback) {
+          callback(true);
+        }
+      }
+    });
+  }
 }
