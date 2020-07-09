@@ -204,10 +204,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   }
 
   private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: false) => void): void {
-    delete session.activeTokens;
-    delete session.accessTokenExpiration;
-    delete session.refreshTokenExpiration;
-    session.save(() => {
+    session.destroy(() => {
       if (callback) callback(false);
     });
   }
