@@ -288,19 +288,22 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
                 } else if (errJson.warnings) {
                   for (let warning of errJson.warnings) {
                     let chunks = warning.split(" ");
+                    let found = false
                     for (let chunk of chunks) {
                       if (chunk.length >= 36) {
                         if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
                           let slimChunk = chunk.substring(2, chunk.length - 2);
                           let stmt = vals[3][slimChunk];
                           if (stmt) {
+                            found = true;
                             // auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "", stmt);
                             // this.sessionDataManager.removeBadLRSStatement(stmt);
                           }
-                        } else {
-                          auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", chunk);
                         }
                       }
+                    }
+                    if (!found) {
+                      auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", warning);
                     }
                   }
                 } else {
