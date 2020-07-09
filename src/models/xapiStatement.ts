@@ -702,48 +702,48 @@ export class XApiStatement {
       if (x.context.registration) {
         if (typeof x.context.registration !== "string")
           return false;
+      }
 
-        if (x.context.instructor && !AgentObject.is(x.context.instructor))
+      if (x.context.instructor && !AgentObject.is(x.context.instructor))
+        return false;
+
+      if (x.context.team && !GroupObject.is(x.context.team))
+        return false;
+
+      if (x.context.contextActivities) {
+        if (typeof x.context.contextActivities !== 'object')
           return false;
 
-        if (x.context.team && !GroupObject.is(x.context.team))
-          return false;
-
-        if (x.context.contextActivities) {
-          if (typeof x.context.contextActivities !== 'object')
+        if (x.context.contextActivities.parent) {
+          if (!Array.isArray(x.context.contextActivities.parent))
             return false;
 
-          if (x.context.contextActivities.parent) {
-            if (!Array.isArray(x.context.contextActivities.parent))
-              return false;
+          if (!x.context.contextActivities.parent.every((parent: any) => { return ActivityObject.is(parent) }))
+            return false;
+        }
 
-            if (!x.context.contextActivities.parent.every((parent: any) => { return ActivityObject.is(parent) }))
-              return false;
-          }
+        if (x.context.contextActivities.grouping) {
+          if (!Array.isArray(x.context.contextActivities.grouping))
+            return false;
 
-          if (x.context.contextActivities.grouping) {
-            if (!Array.isArray(x.context.contextActivities.grouping))
-              return false;
+          if (!x.context.contextActivities.grouping.every((grouping: any) => { return ActivityObject.is(grouping) }))
+            return false;
+        }
 
-            if (!x.context.contextActivities.grouping.every((grouping: any) => { return ActivityObject.is(grouping) }))
-              return false;
-          }
+        if (x.context.contextActivities.category) {
+          if (!Array.isArray(x.context.contextActivities.category))
+            return false;
 
-          if (x.context.contextActivities.category) {
-            if (!Array.isArray(x.context.contextActivities.category))
-              return false;
+          if (!x.context.contextActivities.category.every((category: any) => { return ActivityObject.is(category) }))
+            return false;
+        }
 
-            if (!x.context.contextActivities.category.every((category: any) => { return ActivityObject.is(category) }))
-              return false;
-          }
+        if (x.context.contextActivities.other) {
+          if (!Array.isArray(x.context.contextActivities.other))
+            return false;
 
-          if (x.context.contextActivities.other) {
-            if (!Array.isArray(x.context.contextActivities.other))
-              return false;
-
-            if (!x.context.contextActivities.other.every((other: any) => { return ActivityObject.is(other) }))
-              return false;
-          }
+          if (!x.context.contextActivities.other.every((other: any) => { return ActivityObject.is(other) }))
+            return false;
         }
       }
     }
