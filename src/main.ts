@@ -537,6 +537,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     messages = [payload];
                   }
 
+                  req.session.touch();
                   processMessages(messages);
                 }
               } else {
