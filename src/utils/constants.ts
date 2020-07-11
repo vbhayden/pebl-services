@@ -10,6 +10,8 @@ export const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.ht
 
 // const competenciesKey = 'competencies';
 
+export const SET_ALL_NOTIFICATIONS = "notifications:all";
+export const SET_ALL_NOTIFICATIONS_REFS = "notifications:all:refs";
 export const SET_ALL_GROUPS = "groups:all";
 export const SET_ALL_ROLES = "roles:all";
 export const SET_ALL_USERS = "users:all";

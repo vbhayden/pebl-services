@@ -160,6 +160,65 @@ export class RedisSessionDataCache implements SessionDataManager {
     }
   }
 
+  isMemberSetValue(key: string, id: string, callback: (exists: boolean) => void): void {
+    this.redis.sismember(key, id, (err, result) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisIsMemberSetVal", err);
+        callback(false);
+      } else {
+        callback(1 == result);
+      }
+    })
+  }
+
+  incHashKey(key: string, id: string, increment: number, callback?: (num: number) => void): void {
+    this.redis.hincrby(key, id, increment, (err, resp) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiKeys", err);
+        if (callback) {
+          callback(resp);
+        }
+      } else {
+        if (callback) {
+          callback(resp);
+        }
+      }
+    });
+  }
+
+  incHashKeys(key: string, ids: string[], increment: number, callback?: (nums: { [key: string]: number }) => void): void {
+    if (ids.length != 0) {
+      let obj = {} as { [key: string]: any };
+      let batch = this.redis.batch();
+      for (let id of ids) {
+        batch.hincrby(key, id, increment, (err, resp) => {
+          if (err) {
+            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisIncKeys", err);
+            obj[key] = [];
+          } else {
+            obj[key] = resp;
+          }
+        });
+      }
+      batch.exec((err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisIncKeysBatch", err);
+          if (callback) {
+            callback({});
+          }
+        } else {
+          if (callback) {
+            callback(obj);
+          }
+        }
+      });
+    } else {
+      if (callback) {
+        callback({});
+      }
+    }
+  }
+
   getSetValues(key: string, callback: (data: string[]) => void): void {
     this.redis.smembers(key, (err, result) => {
       if (err) {
@@ -232,6 +291,10 @@ export class RedisSessionDataCache implements SessionDataManager {
     this.redis.zadd(key, timestamp, value);
   }
 
+  addTimestampValues(key: string, timestampPairs: (number | string)[]) {
+    this.redis.zadd(key, ...timestampPairs);
+  }
+
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)) {
     this.redis.zrangebyscore(key, timestamp, '+inf', (err, resp) => {
       if (err) {
@@ -240,6 +303,19 @@ export class RedisSessionDataCache implements SessionDataManager {
       } else
         callback(resp);
     });
+  }
+
+  rankSortedSetMember(key: string, id: string, callback: (rank: (number | null)) => void): void {
+    this.redis.zrank(key,
+      id,
+      (err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisRankSortedFail", err);
+          callback(resp);
+        } else {
+          callback(resp);
+        }
+      });
   }
 
   deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void {
