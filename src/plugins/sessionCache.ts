@@ -333,17 +333,7 @@ export class RedisSessionDataCache implements SessionDataManager {
     } else {
       callback({});
     }
-
-    this.redis.dump(key, (err, data) => {
-      if (err) {
-        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
-        callback(undefined);
-      } else {
-        callback(data);
-      }
-    });
   }
-
 
   restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void {
     this.redis.restore(key, ttl, data, (err, data) => {
@@ -358,5 +348,32 @@ export class RedisSessionDataCache implements SessionDataManager {
         }
       }
     });
+
+
+    // restoreKeys(keys: string[], callback: (data?: { [key: string]: string }) => void): void {
+    //   if (keys.length != 0) {
+    //     let obj = {} as { [key: string]: string };
+    //     let multi = this.redis.multi();
+    //     for (let key of keys) {
+    //       multi.dump(key, (err, resp) => {
+    //         if (err) {
+    //           auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKeys", err);
+    //         } else {
+    //           obj[key] = resp;
+    //         }
+    //       });
+    //     }
+    //     multi.exec((err, resp) => {
+    //       if (err) {
+    //         auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetHashMultiKeysBatch", err);
+    //         callback({});
+    //       } else {
+    //         callback(obj);
+    //       }
+    //     });
+    //   } else {
+    //     callback({});
+    //   }
+    // }
   }
 }

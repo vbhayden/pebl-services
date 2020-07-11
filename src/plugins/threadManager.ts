@@ -49,12 +49,12 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.unsubscribeThread(payload.identity, payload.thread, dispatchCallback, payload.options);
       }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
-      this.validateDeleteThreadedMessage.bind(this),
-      this.authorizeDeleteThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.options);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
+    //   this.validateDeleteThreadedMessage.bind(this),
+    //   this.authorizeDeleteThreadedMessage.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.options);
+    //   }));
 
     this.addMessageTemplate(new MessageTemplate("getSubscribedThreads",
       this.validateGetSubscribedThreads.bind(this),
@@ -183,15 +183,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
-  validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
-    //TODO: Does the user own the message they are trying to modify?
+  // validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
+  //   //TODO: Does the user own the message they are trying to modify?
 
-    return false;
-  }
+  //   return false;
+  // }
 
-  authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
   validateGetSubscribedThreads(payload: { [key: string]: any }): boolean {
     return true;
@@ -209,13 +209,13 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     if (options && options.groupId) {
       thread = this.getGroupScopedThread(thread, options.groupId);
       this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, baseThread);
-      this.sessionData.setHashValues(generateSubscribedUsersKey(thread), [userId, userId]);
+      this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
     } else if (options && options.isPrivate) {
       // thread = this.getPrivateScopedThread(thread, userId);
       this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), baseThread, baseThread);
     } else {
       this.sessionData.setHashValue(generateUserThreadsKey(userId), baseThread, baseThread);
-      this.sessionData.setHashValues(generateSubscribedUsersKey(thread), [userId, userId]);
+      this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
     }
 
     callback({
@@ -290,7 +290,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.sessionData.queueForLrs(messageStr);
     this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-    this.sessionData.setHashValues(generateThreadKey(thread), [message.id, messageStr]);
+    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
     if (!message.isPrivate) {
       this.getSubscribedUsers(thread, (users) => {
@@ -362,7 +362,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.sessionData.queueForLrsVoid(data);
         let voided = new Message(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues('threads:' + thread, [voided.id, JSON.stringify(voided)]);
+        this.sessionData.setHashValue('threads:' + thread, voided.id, JSON.stringify(voided));
         if (!(options && options.isPrivate)) {
           this.getSubscribedUsers(thread, (users) => {
             for (let user of users) {

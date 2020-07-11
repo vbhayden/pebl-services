@@ -110,7 +110,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       if (data) {
         let voided = new XApiStatement(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForNotification(identity), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues(generateUserNotificationsKey(identity), [generateNotificationsKey(voided.id), JSON.stringify(voided)]);
+        this.sessionData.setHashValue(generateUserNotificationsKey(identity), generateNotificationsKey(voided.id), JSON.stringify(voided));
         this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
           requestType: "getNotifications",
           data: voided

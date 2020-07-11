@@ -60,6 +60,8 @@ import { AuditLogManager } from "./interfaces/auditLogManager";
 import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
+import { DefaultArchiveManager } from "./plugins/archiveManager";
+import { ArchiveManager } from "./interfaces/archiveManager";
 
 if (process.argv.length < 3) {
   console.error("command should include a path to the server configuration json", process.argv);
@@ -106,6 +108,7 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
@@ -189,7 +192,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   },
   ns: 'rsmq',
   realtime: true
-}, pluginManager, redisCache, lrsManager);
+}, pluginManager, redisCache, lrsManager, archiveManager);
 
 // messageQueue.initialize();
 

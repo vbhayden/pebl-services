@@ -41,6 +41,7 @@ export const KEY_QUESTIONS = "questions";
 
 // export const LRS_SYNC_TIMEOUT = 300000;
 export const LRS_SYNC_TIMEOUT = 1500;
+export const ARCHIVE_USER_TIMEOUT = 10000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const JOB_BUFFER_TIMEOUT = 30000;
 

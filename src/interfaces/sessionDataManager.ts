@@ -20,6 +20,7 @@ export interface SessionDataManager {
 
   addTimestampValue(key: string, timestamp: number, value: string): void;
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
+  // getValuesLessThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
   deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void;
 
   queueForLrs(value: string): void;
@@ -29,10 +30,10 @@ export interface SessionDataManager {
 
   dumpKey(key: string, callback: (data?: string) => void): void;
   dumpKeys(key: string[], callback: (data?: { [key: string]: string }) => void): void;
-  restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
-  restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
-  removeKey(key: string, callback?: (deleted: boolean) => void);
-  removeKeys(keys: string[], callback?: (deleted: boolean[]) => void);
+  // restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
+  // restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
+  // removeKey(key: string, callback?: (deleted: boolean) => void): void;
+  // removeKeys(keys: string[], callback?: (deleted: boolean[]) => void): void;
 
   removeBadLRSStatement(id: string): void;
 

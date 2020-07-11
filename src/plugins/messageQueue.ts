@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity } from '../utils/constants';
+import { generateOutgoingQueueForId, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity, ARCHIVE_USER_TIMEOUT } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -152,7 +152,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       this.sessionDataManager.deleteValue(SET_ALL_JOBS, () => {
         let jobSet = [
           new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
-          new JobMessage("lrsSync", LRS_SYNC_TIMEOUT)
+          new JobMessage("lrsSync", LRS_SYNC_TIMEOUT),
+          new JobMessage("archiveUsers", ARCHIVE_USER_TIMEOUT)
         ];
 
         let walkJobs = (jobs: JobMessage[]) => {
@@ -409,48 +410,44 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  private archiveUserId(userId: string): void {
-    this.archiveManager.setUserArchived(userId, true);
-  }
+  // private archiveUserId(userId: string): void {
+  //   this.archiveManager.setUserArchived(userId, true);
+  // }
 
-  private restoreUserId(userId: string): void {
-    this.archiveManager.setUserArchived(userId, false);
-  }
+  // private restoreUserId(userId: string): void {
+  //   this.archiveManager.setUserArchived(userId, false);
+  // }
 
-  private archiveUsers(): void {
-    let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
-      this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
-        cursor = result[0];
-        accumulator.push(...result[1]);
-        if (cursor !== '0') {
-          scanAll(cursor, pattern, accumulator, callback);
-        } else {
-          callback(accumulator);
-        }
-      });
-    }
+  archiveUsers(): void {
+    this.archiveManager.isUserArchived("s", () => { });
+    // let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
+    //   this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
+    //     cursor = result[0];
+    //     accumulator.push(...result[1]);
+    //     if (cursor !== '0') {
+    //       scanAll(cursor, pattern, accumulator, callback);
+    //     } else {
+    //       callback(accumulator);
+    //     }
+    //   });
+    // }
 
-    this.rsmq.listQueues((err, queues) => {
-      if (err) {
-        //TODO
-        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "SessionCleanupFail", message);
-        this.clearActiveJob(message);
-      } else {
-        scanAll('0', 'sess:*', [], (sessions: string[]) => {
-          let filtered = queues.filter((queue: string) => {
-            if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
-              return false;
-            return !(sessions.includes('sess:' + queue));
-          });
+    // scanAll('0',
+    //   'sess:*',
+    //   [],
+    //   (sessions: string[]) => {
+    //     let filtered = queues.filter((queue: string) => {
+    //       if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
+    //         return false;
+    //       return !(sessions.includes('sess:' + queue));
+    //     });
 
-          for (let queue of filtered) {
-            this.removeOutgoingQueue(queue);
-          }
+    //     for (let queue of filtered) {
+    //       this.removeOutgoingQueue(queue);
+    //     }
 
-          this.clearActiveJob(message);
-        });
-      }
-    });
+    //     this.clearActiveJob(message);
+    //   });
   }
 
   private dispatchCleanup(message: JobMessage): void {

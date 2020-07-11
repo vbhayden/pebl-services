@@ -120,7 +120,7 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
-const archiveManager: ArchiveManager = new DefaultArchiveManager(redisClient, config);
+const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
