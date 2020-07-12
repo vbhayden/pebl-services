@@ -4,6 +4,8 @@ export interface SessionDataManager {
   setHashValue(key: string, field: string, value: string, callback?: (fields: number) => void): void;
   setHashValueIfNotExisting(key: string, field: string, value: string, callback?: (didSet: boolean) => void): void;
 
+  getAllHashPairs(key: string, callback: (data: { [key: string]: string }) => void): void;
+
   getHashValues(key: string, callback: (data: string[]) => void): void;
   getHashKeys(key: string, callback: (data: string[]) => void): void;
   incHashKey(key: string, id: string, increment: number, callback?: (num: number) => void): void;
@@ -31,6 +33,9 @@ export interface SessionDataManager {
   queueForLrsVoid(value: string): void;
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
   trimForLrs(count: number): void;
+
+  scan10(cursor: string, pattern: string, callback: (data: [string, string[]]) => void): void;
+  keys(pattern: string, callback: (data: string[]) => void): void;
 
   removeBadLRSStatement(id: string): void;
 

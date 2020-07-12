@@ -56,6 +56,17 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  getAllHashPairs(key: string, callback: (data: { [key: string]: string }) => void): void {
+    this.redis.hgetall(key, (err, result) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetAll", err);
+        callback({});
+      } else {
+        callback(result);
+      }
+    });
+  }
+
   getHashKeys(key: string, callback: (data: string[]) => void): void {
     this.redis.hvals(key, (err, result) => {
       if (err) {
@@ -276,6 +287,34 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  scan10(cursor: string, pattern: string, callback: (data: [string, string[]]) => void): void {
+    this.redis.scan(cursor,
+      'MATCH',
+      pattern,
+      'COUNT',
+      '10',
+      (err: Error | null, result: [string, string[]]) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisScan", err);
+          callback(["0", []]);
+        } else {
+          callback(result);
+        }
+      });
+  }
+
+  keys(pattern: string, callback: (data: string[]) => void): void {
+    this.redis.keys(pattern,
+      (err, result) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisKeys", err);
+          callback([]);
+        } else {
+          callback(result);
+        }
+      });
+  }
+
   getHashValuesForFields(key: string, fields: string[], callback: ((data: string[]) => void)): void {
     this.redis.hmget(key, fields, (err, result) => {
       if (err) {
@@ -328,6 +367,8 @@ export class RedisSessionDataCache implements SessionDataManager {
       }
     });
   }
+
+
 
   removeBadLRSStatement(id: string): void {
     this.redis.lrem('outgoingXapi', -1, id, (err, result) => {
