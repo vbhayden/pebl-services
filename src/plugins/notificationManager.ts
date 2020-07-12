@@ -2,7 +2,7 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { NotificationManager } from "../interfaces/notificationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { XApiStatement, Voided } from "../models/xapiStatement";
-import { generateUserNotificationsKey, generateBroadcastQueueForUserId, generateTimestampForNotification, LogCategory, Severity, SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS } from "../utils/constants";
+import { generateBroadcastQueueForUserId, generateTimestampForNotification, LogCategory, Severity, SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS } from "../utils/constants";
 import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
@@ -119,22 +119,31 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
   }
 
   deleteNotification(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.rankSortedSetMember(generateUserNotificationsKey(identity),
+    this.sessionData.rankSortedSetMember(generateTimestampForNotification(identity),
       id,
       (rank) => {
-        if (rank) {
+        if (rank != null) {
           this.sessionData.getHashValue(SET_ALL_NOTIFICATIONS,
             id,
             (data) => {
               if (data) {
-                let voided = new XApiStatement(JSON.parse(data)).toVoidRecord();
-                this.sessionData.setHashValue(SET_ALL_NOTIFICATIONS, voided.id, JSON.stringify(voided));
-                this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
-                  voided.id,
-                  1);
-                this.sessionData.addTimestampValue(generateTimestampForNotification(identity),
-                  new Date(voided.stored).getTime(),
-                  voided.id);
+                let obj = JSON.parse(data);
+                if (!Voided.is(obj)) {
+                  let voided = new XApiStatement(obj).toVoidRecord();
+                  this.sessionData.setHashValue(SET_ALL_NOTIFICATIONS, voided.id, JSON.stringify(voided));
+                  this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
+                    voided.id,
+                    1);
+                  this.sessionData.addTimestampValue(generateTimestampForNotification(identity),
+                    new Date(voided.stored).getTime(),
+                    voided.id);
+                  this.sessionData.broadcast(generateBroadcastQueueForUserId(identity),
+                    JSON.stringify(new ServiceMessage(identity,
+                      {
+                        requestType: "getNotifications",
+                        data: voided
+                      })));
+                }
                 this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
                   id,
                   -1,
@@ -152,12 +161,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
                       });
                     }
                   });
-                this.sessionData.broadcast(generateBroadcastQueueForUserId(identity),
-                  JSON.stringify(new ServiceMessage(identity,
-                    {
-                      requestType: "getNotifications",
-                      data: voided
-                    })));
               }
               this.sessionData.deleteSortedTimestampMember(generateTimestampForNotification(identity),
                 id,
@@ -169,6 +172,8 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
                   callback(b);
                 });
             });
+        } else {
+          callback(false);
         }
       });
   }

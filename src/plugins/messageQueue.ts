@@ -300,7 +300,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       sp();
       this.version = currentRedisVersion();
       this.clearActiveJob(message);
-      auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeSuccessful");
+      auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeSuccessful", this.version);
     });
   }
 
@@ -326,7 +326,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   private dispatchToLrs(message: JobMessage): void {
     this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
-      if (values) {
+      if (values && !this.upgradeInProgress) {
         let vals = this.lrsManager.parseStatements(values);
         if (vals[0].length > 0) {
           this.lrsManager.storeStatements(vals[0], () => {
@@ -386,6 +386,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         if (vals[2].length > 0)
           for (let profile of vals[2])
             this.lrsManager.storeProfile(profile, (success) => { });
+      } else if (!this.upgradeInProgress) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchLRSUpgInPrg", message);
+        this.clearActiveJob(message);
       } else {
         this.clearActiveJob(message);
       }
@@ -491,8 +494,12 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             return !(sessions.includes('sess:' + queue));
           });
 
-          for (let queue of filtered) {
-            this.removeOutgoingQueue(queue);
+          if (!this.upgradeInProgress) {
+            for (let queue of filtered) {
+              this.removeOutgoingQueue(queue);
+            }
+          } else {
+            auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchCleanUpgInPrg", message);
           }
 
           this.clearActiveJob(message);

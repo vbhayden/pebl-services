@@ -16,6 +16,7 @@ export interface SessionDataManager {
 
   deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void;
   deleteValue(key: string, callback?: (deleted: boolean) => void): void;
+  deleteValues(keys: string[], callback: (deleted: boolean) => void): void;
 
   isMemberSetValue(key: string, id: string, callback: (exists: boolean) => void): void;
   addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void;
