@@ -137,7 +137,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (!this.upgradeInProgress && (jobMessage.jobType === JOB_TYPE_UPGRADE)) {
         this.upgradeInProgress = true;
         this.terminateConnections();
-        console.log("Terminining");
       }
       let remainingTime = jobMessage.timeout + JOB_BUFFER_TIMEOUT;
       remainingTime -= (Date.now() - jobMessage.startTime);

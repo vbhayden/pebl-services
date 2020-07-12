@@ -7,6 +7,7 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 import { auditLogger } from "../main";
+import { pakoInflate, pakoDeflate } from "../utils/zip";
 
 export class DefaultNotificationManager extends PeBLPlugin implements NotificationManager {
   private sessionData: SessionDataManager;
@@ -71,7 +72,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
     return canUser || canGroup;
   }
 
-
   getNotifications(identity: string, timestamp: number, callback: ((notifications: XApiStatement[]) => void)): void {
     this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForNotification(identity),
       timestamp,
@@ -80,7 +80,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
           data,
           (result) => {
             callback(result.map(function(x) {
-              let obj = JSON.parse(x);
+              let obj = JSON.parse(pakoInflate(x));
               if (XApiStatement.is(obj)) {
                 return new XApiStatement(obj);
               } else {
@@ -102,7 +102,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       notification.stored = isoDate;
       notificationRefSet.push(notification.id);
       notificationSet.push(notification.id);
-      notificationSet.push(JSON.stringify(notification));
+      notificationSet.push(pakoDeflate(JSON.stringify(notification)));
       userNotificationSet.push(timestamp);
       userNotificationSet.push(notification.id);
     }
@@ -130,7 +130,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
                 let obj = JSON.parse(data);
                 if (!Voided.is(obj)) {
                   let voided = new XApiStatement(obj).toVoidRecord();
-                  this.sessionData.setHashValue(SET_ALL_NOTIFICATIONS, voided.id, JSON.stringify(voided));
+                  this.sessionData.setHashValue(SET_ALL_NOTIFICATIONS, voided.id, pakoDeflate(JSON.stringify(voided)));
                   this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
                     voided.id,
                     1);
