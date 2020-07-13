@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, UPGRADE_REDIS_TIMEOUT, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity, SET_ALL_PEBL_CONFIG, DB_VERSION, JOB_TYPE_UPGRADE } from '../utils/constants';
+import { generateOutgoingQueueForId, UPGRADE_REDIS_TIMEOUT, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity, SET_ALL_PEBL_CONFIG, DB_VERSION, JOB_TYPE_UPGRADE, ARCHIVE_USER_TIMEOUT } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -12,6 +12,7 @@ import RedisSMQ = require("rsmq");
 import { PluginManager } from '../interfaces/pluginManager';
 import { JobMessage } from '../models/job';
 import { auditLogger } from '../main';
+import { ArchiveManager } from '../interfaces/archiveManager';
 import { upgradeRedis, currentRedisVersion } from '../utils/redisUpgrade';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
@@ -23,10 +24,17 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private pluginManager: PluginManager;
   private timeouts: { [key: string]: NodeJS.Timeout }
   private sessionDataManager: SessionDataManager;
+  private archiveManager: ArchiveManager;
   private upgradeInProgress: boolean;
   private version: number;
 
-  constructor(redisConfig: { [key: string]: any }, pluginManager: PluginManager, sessionDataManager: SessionDataManager, lrsManager: LRS) {
+  constructor(redisConfig: { [key: string]: any },
+    pluginManager: PluginManager,
+    sessionDataManager: SessionDataManager,
+    lrsManager: LRS,
+    archiveManager: ArchiveManager) {
+
+    this.archiveManager = archiveManager;
     this.lrsManager = lrsManager;
     this.rsmq = new RedisSMQ(redisConfig);
     this.upgradeInProgress = false;
@@ -211,7 +219,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         () => {
           let jobSet = [
             new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
-            new JobMessage("lrsSync", LRS_SYNC_TIMEOUT)
+            new JobMessage("lrsSync", LRS_SYNC_TIMEOUT),
+            new JobMessage("archiveUsersJob", ARCHIVE_USER_TIMEOUT)
           ];
 
           let walkJobs = (jobs: JobMessage[]) => {
@@ -352,19 +361,22 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
                 } else if (errJson.warnings) {
                   for (let warning of errJson.warnings) {
                     let chunks = warning.split(" ");
+                    let found = false
                     for (let chunk of chunks) {
                       if (chunk.length >= 36) {
                         if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
                           let slimChunk = chunk.substring(2, chunk.length - 2);
                           let stmt = vals[3][slimChunk];
                           if (stmt) {
+                            found = true;
                             // auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "", stmt);
                             // this.sessionDataManager.removeBadLRSStatement(stmt);
                           }
-                        } else {
-                          auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", chunk);
                         }
                       }
+                    }
+                    if (!found) {
+                      auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", warning);
                     }
                   }
                 } else {
@@ -465,6 +477,38 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         this.receiveOutgoingMessages(sessionId, socket);
       }
     });
+  }
+
+  archiveUsersJob(): void {
+    this.archiveManager.isUserArchived("s", () => { });
+    // let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
+    //   this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
+    //     cursor = result[0];
+    //     accumulator.push(...result[1]);
+    //     if (cursor !== '0') {
+    //       scanAll(cursor, pattern, accumulator, callback);
+    //     } else {
+    //       callback(accumulator);
+    //     }
+    //   });
+    // }
+
+    // scanAll('0',
+    //   'sess:*',
+    //   [],
+    //   (sessions: string[]) => {
+    //     let filtered = queues.filter((queue: string) => {
+    //       if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
+    //         return false;
+    //       return !(sessions.includes('sess:' + queue));
+    //     });
+
+    //     for (let queue of filtered) {
+    //       this.removeOutgoingQueue(queue);
+    //     }
+
+    //     this.clearActiveJob(message);
+    //   });
   }
 
   private dispatchCleanup(message: JobMessage): void {

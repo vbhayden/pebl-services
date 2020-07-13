@@ -4,8 +4,6 @@ import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
-import { auditLogger } from "../main";
-import { generateUserSessionsKey, generateSessionsKey, Severity, LogCategory } from "../utils/constants";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
@@ -14,12 +12,12 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     super();
     this.sessionData = sessionData;
 
-    this.addMessageTemplate(new MessageTemplate("getSessions",
-      this.validateGetSessions.bind(this),
-      this.authorizeGetSessions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getSessions(payload.identity, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getSessions",
+    //   this.validateGetSessions.bind(this),
+    //   this.authorizeGetSessions.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.getSessions(payload.identity, dispatchCallback);
+    //   }));
 
     this.addMessageTemplate(new MessageTemplate("saveSessions",
       this.validateSaveSessions.bind(this),
@@ -28,21 +26,21 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
         this.saveSessions(payload.identity, payload.sessions, dispatchCallback);
       }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteSession",
-      this.validateDeleteSession.bind(this),
-      this.authorizeDeleteSession.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteSession(payload.identity, payload.xId, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteSession",
+    //   this.validateDeleteSession.bind(this),
+    //   this.authorizeDeleteSession.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.deleteSession(payload.identity, payload.xId, dispatchCallback);
+    //   }));
   }
 
-  validateGetSessions(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateGetSessions(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeGetSessions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeGetSessions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
   validateSaveSessions(payload: { [key: string]: any }): boolean {
     if (payload.sessions && (payload.sessions instanceof Array) && (payload.sessions.length > 0)) {
@@ -68,22 +66,22 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     return canUser || canGroup;
   }
 
-  validateDeleteSession(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateDeleteSession(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  authorizeDeleteSession(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // authorizeDeleteSession(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  getSessions(identity: string, callback: ((sessions: Session[]) => void)): void {
-    this.sessionData.getHashValues(generateUserSessionsKey(identity),
-      (result: string[]) => {
-        callback(result.map(function(x) {
-          return new Session(JSON.parse(x));
-        }));
-      });
-  }
+  // getSessions(identity: string, callback: ((sessions: Session[]) => void)): void {
+  //   this.sessionData.getHashValues(generateUserSessionsKey(identity),
+  //     (result: string[]) => {
+  //       callback(result.map(function(x) {
+  //         return new Session(JSON.parse(x));
+  //       }));
+  //     });
+  // }
 
   saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
     // let arr = [];
@@ -97,18 +95,18 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     callback(true);
   }
 
-  deleteSession(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserSessionsKey(identity), generateSessionsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-      }
-      this.sessionData.deleteHashValue(generateUserSessionsKey(identity),
-        generateSessionsKey(id), (result: boolean) => {
-          if (!result) {
-            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelMembershipFail", identity, id);
-          }
-          callback(result);
-        });
-    });
-  }
+  // deleteSession(identity: string, id: string, callback: ((success: boolean) => void)): void {
+  //   this.sessionData.getHashValue(generateUserSessionsKey(identity), generateSessionsKey(id), (data) => {
+  //     if (data) {
+  //       this.sessionData.queueForLrsVoid(data);
+  //     }
+  //     this.sessionData.deleteHashValue(generateUserSessionsKey(identity),
+  //       generateSessionsKey(id), (result: boolean) => {
+  //         if (!result) {
+  //           auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelMembershipFail", identity, id);
+  //         }
+  //         callback(result);
+  //       });
+  //   });
+  // }
 }

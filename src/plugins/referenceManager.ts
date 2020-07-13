@@ -131,7 +131,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
         this.sessionData.queueForLrsVoid(data);
         let voided = new Reference(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForReference(identity), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues(generateUserReferencesKey(identity), [generateReferencesKey(voided.id), JSON.stringify(voided)]);
+        this.sessionData.setHashValue(generateUserReferencesKey(identity), generateReferencesKey(voided.id), JSON.stringify(voided));
       }
       this.sessionData.deleteSortedTimestampMember(generateTimestampForReference(identity),
         id,

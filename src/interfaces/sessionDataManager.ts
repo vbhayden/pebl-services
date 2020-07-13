@@ -22,11 +22,13 @@ export interface SessionDataManager {
   addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void;
   getSetValues(key: string, callback: (data: string[]) => void): void;
   deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void;
+  unionSetValues(key: string | string[], callback: (data: string[]) => void): void;
 
   addTimestampValue(key: string, timestamp: number, value: string): void;
   addTimestampValues(key: string, timestampPairs: (number | string)[]): void;
 
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
+  // getValuesLessThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
   deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void;
   rankSortedSetMember(key: string, id: string, callback: (rank: (number | null)) => void): void;
 
@@ -34,6 +36,11 @@ export interface SessionDataManager {
   queueForLrsVoid(value: string): void;
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
   trimForLrs(count: number): void;
+
+  dumpKey(key: string, callback: (data?: string) => void): void;
+  dumpKeys(key: string[], callback: (data?: { [key: string]: string }) => void): void;
+  // restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
+  // restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
 
   scan10(cursor: string, pattern: string, callback: (data: [string, string[]]) => void): void;
   keys(pattern: string, callback: (data: string[]) => void): void;

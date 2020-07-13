@@ -237,7 +237,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
         this.sessionData.queueForLrsVoid(data);
         let voided = new Annotation(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForAnnotations(identity), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues(generateUserAnnotationsKey(identity), [generateAnnotationsKey(voided.id), JSON.stringify(voided)]);
+        this.sessionData.setHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(voided.id), JSON.stringify(voided));
         this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
           requestType: "newAnnotation",
           data: voided
@@ -264,7 +264,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
         this.sessionData.queueForLrsVoid(data);
         let voided = new Annotation(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue('timestamp:sharedAnnotations', new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues('sharedAnnotations', [generateSharedAnnotationsKey(voided.id), JSON.stringify(voided)]);
+        this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(voided.id), JSON.stringify(voided));
         this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
           requestType: "newSharedAnnotation",
           data: voided
