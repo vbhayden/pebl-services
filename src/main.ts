@@ -487,53 +487,75 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               }
             };
 
-            ws.on('message', function(msg) {
-              if (req.session) {
-                if (typeof msg === 'string') {
-                  let payload: any;
-                  try {
-                    payload = JSON.parse(msg);
-                  } catch (e) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
-                    ws.send(JSON.stringify({
-                      identity: username,
-                      requestType: "error",
-                      payload: {
-                        description: "Bad Message",
-                        target: msg
-                      }
-                    }));
-                    return;
-                  }
+            let messageHandler = () => {
+              ws.send(JSON.stringify({
+                identity: username,
+                requestType: "serverReady"
+              }));
 
-                  if (!validationManager.isMessageFormat(payload)) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
-                    ws.send(JSON.stringify({
-                      identity: username,
-                      requestType: "error",
-                      payload: {
-                        description: "Invalid Message Format",
-                        target: payload.id,
-                        payload: payload
-                      }
-                    }));
-                  }
+              ws.on('message', function(msg) {
+                if (req.session) {
+                  if (typeof msg === 'string') {
+                    let payload: any;
+                    try {
+                      payload = JSON.parse(msg);
+                    } catch (e) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+                      ws.send(JSON.stringify({
+                        identity: username,
+                        requestType: "error",
+                        payload: {
+                          description: "Bad Message",
+                          target: msg
+                        }
+                      }));
+                      return;
+                    }
 
-                  let messages;
-                  if (payload.requestType == "bulkPush") {
-                    messages = payload.data;
-                  } else {
-                    messages = [payload];
-                  }
+                    if (!validationManager.isMessageFormat(payload)) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
+                      ws.send(JSON.stringify({
+                        identity: username,
+                        requestType: "error",
+                        payload: {
+                          description: "Invalid Message Format",
+                          target: payload.id,
+                          payload: payload
+                        }
+                      }));
+                    }
 
-                  req.session.touch();
-                  processMessages(messages);
+                    let messages;
+                    if (payload.requestType == "bulkPush") {
+                      messages = payload.data;
+                    } else {
+                      messages = [payload];
+                    }
+
+                    req.session.touch();
+                    processMessages(messages);
+                  }
+                } else {
+                  auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
+                  ws.close();
                 }
-              } else {
-                auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
-                ws.close();
-              }
-            });
+              });
+            }
+
+            archiveManager.isUserArchived(username,
+              (isArchived: boolean) => {
+                if (!isArchived) {
+                  messageHandler();
+                } else {
+                  // retrieve archive data
+                  archiveManager.setUserArchived(username,
+                    false,
+                    () => {
+                      messageHandler();
+                    });
+                }
+              });
+
 
             ws.on('close', function() {
               messageQueue.removeOutgoingQueue(sessionId);

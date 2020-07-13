@@ -48,7 +48,7 @@ export class DefaultArchiveManager {
 
   // }
 
-  setUserArchived(userId: string, isArchived: boolean): void {
+  setUserArchived(userId: string, isArchived: boolean, callback: () => void): void {
     // let keys: string[] = [
 
     // ];
@@ -78,5 +78,6 @@ export class DefaultArchiveManager {
     //   (data?: string) => {
     //     callback("t" === data);
     //   });
+    callback(false);
   }
 }
