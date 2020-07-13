@@ -286,19 +286,19 @@ expressApp.use((req: Request, res: Response, next: Function) => {
 
 expressApp.disable('x-powered-by');
 
-expressApp.get('/', function(req: Request, res: Response) {
+expressApp.get('/', (req: Request, res: Response) => {
   auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "HelloSessionId", req.session?.id)
   res.send('Hello World!, version ' + config.version).end();
 });
 
-expressApp.get('/login', function(req: Request, res: Response) {
+expressApp.get('/login', (req: Request, res: Response) => {
   if (req.session) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
           auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogin", req.session.id, isLoggedIn);
           if (isLoggedIn) {
-            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
           } else {
             authenticationManager.login(req, req.session, res);
           }
@@ -345,7 +345,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
           if (isLoggedIn) {
             authenticationManager.logout(req, req.session, res);
           } else {
-            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
           }
         } else {
           auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);

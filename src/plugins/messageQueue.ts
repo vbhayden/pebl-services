@@ -220,7 +220,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           let jobSet = [
             new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
             new JobMessage("lrsSync", LRS_SYNC_TIMEOUT),
-            new JobMessage("archiveUsers", ARCHIVE_USER_TIMEOUT)
+            new JobMessage("archiveUsersJob", ARCHIVE_USER_TIMEOUT)
           ];
 
           let walkJobs = (jobs: JobMessage[]) => {
@@ -479,15 +479,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  // private archiveUserId(userId: string): void {
-  //   this.archiveManager.setUserArchived(userId, true);
-  // }
-
-  // private restoreUserId(userId: string): void {
-  //   this.archiveManager.setUserArchived(userId, false);
-  // }
-
-  archiveUsers(): void {
+  archiveUsersJob(): void {
     this.archiveManager.isUserArchived("s", () => { });
     // let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
     //   this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {

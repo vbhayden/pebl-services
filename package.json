@@ -4,21 +4,21 @@
     "main": "main.js",
     "dependencies": {
         "body-parser": "^1.19.0",
-        "connect-redis": "^4.0.4",
+        "connect-redis": "^5.0.0",
         "express": "^4.17.1",
-        "express-session": "^1.17.0",
+        "express-session": "^1.17.1",
         "express-ws": "^4.0.0",
-        "openid-client": "^3.14.1",
+        "openid-client": "^3.15.6",
         "pako": "^1.0.11",
         "pg": "^8.3.0",
         "pg-hstore": "^2.3.3",
         "redis": "^3.0.2",
-        "rsmq": "^0.12.0",
-        "sequelize": "^6.3.0"
+        "rsmq": "^0.12.2",
+        "sequelize": "^6.3.3"
     },
     "scripts": {
         "compile": "tsfmt -r && tsc",
-        "dev": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig.json",
+        "dev": "ts-node-dev --inspect --respawn src/main.ts ./src/serverConfig.json",
         "dev2": "ts-node-dev --inspect --respawn --transpileOnly src/main.ts ./src/serverConfig2.json",
         "devMigrate": "ts-node-dev --inspect --respawn --transpileOnly src/migrate.ts ./src/serverConfig.json",
         "start": "node ./dist/main.js ./src/serverConfig.json",
@@ -26,15 +26,16 @@
     },
     "devDependencies": {
         "@types/connect-redis": "0.0.13",
-        "@types/express": "^4.17.3",
+        "@types/express": "^4.17.7",
+        "@types/express-serve-static-core": "^4.17.8",
         "@types/express-session": "^1.17.0",
         "@types/express-ws": "^3.0.0",
-        "@types/node": "^13.9.8",
-        "@types/redis": "^2.8.21",
-        "@types/ws": "^7.2.3",
+        "@types/node": "^13.13.14",
+        "@types/redis": "^2.8.25",
+        "@types/ws": "^7.2.6",
         "ts-loader": "^6.2.2",
-        "ts-node-dev": "^1.0.0-pre.44",
-        "typescript": "^3.8.3",
+        "ts-node-dev": "^1.0.0-pre.51",
+        "typescript": "^3.9.6",
         "typescript-formatter": "^7.2.2"
     }
 }

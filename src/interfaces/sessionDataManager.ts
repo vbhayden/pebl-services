@@ -41,8 +41,6 @@ export interface SessionDataManager {
   dumpKeys(key: string[], callback: (data?: { [key: string]: string }) => void): void;
   // restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
   // restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
-  // removeKey(key: string, callback?: (deleted: boolean) => void): void;
-  // removeKeys(keys: string[], callback?: (deleted: boolean[]) => void): void;
 
   scan10(cursor: string, pattern: string, callback: (data: [string, string[]]) => void): void;
   keys(pattern: string, callback: (data: string[]) => void): void;

@@ -57,7 +57,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
 
   login(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
-      let redirectUrl = req.query.redirectUrl;
+      let redirectUrl = req.query.redirectUrl as string;
       if (redirectUrl) {
         try {
           let hostname = new URL(redirectUrl).hostname;
@@ -94,7 +94,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
   logout(req: Request, session: Express.Session, res: Response): void {
     if (this.activeClient) {
       if (session.activeTokens) {
-        let redirectUrl = req.query.redirectUrl;
+        let redirectUrl = req.query.redirectUrl as string;
         if (redirectUrl) {
           try {
             let hostname = new URL(redirectUrl).hostname;
