@@ -177,27 +177,11 @@ pluginManager.register(quizManager);
 pluginManager.register(sessionManager);
 pluginManager.register(navigationManager);
 
-roleManager.addRole("systemAdmin", "System Admin", Object.keys(pluginManager.getMessageTemplates()),
+roleManager.addRole("systemAdmin",
+  "System Admin",
+  Object.keys(pluginManager.getMessageTemplates()),
   () => {
-    //     roleManager.getUsersByRole("systemAdmin",
-    //       (userIds) => {
-    //         auditLogger.debug(userIds);
-    //         let processor = (userIds: string[]) => {
-    //           let userId = userIds.pop();
-    //           if (userId) {
-    //             userManager.deleteUserRole(userId, "systemAdmin", () => {
-    //               auditLogger.debug("Removing", userId);
-    //               processor(userIds);
-    //             });
-    //           } else {
-    //             let systemAdminRoles = ["systemAdmin"];
-    //             for (let systemAdmin of config.systemAdmins) {
-    //               userManager.addUserRoles(systemAdmin, systemAdminRoles, () => { });
-    //             }
-    //           }
-    //         }
-    //         processor(userIds);
-    //       });
+
   });
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
@@ -455,6 +439,11 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;
   } else {
+    if (messageQueue.isUpgradeInProgress()) {
+      ws.close();
+      auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeInProgress", req.session?.id, req.ip, originUrl);
+      return;
+    }
     if (req.session) {
       authenticationManager.isLoggedIn(req.session,
         (isLoggedIn: boolean) => {
