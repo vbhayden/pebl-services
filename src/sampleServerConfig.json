@@ -15,6 +15,11 @@
     "authenticationResponseTypes": ["code"],
     "authenticationScope": ["openid email profile"],
 
+    "adminApiUrl": "dev.keycloak.eduworks.com",
+    "adminApiRealm": "test-realm",
+    "adminApiClientId": "keycloak-api",
+    "adminApiClientSecret": "secret",
+
     "authenticationMethod": "openid",
 
     "redisAuth": "<redis auth key>",
