@@ -1,8 +1,78 @@
 import * as https from 'https';
+import * as querystring from 'querystring';
 import { Response } from 'express';
 import { IncomingMessage } from 'http';
 import { auditLogger } from '../main';
 import { LogCategory, Severity } from './constants';
+
+export function postFormData(
+  host: string,
+  path: string,
+  headers: { [key: string]: any },
+  data: { [key: string]: any },
+  successCallback?: (incomingData: string) => void,
+  failCallback?: (e: Error | { [key: string]: any }) => void): void {
+
+  let outgoingData = querystring.stringify(data);
+
+  var postOptions = {
+    host: host,
+    protocol: "https:",
+    port: 443,
+    path: path,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': outgoingData.length
+    }
+  }
+
+  Object.assign(postOptions.headers, headers);
+  var dataArr: string[] = [];
+  const req = https.request(postOptions, function(resp: IncomingMessage) {
+    resp.setEncoding("utf-8");
+
+    resp.on("data", function(data) {
+      dataArr.push(data);
+    });
+
+    resp.on("end", function() {
+      let data = dataArr.join("");
+      let statusCode = 200;
+      if (resp.statusCode) {
+        statusCode = resp.statusCode;
+      }
+
+      if (statusCode < 300) {
+        auditLogger.report(LogCategory.NETWORK, Severity.INFO, "HTTPPOST", statusCode, host, path);
+        if (successCallback) {
+          successCallback(data);
+        }
+      } else {
+        let message = "default bad post";
+        if (resp.statusMessage) {
+          message = resp.statusMessage;
+        }
+        auditLogger.report(LogCategory.NETWORK, Severity.ERROR, "HTTPPOST", statusCode, message, host, path, data);
+        if (failCallback) {
+          failCallback({
+            error: message,
+            message: data
+          });
+        }
+      }
+    });
+  });
+
+  req.on('error', function(e) {
+    if (failCallback) {
+      auditLogger.report(LogCategory.NETWORK, Severity.CRITICAL, "HTTPPOST", host, path, e);
+      failCallback(e);
+    }
+  });
+  req.write(outgoingData);
+  req.end();
+}
 
 export function postData(
   host: string,
