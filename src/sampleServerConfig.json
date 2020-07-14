@@ -8,8 +8,8 @@
 
     "version": "VERSION",
 
-    "authenticationUrl": "https://dev.keycloak.eduworks.com/auth/realms/master",
-    "authenticationClientSecret": "c1058095-1a0f-44e1-b011-41bf6861cc64",
+    "authenticationUrl": "https://<site>/auth/realms/master",
+    "authenticationClientSecret": "0d747a893906",
     "authenticationClientId": "PeBL-Services",
     "authenticationRedirectURIs": ["https://localhost:8080/redirect"],
     "authenticationResponseTypes": ["code"],
@@ -17,9 +17,9 @@
 
     "authenticationMethod": "openid",
 
-    "redisAuth": "dbzka4DMsskV6dWfjRc5XFiBHnCuDKTM47gp9vE5vTakhmCsry3xAZPNAsu5kHqusN5d76kR3gH92tobtUwAmVokfwhMNM8dxw599RgLpavQYse5",
+    "redisAuth": "<redis auth key>",
 
-    "sessionSecret": "SVpgmRd9xtMaeZbr6zgS8Fsai9LQbkbTTp3528cFFjQkMhAj7x8huBMGuz7cYch72E7VyVjPaUo",
+    "sessionSecret": "<long random string>",
     "sessionTTL": 3600,
 
     "cookieSameSite": "none",
@@ -34,9 +34,9 @@
     "port": 8080,
     "useSSL": true,
     "usesProxy": false,
-    "lrsUrl": "https://lrs.peblproject.com/data/xapi",
+    "lrsUrl": "https://<url>/data/xapi",
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",
-    	"Authorization": "Basic NmEwZGJhOTAwMGRjMGZhNmEyZDQwMmNlZmI1NWE1YWE4YzAwZDQ3MTpjM2E5MDAxYzJjYTkyOTY3NWFjODBhMTVhODkwNzdlZDgwMTA0OTQ4"
+    	"Authorization": "Basic <client token>"
     }
 }

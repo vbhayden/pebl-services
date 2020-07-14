@@ -2,12 +2,12 @@ import { Role } from "../models/role";
 import { PeBLPlugin } from "../models/peblPlugin";
 
 export interface RoleManager extends PeBLPlugin {
-  validateAddRole(payload: { [key: string]: any }): boolean;
-  validateDeleteRole(payload: { [key: string]: any }): boolean;
-  validateUpdateRole(payload: { [key: string]: any }): boolean;
+  // validateAddRole(payload: { [key: string]: any }): boolean;
+  // validateDeleteRole(payload: { [key: string]: any }): boolean;
+  // validateUpdateRole(payload: { [key: string]: any }): boolean;
 
-  validateGetRole(payload: { [key: string]: any }): boolean;
-  validateGetRoles(payload: { [key: string]: any }): boolean;
+  // validateGetRole(payload: { [key: string]: any }): boolean;
+  // validateGetRoles(payload: { [key: string]: any }): boolean;
 
   // validateCopyRole(payload: { [key: string]: any }): boolean;
 

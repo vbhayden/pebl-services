@@ -49,12 +49,12 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.unsubscribeThread(payload.identity, payload.thread, dispatchCallback, payload.options);
       }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
-      this.validateDeleteThreadedMessage.bind(this),
-      this.authorizeDeleteThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.options);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
+    //   this.validateDeleteThreadedMessage.bind(this),
+    //   this.authorizeDeleteThreadedMessage.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.options);
+    //   }));
 
     this.addMessageTemplate(new MessageTemplate("getSubscribedThreads",
       this.validateGetSubscribedThreads.bind(this),
@@ -221,13 +221,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     if (options && options.groupId) {
       thread = this.getGroupScopedThread(thread, options.groupId);
       this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, baseThread);
+      this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
     } else if (options && options.isPrivate) {
-      thread = this.getPrivateScopedThread(thread, userId);
+      // thread = this.getPrivateScopedThread(thread, userId);
       this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), baseThread, baseThread);
     } else {
       this.sessionData.setHashValue(generateUserThreadsKey(userId), baseThread, baseThread);
+      this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
     }
-    this.sessionData.setHashValues(generateSubscribedUsersKey(thread), [userId, userId]);
 
     callback({
       data: true,
@@ -242,13 +243,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     if (options && options.groupId) {
       thread = this.getGroupScopedThread(thread, options.groupId);
       this.sessionData.deleteHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, (deleted) => { });
+      this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, (deleted) => { callback(deleted) });
     } else if (options && options.isPrivate) {
-      thread = this.getPrivateScopedThread(thread, userId);
-      this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), baseThread, (deleted) => { });
+      // thread = this.getPrivateScopedThread(thread, userId);
+      this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), baseThread, (deleted) => { callback(deleted) });
     } else {
       this.sessionData.deleteHashValue(generateUserThreadsKey(userId), baseThread, (deleted) => { });
+      this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, (deleted) => { callback(deleted) });
     }
-    this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, (deleted) => { callback(deleted) });
   }
 
   private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
@@ -300,22 +302,24 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
     this.sessionData.queueForLrs(messageStr);
     this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-    this.sessionData.setHashValues(generateThreadKey(thread), [message.id, messageStr]);
+    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
-    this.getSubscribedUsers(thread, (users) => {
-      for (let user of users) {
-        if (user !== userId) { //Don't send the message to the sender
-          this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-            requestType: "newThreadedMessage",
-            data: message,
-            thread: message.thread,
-            options: { isPrivate: message.isPrivate, groupId: message.groupId }
-          })));
+    if (!message.isPrivate) {
+      this.getSubscribedUsers(thread, (users) => {
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
 
-          this.notificationManager.saveNotifications(user, [message], (success) => { });
+            this.notificationManager.saveNotifications(user, [message], (success) => { });
+          }
         }
-      }
-    });
+      });
+    }
     callback(true);
   }
 
@@ -370,17 +374,19 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.sessionData.queueForLrsVoid(data);
         let voided = new Message(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValues('threads:' + thread, [voided.id, JSON.stringify(voided)]);
-        this.getSubscribedUsers(thread, (users) => {
-          for (let user of users) {
-            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-              requestType: "newThreadedMessage",
-              data: voided,
-              thread: baseThread,
-              options: options
-            })));
-          }
-        });
+        this.sessionData.setHashValue('threads:' + thread, voided.id, JSON.stringify(voided));
+        if (!(options && options.isPrivate)) {
+          this.getSubscribedUsers(thread, (users) => {
+            for (let user of users) {
+              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+                requestType: "newThreadedMessage",
+                data: voided,
+                thread: baseThread,
+                options: options
+              })));
+            }
+          });
+        }
       }
       this.sessionData.deleteSortedTimestampMember('timestamp:sharedAnnotations',
         messageId,

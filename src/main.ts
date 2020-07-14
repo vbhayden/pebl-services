@@ -66,6 +66,8 @@ import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
 import { Severity, LogCategory } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 import { LinkedInAuthentication } from "./plugins/linkedInAuth";
+import { DefaultArchiveManager } from "./plugins/archiveManager";
+import { ArchiveManager } from "./interfaces/archiveManager";
 
 let express = require('express');
 
@@ -118,6 +120,7 @@ const redisClient = redis.createClient({
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
+const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
@@ -188,7 +191,7 @@ const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   },
   ns: 'rsmq',
   realtime: true
-}, pluginManager, redisCache, lrsManager);
+}, pluginManager, redisCache, lrsManager, archiveManager);
 
 messageQueue.initialize();
 
@@ -283,19 +286,19 @@ expressApp.use((req: Request, res: Response, next: Function) => {
 
 expressApp.disable('x-powered-by');
 
-expressApp.get('/', function(req: Request, res: Response) {
+expressApp.get('/', (req: Request, res: Response) => {
   auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "HelloSessionId", req.session?.id)
   res.send('Hello World!, version ' + config.version).end();
 });
 
-expressApp.get('/login', function(req: Request, res: Response) {
+expressApp.get('/login', (req: Request, res: Response) => {
   if (req.session) {
     authenticationManager.isLoggedIn(req.session,
       (isLoggedIn: boolean) => {
         if (req.session) {
           auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogin", req.session.id, isLoggedIn);
           if (isLoggedIn) {
-            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
           } else {
             authenticationManager.login(req, req.session, res);
           }
@@ -342,7 +345,7 @@ expressApp.get('/logout', function(req: Request, res: Response) {
           if (isLoggedIn) {
             authenticationManager.logout(req, req.session, res);
           } else {
-            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"]);
+            validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
           }
         } else {
           auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
@@ -484,53 +487,75 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               }
             };
 
-            ws.on('message', function(msg) {
-              if (req.session) {
-                if (typeof msg === 'string') {
-                  let payload: any;
-                  try {
-                    payload = JSON.parse(msg);
-                  } catch (e) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
-                    ws.send(JSON.stringify({
-                      identity: username,
-                      requestType: "error",
-                      payload: {
-                        description: "Bad Message",
-                        target: msg
-                      }
-                    }));
-                    return;
-                  }
+            let messageHandler = () => {
+              ws.send(JSON.stringify({
+                identity: username,
+                requestType: "serverReady"
+              }));
 
-                  if (!validationManager.isMessageFormat(payload)) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
-                    ws.send(JSON.stringify({
-                      identity: username,
-                      requestType: "error",
-                      payload: {
-                        description: "Invalid Message",
-                        target: payload.id,
-                        payload: payload
-                      }
-                    }));
-                  }
+              ws.on('message', function(msg) {
+                if (req.session) {
+                  if (typeof msg === 'string') {
+                    let payload: any;
+                    try {
+                      payload = JSON.parse(msg);
+                    } catch (e) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+                      ws.send(JSON.stringify({
+                        identity: username,
+                        requestType: "error",
+                        payload: {
+                          description: "Bad Message",
+                          target: msg
+                        }
+                      }));
+                      return;
+                    }
 
-                  let messages;
-                  if (payload.requestType == "bulkPush") {
-                    messages = payload.data;
-                  } else {
-                    messages = [payload];
-                  }
+                    if (!validationManager.isMessageFormat(payload)) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
+                      ws.send(JSON.stringify({
+                        identity: username,
+                        requestType: "error",
+                        payload: {
+                          description: "Invalid Message Format",
+                          target: payload.id,
+                          payload: payload
+                        }
+                      }));
+                    }
 
-                  req.session.touch();
-                  processMessages(messages);
+                    let messages;
+                    if (payload.requestType == "bulkPush") {
+                      messages = payload.data;
+                    } else {
+                      messages = [payload];
+                    }
+
+                    req.session.touch();
+                    processMessages(messages);
+                  }
+                } else {
+                  auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
+                  ws.close();
                 }
-              } else {
-                auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
-                ws.close();
-              }
-            });
+              });
+            }
+
+            archiveManager.isUserArchived(username,
+              (isArchived: boolean) => {
+                if (!isArchived) {
+                  messageHandler();
+                } else {
+                  // retrieve archive data
+                  archiveManager.setUserArchived(username,
+                    false,
+                    () => {
+                      messageHandler();
+                    });
+                }
+              });
+
 
             ws.on('close', function() {
               messageQueue.removeOutgoingQueue(sessionId);

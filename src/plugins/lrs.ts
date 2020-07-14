@@ -142,7 +142,7 @@ export class LRSPlugin implements LRS {
     });
   }
 
-  getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string, ): void {
+  getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string): void {
     let path = this.endpoint.path + "agents/profile?agent=" + encodeURIComponent(PREFIX_PEBL_THREAD + profileType + "s") + (profileId ? ("&profileId=" + encodeURIComponent(profileId)) : '') + "&t=" + Date.now();
 
     network.getData(this.endpoint.host, path, this.endpoint.headers, function(incomingData) {

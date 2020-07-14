@@ -144,24 +144,24 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
                         data: voided
                       })));
                 }
-                this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
-                  id,
-                  -1,
-                  (refs) => {
-                    if (refs <= 0) {
-                      this.sessionData.deleteHashValue(SET_ALL_NOTIFICATIONS_REFS, id, (deleted) => {
-                        if (!deleted) {
-                          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "delNotificationRefFail", identity, id);
-                        }
-                      });
-                      this.sessionData.deleteHashValue(SET_ALL_NOTIFICATIONS, id, (deleted) => {
-                        if (!deleted) {
-                          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "delNotificationFail", identity, id);
-                        }
-                      });
-                    }
-                  });
               }
+              this.sessionData.incHashKey(SET_ALL_NOTIFICATIONS_REFS,
+                id,
+                -1,
+                (refs) => {
+                  if (refs <= 0) {
+                    this.sessionData.deleteHashValue(SET_ALL_NOTIFICATIONS_REFS, id, (deleted) => {
+                      if (!deleted) {
+                        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "delNotificationRefFail", identity, id);
+                      }
+                    });
+                    this.sessionData.deleteHashValue(SET_ALL_NOTIFICATIONS, id, (deleted) => {
+                      if (!deleted) {
+                        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "delNotificationFail", identity, id);
+                      }
+                    });
+                  }
+                });
               this.sessionData.deleteSortedTimestampMember(generateTimestampForNotification(identity),
                 id,
                 (deleted: number) => {

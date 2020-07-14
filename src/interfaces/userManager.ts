@@ -2,18 +2,18 @@ import { UserProfile } from "../models/userProfile";
 import { PeBLPlugin } from "../models/peblPlugin";
 
 export interface UserManager extends PeBLPlugin {
-  validateAddUserProfile(payload: { [key: string]: any }): boolean;
-  validateDeleteUserProfile(payload: { [key: string]: any }): boolean;
-  validateUpdateUserProfile(payload: { [key: string]: any }): boolean;
-  validateGetUserProfile(payload: { [key: string]: any }): boolean;
+  // validateAddUserProfile(payload: { [key: string]: any }): boolean;
+  // validateDeleteUserProfile(payload: { [key: string]: any }): boolean;
+  // validateUpdateUserProfile(payload: { [key: string]: any }): boolean;
+  // validateGetUserProfile(payload: { [key: string]: any }): boolean;
 
-  validateGetUsers(payload: { [key: string]: any }): boolean;
+  // validateGetUsers(payload: { [key: string]: any }): boolean;
 
-  authorizeAddUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
-  authorizeDeleteUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
-  authorizeUpdateUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
-  authorizeGetUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
-  authorizeGetUsers(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  // authorizeAddUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  // authorizeDeleteUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  // authorizeUpdateUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  // authorizeGetUserProfile(username: string, permissions: any, payload: { [key: string]: any }): boolean;
+  // authorizeGetUsers(username: string, permissions: any, payload: { [key: string]: any }): boolean;
 
   // Add a user with the specified metadata
   addUserProfile(id: string, userName: string, callback: (data: any) => void, userEmail?: string): void;
