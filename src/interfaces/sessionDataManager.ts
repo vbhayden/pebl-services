@@ -21,7 +21,7 @@ export interface SessionDataManager {
   isMemberSetValue(key: string, id: string, callback: (exists: boolean) => void): void;
   addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void;
   getSetValues(key: string, callback: (data: string[]) => void): void;
-  deleteSetValue(key: string, value: string, callback?: (deleted: boolean) => void): void;
+  deleteSetValue(key: string, value: (string | string[]), callback?: (deleted: boolean) => void): void
   unionSetValues(key: string | string[], callback: (data: string[]) => void): void;
 
   addTimestampValue(key: string, timestamp: number, value: string): void;
@@ -31,6 +31,10 @@ export interface SessionDataManager {
   // getValuesLessThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
   deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void;
   rankSortedSetMember(key: string, id: string, callback: (rank: (number | null)) => void): void;
+  scoreSortedSet(key: string, id: string, callback: (score: (number | null)) => void): void;
+  countSortedSet(key: string, min: number, max: number, callback: (count: number | null) => void): void;
+  rangeSortedSet(key: string, min: number, max: number, withScores: boolean, callback: ((data: string[]) => void)): void;
+  rangeRevSortedSet(key: string, min: number, max: number, withScore: boolean, callback: ((data: string[]) => void)): void;
 
   queueForLrs(value: string): void;
   queueForLrsVoid(value: string): void;
@@ -46,6 +50,8 @@ export interface SessionDataManager {
   keys(pattern: string, callback: (data: string[]) => void): void;
 
   removeBadLRSStatement(id: string): void;
+
+  setString(key: string, data: string, callback?: (worked: boolean) => void): void;
 
   broadcast(channel: string, message: string): void;
 }

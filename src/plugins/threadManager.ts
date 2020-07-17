@@ -6,20 +6,20 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
-import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
+import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey, SET_ALL_SHARED_ANNOTATIONS } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
   private groupManager: GroupManager;
-  private notificationManager: NotificationManager;
+  // private notificationManager: NotificationManager;
 
   constructor(sessionData: SessionDataManager, groupManager: GroupManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
     this.groupManager = groupManager;
-    this.notificationManager = notificationManager;
+    // this.notificationManager = notificationManager;
 
     this.addMessageTemplate(new MessageTemplate("saveThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
@@ -303,7 +303,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               options: { isPrivate: message.isPrivate, groupId: message.groupId }
             })));
 
-            this.notificationManager.saveNotifications(user, [message], (success) => { });
+            // this.notificationManager.saveNotifications(user, [message], (success) => { });
           }
         }
       });
@@ -362,7 +362,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         this.sessionData.queueForLrsVoid(data);
         let voided = new Message(JSON.parse(data)).toVoidRecord();
         this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValue('threads:' + thread, voided.id, JSON.stringify(voided));
+        this.sessionData.setHashValue(generateThreadKey(thread), voided.id, JSON.stringify(voided));
         if (!(options && options.isPrivate)) {
           this.getSubscribedUsers(thread, (users) => {
             for (let user of users) {
@@ -376,7 +376,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           });
         }
       }
-      this.sessionData.deleteSortedTimestampMember('timestamp:sharedAnnotations',
+      this.sessionData.deleteSortedTimestampMember(SET_ALL_SHARED_ANNOTATIONS,
         messageId,
         (deleted: number) => {
           this.sessionData.deleteHashValue(generateThreadKey(thread),

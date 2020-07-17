@@ -63,7 +63,7 @@ import { Endpoint } from "./models/endpoint";
 import { validateAndRedirectUrl } from "./utils/network";
 import { AuditLogManager } from "./interfaces/auditLogManager";
 import { SyslogAuditLogManager } from "./plugins/syslogAuditLogManager";
-import { Severity, LogCategory } from "./utils/constants";
+import { Severity, LogCategory, generateUserClearedTimestamps, generateUserClearedNotificationsKey } from "./utils/constants";
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 import { LinkedInAuthentication } from "./plugins/linkedInAuth";
 import { DefaultArchiveManager } from "./plugins/archiveManager";
@@ -115,7 +115,8 @@ let expressSession = require('express-session');
 let RedisSessionStore = require('connect-redis')(expressSession);
 
 const redisClient = redis.createClient({
-  password: config.redisAuth
+  password: config.redisAuth,
+  detect_buffers: true
 });
 
 const pluginManager: PluginManager = new DefaultPluginManager();
@@ -488,59 +489,72 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
             };
 
             let messageHandler = () => {
-              ws.send(JSON.stringify({
-                identity: username,
-                requestType: "serverReady"
-              }));
-
-              ws.on('message', function(msg) {
-                if (req.session) {
-                  if (typeof msg === 'string') {
-                    let payload: any;
-                    try {
-                      payload = JSON.parse(msg);
-                    } catch (e) {
-                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+              redisCache.getAllHashPairs(generateUserClearedTimestamps(username),
+                (clearedNotificationTimestamp) => {
+                  redisCache.getSetValues(generateUserClearedNotificationsKey(username),
+                    (clearedNotifications) => {
                       ws.send(JSON.stringify({
                         identity: username,
-                        requestType: "error",
-                        payload: {
-                          description: "Bad Message",
-                          target: msg
-                        }
+                        requestType: "serverReady"
                       }));
-                      return;
-                    }
-
-                    if (!validationManager.isMessageFormat(payload)) {
-                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
                       ws.send(JSON.stringify({
                         identity: username,
-                        requestType: "error",
-                        payload: {
-                          description: "Invalid Message Format",
-                          target: payload.id,
-                          payload: payload
-                        }
+                        requestType: "setLastNotifiedDates",
+                        clearedTimestamps: clearedNotificationTimestamp,
+                        clearedNotifications: clearedNotifications
                       }));
-                    }
 
-                    let messages;
-                    if (payload.requestType == "bulkPush") {
-                      messages = payload.data;
-                    } else {
-                      messages = [payload];
-                    }
+                      ws.on('message', (msg) => {
+                        if (req.session) {
+                          if (typeof msg === 'string') {
+                            let payload: any;
+                            try {
+                              payload = JSON.parse(msg);
+                            } catch (e) {
+                              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+                              ws.send(JSON.stringify({
+                                identity: username,
+                                requestType: "error",
+                                payload: {
+                                  description: "Bad Message",
+                                  target: msg
+                                }
+                              }));
+                              return;
+                            }
 
-                    req.session.touch();
-                    processMessages(messages);
-                  }
-                } else {
-                  auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
-                  ws.close();
-                }
-              });
+                            if (!validationManager.isMessageFormat(payload)) {
+                              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
+                              ws.send(JSON.stringify({
+                                identity: username,
+                                requestType: "error",
+                                payload: {
+                                  description: "Invalid Message Format",
+                                  target: payload.id,
+                                  payload: payload
+                                }
+                              }));
+                            }
+
+                            let messages;
+                            if (payload.requestType == "bulkPush") {
+                              messages = payload.data;
+                            } else {
+                              messages = [payload];
+                            }
+
+                            req.session.touch();
+                            processMessages(messages);
+                          }
+                        } else {
+                          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
+                          ws.close();
+                        }
+                      });
+                    });
+                });
             }
+
 
             archiveManager.isUserArchived(username,
               (isArchived: boolean) => {

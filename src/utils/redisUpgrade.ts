@@ -1,7 +1,10 @@
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity } from "./constants";
+import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity, generateUserClearedNotificationsKey, generateUserClearedTimestamps } from "./constants";
 import { auditLogger } from "../main";
-import { pakoDeflate } from "./zip";
+import { Voided, XApiStatement } from "../models/xapiStatement";
+import { SharedAnnotation } from "../models/sharedAnnotation";
+import { Message } from "../models/message";
+import { Reference } from "../models/reference";
 
 let upgrades = [
   {
@@ -49,50 +52,113 @@ let upgrades = [
   {
     "version": 6,
     "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
+      let prefixForUsernameLength = "timestamp:notifications:".length
       redis.getAllHashPairs(SET_ALL_NOTIFICATIONS,
-        (entries) => {
-          let keys = Object.keys(entries);
-          let p = () => {
-            let key = keys.pop();
-            if (key) {
-              redis.setHashValue(SET_ALL_NOTIFICATIONS,
-                key,
-                pakoDeflate(entries[key]),
-                () => {
-                  p();
-                });
-            } else {
-              completedUpgrade();
-            }
-          };
-          p();
-        });
-    }
-  },
+        (allNotificationSet) => {
+          redis.keys("timestamp:notifications:*",
+            (userNotificationSets: string[]) => {
+              let p = () => {
+                let userNotificationSet = userNotificationSets.pop();
+                if (userNotificationSet) {
+                  let username = userNotificationSet.substring(prefixForUsernameLength);
+                  redis.getValuesGreaterThanTimestamp(userNotificationSet,
+                    1,
+                    (userNotifications: string[]) => {
+                      let voided: string[] = [];
+                      let earliestVoids: { [key: string]: number } = {};
+                      let voidLimit: { [key: string]: boolean } = {};
+                      for (let notificationId of userNotifications) {
+                        let notification = JSON.parse(allNotificationSet[notificationId]);
+                        if (Voided.is(notification)) {
+                          let v = new Voided(notification);
+                          let vt = allNotificationSet[v.target];
+                          if (vt) {
+                            let t = new XApiStatement(JSON.parse(vt));
+                            let voidLimited = false;
+                            if (Message.is(t)) {
+                              let m = new Message(t);
+                              if (!voidLimit[m.thread]) {
+                                earliestVoids[m.thread] = new Date(v.stored).getTime();
+                              } else {
+                                voidLimited = true;
+                              }
+                            } else if (SharedAnnotation.is(t)) {
+                              let sa = new SharedAnnotation(t);
+                              if (!voidLimit["sa" + sa.book]) {
+                                earliestVoids["sa" + sa.book] = new Date(v.stored).getTime();
+                              } else {
+                                voidLimited = true;
+                              }
+                            } else if (Reference.is(t)) {
+                              let r = new Reference(t);
+                              if (!voidLimit["r" + r.book]) {
+                                earliestVoids["r" + r.book] = new Date(v.stored).getTime();
+                              } else {
+                                voidLimited = true;
+                              }
+                            }
+                            if (voidLimited)
+                              voided.push(v.target);
+                          }
+                        } else {
+                          if (Message.is(notification)) {
+                            let m = new Message(notification);
+                            voidLimit[m.thread] = true
+                          } else if (SharedAnnotation.is(notification)) {
+                            let sa = new SharedAnnotation(notification);
+                            voidLimit["sa" + sa.book] = true
+                          } else if (Reference.is(notification)) {
+                            let r = new Reference(notification);
+                            voidLimit["r" + r.book] = true
+                          }
+                        }
+                      }
+                      let earlyVoidKeys = Object.keys(earliestVoids);
+                      let voidKeysStore = [];
+                      for (let key of earlyVoidKeys) {
+                        voidKeysStore.push(key);
+                        voidKeysStore.push(earliestVoids[key] + "");
+                      }
+                      let fnI = () => {
+                        if (userNotificationSet) {
+                          redis.deleteValue(userNotificationSet,
+                            () => {
+                              p();
+                            });
+                        }
+                      };
+                      let fn = () => {
+                        if (voided.length > 0) {
+                          redis.addSetValue(generateUserClearedNotificationsKey(username),
+                            voided,
+                            fnI);
+                        } else {
+                          fnI();
+                        }
+                      };
 
-  {
-    "version": 7,
-    "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
-
-      redis.keys("timestamp:notifications:*",
-        (notificationSets: string[]) => {
-
-          let p = () => {
-            let notificationSet = notificationSets.pop();
-            if (notificationSet) {
-              redis.getValuesGreaterThanTimestamp(notificationSet,
-                1,
-                (keys) => {
-
-                });
-            } else {
-              completedUpgrade();
-            }
-          };
-          p();
+                      if (voidKeysStore.length > 0) {
+                        redis.setHashValues(generateUserClearedTimestamps(username), voidKeysStore, fn);
+                      } else {
+                        fn();
+                      }
+                    });
+                } else {
+                  redis.deleteValue(SET_ALL_NOTIFICATIONS,
+                    () => {
+                      redis.deleteValue(SET_ALL_NOTIFICATIONS_REFS,
+                        () => {
+                          completedUpgrade();
+                        });
+                    });
+                }
+              }
+              p();
+            });
         });
     }
   }
+
 ];
 
 function setVersion(redis: SessionDataManager, version: number, callback: () => void): void {

@@ -431,6 +431,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       messageTemplate.action(message.payload, dispatchCallback);
     } else {
       auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "CacheBadMsgTemplate", message);
+      if (message.messageId) {
+        this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId },
+          () => { });
+      }
     }
   }
 
@@ -452,6 +456,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private receiveIncomingMessages(): void {
     if (!this.upgradeInProgress) {
       this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES }, (err, resp: RedisSMQ.QueueMessage | {}) => {
+        if (err) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "receiveIncomeMsgFailed");
+        }
         if (this.isQueueMessage(resp)) {
           let serviceMessage = ServiceMessage.parse(resp.message);
           serviceMessage.messageId = resp.id;

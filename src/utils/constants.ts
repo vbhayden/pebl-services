@@ -13,6 +13,7 @@ export const PREFIX_PEBL_EXTENSION = "https://www.peblproject.com/definitions.ht
 export const SET_ALL_ARCHIVE_USERS = "archived:users";
 export const DB_VERSION = "db:version";
 
+export const SET_ALL_SHARED_ANNOTATIONS = "sharedAnnotations:all";
 export const SET_ALL_PEBL_CONFIG = "settings:PeBL";
 export const SET_ALL_NOTIFICATIONS = "notifications:all";
 export const SET_ALL_NOTIFICATIONS_REFS = "notifications:all:refs";
@@ -24,11 +25,15 @@ export const SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS = "users:lastModified:permi
 export const SET_ALL_ACTIVE_JOBS = "activeJobs:all";
 export const SET_ALL_JOBS = "jobs:all";
 
+export const METADATA_NOTIFICATIONS = "notifications";
+
+export const KEY_METADATA = 'metadata';
 export const KEY_ANNOTATIONS = 'annotations';
 export const KEY_SHARED_ANNOTATIONS = 'sharedAnnotations';
 export const KEY_EVENTS = 'events';
 export const KEY_MESSAGES = 'messages';
-export const KEY_NOTIFICATIONS = 'notifications';
+export const KEY_CLEARED_NOTIFICATIONS = 'clearedNotifications';
+export const KEY_CLEARED_TIMESTAMPS = "clearedTimestamps";
 export const KEY_ACTIVITIES = 'activities';
 export const KEY_ACTIVITY_EVENTS = 'activityEvents';
 export const KEY_ASSETS = 'assets';
@@ -68,6 +73,10 @@ export const MESSAGE_QUEUE_INCOMING_MESSAGES = 'incomingMessages';
 // Store ids
 
 // user
+// export function generateUserMetadataKey(identity: string) {
+//   return 'user:' + identity + ':' + KEY_METADATA;
+// }
+
 export function generateUserAnnotationsKey(identity: string) {
   return 'user:' + identity + ':' + KEY_ANNOTATIONS;
 }
@@ -84,8 +93,12 @@ export function generateUserMessagesKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_MESSAGES;
 }
 
-export function generateUserNotificationsKey(identity: string): string {
-  return 'user:' + identity + ':' + KEY_NOTIFICATIONS;
+export function generateUserClearedNotificationsKey(identity: string): string {
+  return 'user:' + identity + ':' + KEY_CLEARED_NOTIFICATIONS;
+}
+
+export function generateUserClearedTimestamps(identity: string): string {
+  return 'user:' + identity + ':' + KEY_CLEARED_TIMESTAMPS;
 }
 
 export function generateUserActivitiesKey(identity: string): string {
