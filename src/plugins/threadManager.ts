@@ -66,7 +66,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
   private validateThread(thread: string): boolean {
     //Validates the base thread to make sure its not pretending to be a group thread
-    if (thread.includes('_group-') || thread.includes('_private-'))
+    if (thread.includes('_group-') || thread.includes('_user-'))
       return false;
     else
       return true;
@@ -183,15 +183,27 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
-  // validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
-  //   //TODO: Does the user own the message they are trying to modify?
+  validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
+    if (!payload.thread || typeof payload.thread !== "string" || !this.validateThread(payload.thread))
+      return false;
+    if (!payload.xId || typeof payload.xId !== "string")
+      return false;
+    if (payload.options) {
+      if (payload.options.isPrivate && typeof payload.options.isPrivate !== "boolean")
+        return false;
+      if (payload.options.groupId && typeof payload.options.groupId !== "string")
+        return false;
+    }
 
-  //   return false;
-  // }
+    return true;
+  }
 
-  // authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-  //   return false;
-  // }
+  authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+
+    return canUser || canGroup;
+  }
 
   validateGetSubscribedThreads(payload: { [key: string]: any }): boolean {
     return true;

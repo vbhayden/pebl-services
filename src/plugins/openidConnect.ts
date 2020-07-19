@@ -5,16 +5,21 @@ import { Issuer, Client, TokenSet } from "openid-client";
 import { UserManager } from '../interfaces/userManager';
 import { auditLogger } from '../main';
 import { LogCategory, Severity } from '../utils/constants';
+import { postFormData, getData } from '../utils/network';
 let OpenIDClient = require("openid-client")
 
 export class OpenIDConnectAuthentication implements AuthenticationManager {
   private activeClient: Client | null = null;
   private config: { [key: string]: any };
   private userManager: UserManager;
+  private apiToken: { [key: string]: any } | null = null;
 
   constructor(config: { [key: string]: any }, userManager: UserManager) {
     this.config = config;
     this.userManager = userManager;
+    
+    this.setApiAccessToken();
+
     OpenIDClient.Issuer.discover(config.authenticationUrl)
       .then((issued: Issuer<Client>) => {
         auditLogger.report(LogCategory.AUTH, Severity.INFO, "FoundIssuerClient", config.authenticationUrl, config.authenticationClientId, config.authenticationRedirectURIs, config.authenticationResponseTypes, config.authenticationMethod)
@@ -172,14 +177,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (this.activeClient) {
       if (session.activeTokens) {
         this.activeClient.userinfo(session.activeTokens.access_token)
-          .then(function(userInfo) {
-            session.identity = userInfo;
-            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
-            if (callback instanceof Function) {
-              callback(true);
-            } else {
-              callback.send(userInfo).end();
-            }
+          .then((userInfo) => {
+            this.getUserGroups(userInfo.sub).then((data) => {
+              userInfo.groups = data;
+            }).finally(() => {
+              session.identity = userInfo;
+              auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
+              if (callback instanceof Function) {
+                callback(true);
+              } else {
+                callback.send(userInfo).end();
+              }
+            }) 
           }).catch((err) => {
             auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
             if (callback instanceof Function) {
@@ -354,5 +363,65 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
       auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RedirectNoAuthClient", session.id, session.ip);
       res.status(503).end();
     }
+  }
+
+  private setApiAccessToken() {
+    return new Promise((resolve, reject) => {
+      postFormData(this.config.adminApiUrl, '/auth/realms/' + this.config.adminApiRealm + '/protocol/openid-connect/token', {}, {
+        'grant_type': 'client_credentials',
+        'client_id': this.config.adminApiClientId,
+        'client_secret': this.config.adminApiClientSecret
+      }, (data) => {
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "FoundOpenIDAdminApiToken", this.config.adminApiUrl, this.config.adminApiRealm, this.config.adminApiClientId);
+        let token = JSON.parse(data);
+        token.expirationDate = Date.now() + (token.expires_in * 1000);
+        this.apiToken = token;
+        resolve();
+      }, (error) => {
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDAdminApiTokenFail", error);
+        this.apiToken = null;
+        reject();
+      });
+    });
+  }
+
+  private getUserGroups(userId: string) {
+    return new Promise((resolve, reject) => {
+      this.refreshApiToken().then(() => {
+        if (this.apiToken) {
+          getData(this.config.adminApiUrl, '/auth/admin/realms/' + this.config.adminApiRealm + '/users/' + userId + '/groups', {
+            Authorization: 'bearer ' + this.apiToken.access_token
+          }, (data) => {
+            auditLogger.report(LogCategory.AUTH, Severity.INFO, "OpenIDAdminApiGetGroupsSuccess", this.config.adminApiUrl, this.config.adminApiRealm, this.config.adminApiClientId);
+            resolve(JSON.parse(data));
+          }, (error) => {
+            auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDAdminApiGetGroupsFail", error);
+            reject();
+          });
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDAdminApiGetGroupsFail", "Admin API Token not set.");
+          reject();
+        }
+      }, (error) => {
+        reject();
+      });
+    });
+  }
+
+  private refreshApiToken() {
+    return new Promise((resolve, reject) => {
+      if (this.apiToken) {
+        if (this.apiToken.expirationDate - Date.now() <= 30) {
+          this.setApiAccessToken().then(() => {
+            resolve();
+          }, (error) => {
+            reject();
+          })
+        } else {
+          resolve();
+        }
+      }
+      reject();
+    });
   }
 }
