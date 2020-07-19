@@ -29,7 +29,7 @@ export interface SessionDataManager {
 
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
   // getValuesLessThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
-  deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void;
+  deleteSortedTimestampMember(key: string, memberId: (string | string[]), callback: (deleted: number) => void): void;
   rankSortedSetMember(key: string, id: string, callback: (rank: (number | null)) => void): void;
   scoreSortedSet(key: string, id: string, callback: (score: (number | null)) => void): void;
   countSortedSet(key: string, min: number, max: number, callback: (count: number | null) => void): void;

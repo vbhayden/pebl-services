@@ -195,7 +195,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateInQueue", err);
         callback(true);
       }
-      this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
+      this.rsmq.setQueueAttributes({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, () => {
+        this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
+      });
     });
   }
 
@@ -208,8 +210,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateOutQueue", sessionId, err);
         callback(true);
       }
-      this.sessionSocketMap[sessionId] = websocket;
-      this.subscriber.subscribe(generateOutgoingQueueForId(sessionId));
+      this.rsmq.setQueueAttributes({ qname: sessionId, maxsize: -1 }, () => {
+        this.sessionSocketMap[sessionId] = websocket;
+        this.subscriber.subscribe(generateOutgoingQueueForId(sessionId));
+      });
     });
   }
 

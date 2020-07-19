@@ -401,15 +401,26 @@ export class RedisSessionDataCache implements SessionDataManager {
       });
   }
 
-  deleteSortedTimestampMember(key: string, memberId: string, callback: (deleted: number) => void): void {
-    this.redis.zrem(key, memberId, (err, result) => {
-      if (err) {
-        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelSortedTimeMem", err);
-        callback(-1);
-      } else {
-        callback(result);
-      }
-    });
+  deleteSortedTimestampMember(key: string, memberId: (string | string[]), callback: (deleted: number) => void): void {
+    if (memberId instanceof Array) {
+      this.redis.zrem(key, ...memberId, (err, result) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelSortedTimeMem", err);
+          callback(-1);
+        } else {
+          callback(result);
+        }
+      });
+    } else {
+      this.redis.zrem(key, memberId, (err, result) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelSortedTimeMem", err);
+          callback(-1);
+        } else {
+          callback(result);
+        }
+      });
+    }
   }
 
   removeBadLRSStatement(id: string): void {

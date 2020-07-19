@@ -6,7 +6,7 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
-import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey, SET_ALL_SHARED_ANNOTATIONS, generateUserClearedNotificationsKey } from "../utils/constants";
+import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey, generateUserClearedNotificationsKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
 
@@ -211,7 +211,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, baseThread);
       this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
     } else if (options && options.isPrivate) {
-      // thread = this.getPrivateScopedThread(thread, userId);
       this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), baseThread, baseThread);
     } else {
       this.sessionData.setHashValue(generateUserThreadsKey(userId), baseThread, baseThread);
@@ -233,7 +232,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.sessionData.deleteHashValue(generateUserGroupThreadsKey(userId, options.groupId), baseThread, (deleted) => { });
       this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, (deleted) => { callback(deleted) });
     } else if (options && options.isPrivate) {
-      // thread = this.getPrivateScopedThread(thread, userId);
       this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), baseThread, (deleted) => { callback(deleted) });
     } else {
       this.sessionData.deleteHashValue(generateUserThreadsKey(userId), baseThread, (deleted) => { });
@@ -302,8 +300,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
               thread: message.thread,
               options: { isPrivate: message.isPrivate, groupId: message.groupId }
             })));
-
-            // this.notificationManager.saveNotifications(user, [message], (success) => { });
           } else {
             this.sessionData.addSetValue(generateUserClearedNotificationsKey(userId), message.id);
           }
@@ -378,11 +374,12 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           });
         }
       }
-      this.sessionData.deleteSortedTimestampMember(SET_ALL_SHARED_ANNOTATIONS,
+      this.sessionData.deleteSortedTimestampMember(generateTimestampForThread(thread),
         messageId,
         (deleted: number) => {
           this.sessionData.deleteHashValue(generateThreadKey(thread),
-            messageId, (result: boolean) => {
+            messageId,
+            (result: boolean) => {
               callback(result);
             });
         });

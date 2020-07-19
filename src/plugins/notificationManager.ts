@@ -182,7 +182,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       record.storedTime,
       true,
       (potentialNotifications) => {
-        debugger
         if (record)
           this.scanPotentialNotifications(potentialNotifications,
             clearedNotificationsKey,
@@ -212,7 +211,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       record.storedTime,
       true,
       (potentialNotifications) => {
-        debugger
         if (record)
           this.scanPotentialNotifications(potentialNotifications,
             clearedNotificationsKey,
@@ -242,7 +240,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       record.storedTime,
       true,
       (potentialNotifications) => {
-        debugger
         if (record)
           this.scanPotentialNotifications(potentialNotifications,
             clearedNotificationsKey,
@@ -261,7 +258,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
 
   deleteNotification(identity: string, records: { [key: string]: any }[], callback: ((success: boolean) => void)): void {
 
-    // debugger;
     let clearedIds: string[] = [];
     let locations: { [key: string]: boolean } = {};
     records.forEach((record) => {
@@ -300,7 +296,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
             locationTimestampLookup[locationSet[i]] = parseInt(val);
           }
         }
-        debugger
         let clearedNotificationsKey = generateUserClearedNotificationsKey(identity);
         this.sessionData.addSetValue(clearedNotificationsKey,
           clearedIds,
@@ -324,7 +319,6 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
                   recProcesser();
                 }
               } else {
-                debugger;
                 let timestampSet: string[] = [];
                 for (let key in locationTimestampLookup) {
                   timestampSet.push(key);

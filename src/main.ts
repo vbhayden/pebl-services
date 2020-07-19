@@ -459,7 +459,7 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               let payload = messages.pop();
               if (payload) {
                 if (!validationManager.validate(payload)) {
-                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip);
+                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip, payload.requestType);
                   ws.send(JSON.stringify({
                     identity: username,
                     requestType: "error",
