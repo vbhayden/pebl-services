@@ -6,7 +6,7 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
-import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey, SET_ALL_SHARED_ANNOTATIONS } from "../utils/constants";
+import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey, SET_ALL_SHARED_ANNOTATIONS, generateUserClearedNotificationsKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
 
@@ -304,6 +304,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             })));
 
             // this.notificationManager.saveNotifications(user, [message], (success) => { });
+          } else {
+            this.sessionData.addSetValue(generateUserClearedNotificationsKey(userId), message.id);
           }
         }
       });

@@ -53,7 +53,7 @@ export const KEY_QUESTIONS = "questions";
 export const LRS_SYNC_TIMEOUT = 1500;
 export const ARCHIVE_USER_TIMEOUT = 10000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
-export const UPGRADE_REDIS_TIMEOUT = 30000;
+export const UPGRADE_REDIS_TIMEOUT = 60000;
 export const JOB_BUFFER_TIMEOUT = 30000;
 
 export const LRS_SYNC_LIMIT = 75;
@@ -70,12 +70,9 @@ export const QUEUE_ALL_USERS = "allUsers";
 export const MESSAGE_QUEUE_JOBS = 'jobs';
 export const MESSAGE_QUEUE_INCOMING_MESSAGES = 'incomingMessages';
 
-// Store ids
+export const TIMESTAMP_SHARED_ANNOTATIONS = 'timestamp:sharedAnnotations';
 
-// user
-// export function generateUserMetadataKey(identity: string) {
-//   return 'user:' + identity + ':' + KEY_METADATA;
-// }
+// Store ids
 
 export function generateUserAnnotationsKey(identity: string) {
   return 'user:' + identity + ':' + KEY_ANNOTATIONS;

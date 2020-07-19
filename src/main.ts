@@ -398,15 +398,15 @@ let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any
             payload);
 
           if (authorized) {
-            auditLogger.report(LogCategory.MESSAGE, Severity.INFO, "MsgAuthorized", req.session.id, req.session.ip, username, payload);
+            auditLogger.report(LogCategory.MESSAGE, Severity.INFO, "MsgAuthorized", req.session.id, req.session.ip, username, payload.requestType);
           } else {
-            auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, payload);
+            auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, payload.requestType);
           }
 
           if (authorized) {
             let serviceMessage = new ServiceMessage(username, payload, req.session.id);
             messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
-          } else {
+          } else if (ws.readyState == 1) {
             ws.send(JSON.stringify({
               identity: username,
               requestType: "error",
@@ -465,7 +465,6 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                     requestType: "error",
                     payload: {
                       description: "Invalid Message",
-                      target: payload.id,
                       payload: payload
                     }
                   }));

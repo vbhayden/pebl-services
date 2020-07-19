@@ -60,10 +60,20 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   }
 
   authorizeSaveActions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    if (permissions.user[payload.requestType]) {
+      for (let key in payload.actions) {
+        let obj = payload.actions[key];
+        let identity = (<Action>obj).getActorId();
+        let canUser = (username == identity);
+        // let canGroup = permissions.group[identity] && permissions.group[identity][obj.requestType]
 
-    return canUser || canGroup;
+        if (!(canUser // || canGroup
+        ))
+          return false;
+      }
+    }
+
+    return true;
   }
 
   // validateDeleteAction(payload: { [key: string]: any }): boolean {
@@ -89,14 +99,9 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   // }
 
   saveActions(identity: string, actions: Action[], callback: ((success: boolean) => void)): void {
-    // let arr = [];
     for (let action of actions) {
-      let actionStr = JSON.stringify(action);
-      // arr.push(generateActionsKey(action.id));
-      // arr.push(actionStr);
-      this.sessionData.queueForLrs(actionStr);
+      this.sessionData.queueForLrs(JSON.stringify(action));
     }
-    // this.sessionData.setHashValues(generateUserActionsKey(identity), arr);
     callback(true);
   }
 

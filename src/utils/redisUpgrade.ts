@@ -1,5 +1,5 @@
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity, generateUserClearedNotificationsKey, generateUserClearedTimestamps } from "./constants";
+import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity, generateUserClearedNotificationsKey, generateUserClearedTimestamps, generateThreadKey } from "./constants";
 import { auditLogger } from "../main";
 import { Voided, XApiStatement } from "../models/xapiStatement";
 import { SharedAnnotation } from "../models/sharedAnnotation";
@@ -7,7 +7,7 @@ import { Message } from "../models/message";
 import { Reference } from "../models/reference";
 
 let upgrades = [
-  {
+  { //Refactor to single notification representation
     "version": 5,
     "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
       redis.deleteValue(SET_ALL_NOTIFICATIONS_REFS, () => {
@@ -49,7 +49,7 @@ let upgrades = [
     }
   },
 
-  {
+  { //Refactor notifications to time with void pool
     "version": 6,
     "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
       let prefixForUsernameLength = "timestamp:notifications:".length
@@ -104,12 +104,18 @@ let upgrades = [
                           if (Message.is(notification)) {
                             let m = new Message(notification);
                             voidLimit[m.thread] = true
+                            if (m.getActorId() === username)
+                              voided.push(m.id);
                           } else if (SharedAnnotation.is(notification)) {
                             let sa = new SharedAnnotation(notification);
                             voidLimit["sa" + sa.book] = true
+                            if (sa.getActorId() === username)
+                              voided.push(sa.id);
                           } else if (Reference.is(notification)) {
                             let r = new Reference(notification);
                             voidLimit["r" + r.book] = true
+                            if (r.getActorId() === username)
+                              voided.push(r.id);
                           }
                         }
                       }
@@ -155,6 +161,58 @@ let upgrades = [
               }
               p();
             });
+        });
+    }
+  },
+
+  { // fix void pool for previous messages sent
+    "version": 7,
+    "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
+      redis.keys("user:*:threads",
+        (userThreadsSet: string[]) => {
+          let p = () => {
+            let userThreads = userThreadsSet.pop();
+            if (userThreads) {
+              let username = userThreads.substring("user:".length, userThreads.length - ":threads".length);
+              let toVoidIds: string[] = [];
+              redis.getHashValues(userThreads, (threads: string[]) => {
+                let p1 = () => {
+                  let thread = threads.pop();
+                  if (thread) {
+                    redis.getHashValue(generateUserClearedTimestamps(username),
+                      thread,
+                      (timestampString) => {
+                        let timestamp = 0;
+                        if (timestampString) {
+                          timestamp = parseInt(timestampString);
+                        }
+                        if (thread) {
+                          redis.getHashValues(generateThreadKey(thread),
+                            (messages) => {
+                              for (let message of messages) {
+                                let o = new XApiStatement(JSON.parse(message));
+                                if ((username === o.getActorId()) && (timestamp < new Date(o.stored).getTime())) {
+                                  toVoidIds.push(o.id);
+                                }
+                              }
+                              if (toVoidIds.length > 0)
+                                redis.addSetValue(generateUserClearedNotificationsKey(username), toVoidIds, p1);
+                              else
+                                p1();
+                            });
+                        }
+                      });
+                  } else {
+                    p();
+                  }
+                }
+                p1();
+              });
+            } else {
+              completedUpgrade();
+            }
+          }
+          p();
         });
     }
   }

@@ -60,10 +60,20 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   }
 
   authorizeSaveSessions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    if (permissions.user[payload.requestType]) {
+      for (let key in payload.actions) {
+        let obj = payload.actions[key];
+        let identity = (<Session>obj).getActorId();
+        let canUser = (username == identity);
+        // let canGroup = permissions.group[identity] && permissions.group[identity][obj.requestType]
 
-    return canUser || canGroup;
+        if (!(canUser // || canGroup
+        ))
+          return false;
+      }
+    }
+
+    return true;
   }
 
   // validateDeleteSession(payload: { [key: string]: any }): boolean {
@@ -84,14 +94,9 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   // }
 
   saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
-    // let arr = [];
     for (let session of sessions) {
-      let sessionStr = JSON.stringify(session);
-      // arr.push(generateSessionsKey(session.id));
-      // arr.push(sessionStr);
-      this.sessionData.queueForLrs(sessionStr);
+      this.sessionData.queueForLrs(JSON.stringify(session));
     }
-    // this.sessionData.setHashValues(generateUserSessionsKey(identity), arr);
     callback(true);
   }
 
