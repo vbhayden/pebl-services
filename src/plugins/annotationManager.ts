@@ -58,6 +58,54 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
         this.deleteSharedAnnotation(payload.identity, payload.xId, dispatchCallback);
       }));
+
+    this.addMessageTemplate(new MessageTemplate("pinSharedAnnotation",
+      this.validatePinSharedAnnotation.bind(this),
+      this.authorizePinSharedAnnotation.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.pinSharedAnnotation(payload.identity, payload.annotation, dispatchCallback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("unpinSharedAnnotation",
+      this.validateUnpinSharedAnnotation.bind(this),
+      this.authorizeUnpinSharedAnnotation.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.unpinSharedAnnotation(payload.identity, payload.annotation, dispatchCallback);
+      }));
+  }
+
+  validatePinSharedAnnotation(payload: { [key: string]: any }): boolean {
+    let annotation = payload.annotation;
+    if (SharedAnnotation.is(annotation)) {
+      payload.annotation = new Annotation(annotation);
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  authorizePinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
+  }
+
+  validateUnpinSharedAnnotation(payload: { [key: string]: any }): boolean {
+    let annotation = payload.annotation;
+    if (SharedAnnotation.is(annotation)) {
+      payload.annotation = new Annotation(annotation);
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  authorizeUnpinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+
+    return canUser || canGroup;
   }
 
   validateGetAnnotations(payload: { [key: string]: any }): boolean {
@@ -108,6 +156,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     if (payload.stmts && (payload.stmts instanceof Array) && (payload.stmts.length > 0)) {
       for (let annotationIndex in payload.stmts) {
         let annotation = payload.stmts[annotationIndex];
+
+        if (annotation.pinned)
+          return false;
+
         if (SharedAnnotation.is(annotation)) {
           payload.stmts[annotationIndex] = new SharedAnnotation(annotation);
         } else {
@@ -154,6 +206,34 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
 
     return canUser || canGroup;
+  }
+
+  pinSharedAnnotation(identity: string, annotation: Annotation, callback: ((success: boolean) => void)): void {
+    let date = new Date();
+    annotation.stored = date.toISOString();
+    annotation.pinned = true;
+    let str = JSON.stringify(annotation);
+    this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), annotation.id);
+    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
+      requestType: "newSharedAnnotation",
+      data: [annotation]
+    })));
+    this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(annotation.id), str);
+    callback(true);
+  }
+
+  unpinSharedAnnotation(identity: string, annotation: Annotation, callback: ((success: boolean) => void)): void {
+    let date = new Date();
+    annotation.stored = date.toISOString();
+    annotation.pinned = false;
+    let str = JSON.stringify(annotation);
+    this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), annotation.id);
+    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
+      requestType: "newSharedAnnotation",
+      data: [annotation]
+    })));
+    this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(annotation.id), str);
+    callback(true);
   }
 
   //TODO: Are xAPI statements being stored in the cache or a different format for the data?

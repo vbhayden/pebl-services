@@ -36,6 +36,21 @@ export class DefaultAuthorizationManager {
                 }
               }
 
+              // Get permissions based on memberships object from keycloak attributes
+              if (session.identity && session.identity.memberships) {
+                for (let groupId in session.identity.memberships) {
+                  if (!groupPermissions[groupId])
+                    groupPermissions[groupId] = {};
+                  
+                  groupPermissions[groupId]['pinSharedAnnotation'] = true;
+                  groupPermissions[groupId]['unpinSharedAnnotation'] = true;
+                  groupPermissions[groupId]['saveAnnotations'] = true;
+                  groupPermissions[groupId]['getAnnotations'] = true;
+                  groupPermissions[groupId]['saveSharedAnnotations'] = true;
+                  groupPermissions[groupId]['getSharedAnnotations'] = true;
+                }
+              }
+
               //TODO implement nested group permission resolution
               let getGroupRoles = (groupIds: string[]) => {
                 let groupId = groupIds.pop();

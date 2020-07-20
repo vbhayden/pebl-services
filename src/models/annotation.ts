@@ -11,6 +11,7 @@ export class Annotation extends XApiStatement {
   readonly style: string;
   readonly text?: string;
   readonly owner: string | string[];
+  pinned?: boolean;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -38,6 +39,7 @@ export class Annotation extends XApiStatement {
     this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
     this.idRef = extensions[PREFIX_PEBL_EXTENSION + "idRef"];
     this.style = extensions[PREFIX_PEBL_EXTENSION + "style"];
+    this.pinned = raw.pinned;
     if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
       this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
   }

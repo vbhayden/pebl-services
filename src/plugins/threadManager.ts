@@ -6,9 +6,10 @@ import { ServiceMessage } from "../models/serviceMessage";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
-import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
+import { LogCategory, Severity, generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
+import { auditLogger } from "../main";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
@@ -20,6 +21,20 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.sessionData = sessionData;
     this.groupManager = groupManager;
     this.notificationManager = notificationManager;
+
+    this.addMessageTemplate(new MessageTemplate("pinThreadedMessage",
+      this.validatePinThreadedMessage.bind(this),
+      this.authorizePinThreadedMessage.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.pinThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      }))
+
+    this.addMessageTemplate(new MessageTemplate("unpinThreadedMessage",
+      this.validateUnpinThreadedMessage.bind(this),
+      this.authorizeUnpinThreadedMessage.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.unpinThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      }))
 
     this.addMessageTemplate(new MessageTemplate("saveThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
@@ -121,9 +136,48 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
+  validatePinThreadedMessage(payload: { [key: string]: any }): boolean {
+    if (payload.message && Message.is(payload.message)) {
+      if (!this.validateThread(payload.message.thread))
+        return false;
+
+      payload.message = new Message(payload.message);
+      return true;
+    }
+    return false;
+  }
+
+  authorizePinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+
+    return canUser || canGroup;
+  }
+
+  validateUnpinThreadedMessage(payload: { [key: string]: any }): boolean {
+    if (payload.message && Message.is(payload.message)) {
+      if (!this.validateThread(payload.message.thread))
+        return false;
+
+      payload.message = new Message(payload.message);
+      return true;
+    }
+    return false;
+  }
+
+  authorizeUnpinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+
+    return canUser || canGroup;
+  }
+
   validateStoreThreadedMessage(payload: { [key: string]: any }): boolean {
     if (payload.message && Message.is(payload.message)) {
       if (!this.validateThread(payload.message.thread))
+        return false;
+
+      if (payload.message.pinned)
         return false;
 
       payload.message = new Message(payload.message);
@@ -288,6 +342,74 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return thread + '_user-' + username;
   }
 
+  pinThreadedMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
+    message.pinned = true;
+
+    let thread = message.thread;
+    if (message.groupId)
+      thread = this.getGroupScopedThread(thread, message.groupId);
+    else if (message.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
+
+    let date = new Date();
+    message.stored = date.toISOString();
+
+    let messageStr = JSON.stringify(message);
+
+    this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+
+    if (!message.isPrivate) {
+      this.getSubscribedUsers(thread, (users) => {
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
+          }
+        }
+      });
+    }
+    callback(true);
+  }
+
+  unpinThreadedMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
+    message.pinned = false;
+
+    let thread = message.thread;
+    if (message.groupId)
+      thread = this.getGroupScopedThread(thread, message.groupId);
+    else if (message.isPrivate)
+      thread = this.getPrivateScopedThread(thread, userId);
+
+    let date = new Date();
+    message.stored = date.toISOString();
+
+    let messageStr = JSON.stringify(message);
+
+    this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+
+    if (!message.isPrivate) {
+      this.getSubscribedUsers(thread, (users) => {
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
+          }
+        }
+      });
+    }
+    callback(true);
+  }
+
   storeMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
     let thread = message.thread;
     if (message.groupId)
@@ -388,11 +510,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           });
         }
       }
-      this.sessionData.deleteSortedTimestampMember('timestamp:sharedAnnotations',
+      this.sessionData.deleteSortedTimestampMember(generateTimestampForThread(thread),
         messageId,
         (deleted: number) => {
           this.sessionData.deleteHashValue(generateThreadKey(thread),
             messageId, (result: boolean) => {
+              if (!result) {
+                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelThreadedMessageFail", userId, messageId);
+              }
               callback(result);
             });
         });
