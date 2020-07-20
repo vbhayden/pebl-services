@@ -215,6 +215,19 @@ let upgrades = [
           p();
         });
     }
+  },
+
+
+  { // clear incoming queue
+    "version": 8,
+    "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
+      redis.deleteValue("rsmq:incomingMessages",
+        () => {
+          redis.deleteValue("rsmq:incomingMessages:Q", () => {
+            redis.deleteSetValue("rsmq:QUEUES", "incomingMessages", completedUpgrade);
+          });
+        })
+    }
   }
 
 ];

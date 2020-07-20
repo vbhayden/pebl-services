@@ -180,6 +180,11 @@ export class RedisSessionDataCache implements SessionDataManager {
   addSetValue(key: string, value: (string[] | string), callback?: (added: number) => void): void {
     //this splices the value string[] into sadd(key, value[0], value[1], value[2]...)
     if (value instanceof Array) {
+      if (value.length == 0) {
+        if (callback)
+          callback(0);
+        return;
+      }
       this.redis.sadd(key, ...value, (err, result) => {
         if (err) {
           auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisAddSetValue", err);
@@ -431,8 +436,12 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  queueForLrs(value: string): void {
-    this.redis.rpush('outgoingXapi', value);
+  queueForLrs(value: string | string[]): void {
+    if (value instanceof Array) {
+      this.redis.rpush('outgoingXapi', ...value);
+    } else {
+      this.redis.rpush('outgoingXapi', value);
+    }
   }
 
   queueForLrsVoid(value: string): void {

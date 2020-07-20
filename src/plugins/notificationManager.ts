@@ -140,6 +140,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
 
   private scanPotentialNotifications(potentialNotifications: string[],
     clearedNotificationsKey: string,
+    clearedIdLookup: { [key: string]: boolean },
     callback: (newTimestamp: string, removeIds: string[]) => void): void {
 
     let acc: string[] = [];
@@ -149,104 +150,55 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       let potentialNotification = potentialNotifications.pop();
       if (time && potentialNotification) {
         if (potentialNotification.substring(0, 2) !== "v-") {
-          this.sessionData.isMemberSetValue(clearedNotificationsKey,
-            potentialNotification,
-            (isMember) => {
-              if (isMember && potentialNotification && time) {
-                acc.push(potentialNotification);
-                lastTime = time;
-                p();
-              } else if (time) {
-                callback(time, acc);
-              }
-            });
+          if (clearedIdLookup[potentialNotification]) {
+            acc.push(potentialNotification);
+            lastTime = time;
+            p();
+          } else {
+            this.sessionData.isMemberSetValue(clearedNotificationsKey,
+              potentialNotification,
+              (isMember) => {
+                if (isMember && potentialNotification && time) {
+                  acc.push(potentialNotification);
+                  lastTime = time;
+                  p();
+                } else if (time) {
+                  callback(time, acc);
+                }
+              });
+          }
         } else {
           lastTime = time;
           p();
         }
       } else {
-        callback(lastTime, acc);
+        callback((parseInt(lastTime) + 1) + "", acc);
       }
     }
     p();
   }
 
-  private processDeleteMessages(record: { [key: string]: any },
+  private processDeleteNotification(record: { [key: string]: any },
+    mainSet: string,
     locationTimestampLookup: { [key: string]: number },
     clearedNotificationsKey: string,
     allRemovedIds: string[],
+    clearedIdLookup: { [key: string]: boolean },
     callback: () => void): void {
 
-    this.sessionData.rangeRevSortedSet(generateTimestampForThread(record.location),
-      locationTimestampLookup[record.location],
-      record.storedTime,
+    this.sessionData.rangeRevSortedSet(mainSet,
+      locationTimestampLookup[record.adjLocation],
+      Number.MAX_SAFE_INTEGER,
       true,
       (potentialNotifications) => {
         if (record)
           this.scanPotentialNotifications(potentialNotifications,
             clearedNotificationsKey,
+            clearedIdLookup,
             (newTimestamp: string, removeIds: string[]) => {
               let time = parseInt(newTimestamp);
-              if (record && (time > locationTimestampLookup[record.location]))
-                locationTimestampLookup[record.location] = time;
-              if (removeIds.length > 0) {
-                allRemovedIds.push(...removeIds);
-                callback();
-              } else
-                callback();
-            });
-      });
-  }
-
-  private processDeleteSharedAnnotations(record: { [key: string]: any },
-    locationTimestampLookup: { [key: string]: number },
-    clearedNotificationsKey: string,
-    allRemovedIds: string[],
-    callback: () => void): void {
-
-    let saLocation = "sa" + record.location;
-
-    this.sessionData.rangeRevSortedSet(TIMESTAMP_SHARED_ANNOTATIONS,
-      locationTimestampLookup[saLocation],
-      record.storedTime,
-      true,
-      (potentialNotifications) => {
-        if (record)
-          this.scanPotentialNotifications(potentialNotifications,
-            clearedNotificationsKey,
-            (newTimestamp: string, removeIds: string[]) => {
-              let time = parseInt(newTimestamp);
-              if (record && (time > locationTimestampLookup[saLocation]))
-                locationTimestampLookup[saLocation] = time;
-              if (removeIds.length > 0) {
-                allRemovedIds.push(...removeIds);
-                callback();
-              } else
-                callback();
-            });
-      });
-  }
-
-  private processDeleteReferences(record: { [key: string]: any },
-    locationTimestampLookup: { [key: string]: number },
-    clearedNotificationsKey: string,
-    allRemovedIds: string[],
-    callback: () => void): void {
-
-    let rLocation = "r" + record.location;
-
-    this.sessionData.rangeRevSortedSet(generateTimestampForReference(record.location),
-      locationTimestampLookup[rLocation],
-      record.storedTime,
-      true,
-      (potentialNotifications) => {
-        if (record)
-          this.scanPotentialNotifications(potentialNotifications,
-            clearedNotificationsKey,
-            (newTimestamp: string, removeIds: string[]) => {
-              let time = parseInt(newTimestamp);
-              if (record && (time > locationTimestampLookup[rLocation]))
-                locationTimestampLookup[rLocation] = time;
+              if (record && (time > locationTimestampLookup[record.adjLocation]))
+                locationTimestampLookup[record.adjLocation] = time;
               if (removeIds.length > 0) {
                 allRemovedIds.push(...removeIds);
                 callback();
@@ -258,10 +210,8 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
 
   deleteNotification(identity: string, records: { [key: string]: any }[], callback: ((success: boolean) => void)): void {
 
-    let clearedIds: string[] = [];
     let locations: { [key: string]: boolean } = {};
     records.forEach((record) => {
-      clearedIds.push(record.id);
       record.storedTime = new Date(record.stored).getTime();
     });
 
@@ -269,16 +219,17 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       return b.storedTime - a.storedTime;
     });
 
-    let newestClearedPerLocation: { [key: string]: any } = [];
+    let newestClearedPerLocation: { [key: string]: { [key: string]: any } } = {};
     records.forEach((record) => {
       let location = record.location;
       if (record.type === "reference")
         location = "r" + location;
       else if (record.type === "sharedAnnotation")
         location = "sa" + location;
-      if (!locations[location]) {
-        newestClearedPerLocation.push(record);
-        locations[location] = true;
+      record.adjLocation = location
+      if (!locations[record.adjLocation]) {
+        newestClearedPerLocation[record.id] = record;
+        locations[record.adjLocation] = true;
       }
     });
 
@@ -296,24 +247,43 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
             locationTimestampLookup[locationSet[i]] = parseInt(val);
           }
         }
+
+        let clearedIds: string[] = [];
+        let clearedIdLookup: { [key: string]: boolean } = {};
+        records.forEach((record) => {
+          clearedIdLookup[record.id] = true;
+          if (record.storedTime >= locationTimestampLookup[record.adjLocation]) {
+            clearedIds.push(record.id);
+          } else if (newestClearedPerLocation[record.id]) {
+            delete newestClearedPerLocation[record.id];
+          }
+        });
+
         let clearedNotificationsKey = generateUserClearedNotificationsKey(identity);
         this.sessionData.addSetValue(clearedNotificationsKey,
           clearedIds,
           () => {
             let allRemovedIds: string[] = [];
+            let newestRecords = Object.values(newestClearedPerLocation);
             let recProcesser = () => {
-              let record = newestClearedPerLocation.pop();
+              let record = newestRecords.pop();
               if (record) {
-                let fn;
+                let mainSet;
                 if (record.type === "message") {
-                  fn = this.processDeleteMessages.bind(this);
+                  mainSet = generateTimestampForThread(record.location);
                 } else if (record.type === "sharedAnnotation") {
-                  fn = this.processDeleteSharedAnnotations.bind(this);
+                  mainSet = TIMESTAMP_SHARED_ANNOTATIONS;
                 } else if (record.type === "reference") {
-                  fn = this.processDeleteReferences.bind(this);
+                  mainSet = generateTimestampForReference(record.location);
                 }
-                if (fn)
-                  fn(record, locationTimestampLookup, clearedNotificationsKey, allRemovedIds, recProcesser);
+                if (mainSet)
+                  this.processDeleteNotification(record,
+                    mainSet,
+                    locationTimestampLookup,
+                    clearedNotificationsKey,
+                    allRemovedIds,
+                    clearedIdLookup,
+                    recProcesser);
                 else {
                   auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "ClearNoificationMissingType", record);
                   recProcesser();

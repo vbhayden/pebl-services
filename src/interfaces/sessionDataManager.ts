@@ -36,7 +36,7 @@ export interface SessionDataManager {
   rangeSortedSet(key: string, min: number, max: number, withScores: boolean, callback: ((data: string[]) => void)): void;
   rangeRevSortedSet(key: string, min: number, max: number, withScore: boolean, callback: ((data: string[]) => void)): void;
 
-  queueForLrs(value: string): void;
+  queueForLrs(value: string | string[]): void;
   queueForLrsVoid(value: string): void;
   retrieveForLrs(count: number, callback: ((value?: string[]) => void)): void;
   trimForLrs(count: number): void;
