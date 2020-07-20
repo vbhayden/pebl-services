@@ -17,7 +17,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   constructor(config: { [key: string]: any }, userManager: UserManager) {
     this.config = config;
     this.userManager = userManager;
-    
+
     this.setApiAccessToken();
 
     OpenIDClient.Issuer.discover(config.authenticationUrl)
@@ -188,7 +188,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               } else {
                 callback.send(userInfo).end();
               }
-            }) 
+            });
           }).catch((err) => {
             auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
             if (callback instanceof Function) {
