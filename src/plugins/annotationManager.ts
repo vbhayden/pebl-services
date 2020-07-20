@@ -3,7 +3,7 @@ import { AnnotationManager } from "../interfaces/annotationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
-import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS, LogCategory, Severity } from "../utils/constants";
+import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS, LogCategory, Severity, TIMESTAMP_SHARED_ANNOTATIONS } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
@@ -179,11 +179,15 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   validateDeleteAnnotation(payload: { [key: string]: any }): boolean {
-    if (typeof (payload.xId) === "string") {
-      return true;
+    if (Array.isArray(payload.xId)) {
+      for (let id of payload.xId) {
+        if (typeof id !== "string") {
+          return false;
+        }
+      }
     }
 
-    return false;
+    return true;
   }
 
   authorizeDeleteAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -194,11 +198,15 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   validateDeleteSharedAnnotation(payload: { [key: string]: any }): boolean {
-    if (typeof (payload.xId) === "string") {
-      return true;
+    if (Array.isArray(payload.xId)) {
+      for (let id of payload.xId) {
+        if (typeof id !== "string") {
+          return false;
+        }
+      }
     }
 
-    return false;
+    return true;
   }
 
   authorizeDeleteSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -277,7 +285,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   //Retrieve shared annotations visible to the user made across all books
   getSharedAnnotations(identity: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void {
-    this.sessionData.getValuesGreaterThanTimestamp('timestamp:sharedAnnotations', timestamp, (data) => {
+    this.sessionData.getValuesGreaterThanTimestamp(TIMESTAMP_SHARED_ANNOTATIONS, timestamp, (data) => {
       this.sessionData.getHashMultiField('sharedAnnotations', data.map((x) => generateSharedAnnotationsKey(x)), (result) => {
         callback(result.map(function(x) {
           let obj = JSON.parse(x);
@@ -300,7 +308,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       arr.push(generateSharedAnnotationsKey(stmt.id));
       arr.push(stmtStr);
       this.sessionData.queueForLrs(stmtStr);
-      this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), stmt.id);
+      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), stmt.id);
     }
     this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
       requestType: "newSharedAnnotation",
@@ -311,57 +319,64 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Removes the annotation with the specific id    
-  deleteAnnotation(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-        let voided = new Annotation(JSON.parse(data)).toVoidRecord();
-        this.sessionData.addTimestampValue(generateTimestampForAnnotations(identity), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(voided.id), JSON.stringify(voided));
-        this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
-          requestType: "newAnnotation",
-          data: voided
-        })));
-      }
-      this.sessionData.deleteSortedTimestampMember(generateTimestampForAnnotations(identity),
-        id,
-        (deleted: number) => {
-          this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
-            generateAnnotationsKey(id), (result: boolean) => {
-              if (!result) {
-                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelAnnotationFail", identity, id);
-              }
-              callback(result);
-            });
-        });
-    });
+  deleteAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+    for (let i = 0; i < ids.length; i++) {
+      let id = ids[i];
+      this.sessionData.getHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(id), (data) => {
+        if (data) {
+          this.sessionData.queueForLrsVoid(data);
+          let voided = new Annotation(JSON.parse(data)).toVoidRecord();
+          this.sessionData.addTimestampValue(generateTimestampForAnnotations(identity), new Date(voided.stored).getTime(), voided.id);
+          this.sessionData.setHashValue(generateUserAnnotationsKey(identity), generateAnnotationsKey(voided.id), JSON.stringify(voided));
+          this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
+            requestType: "newAnnotation",
+            data: voided
+          })));
+        }
+        this.sessionData.deleteSortedTimestampMember(generateTimestampForAnnotations(identity),
+          id,
+          (deleted: number) => {
+            this.sessionData.deleteHashValue(generateUserAnnotationsKey(identity),
+              generateAnnotationsKey(id), (result: boolean) => {
+                if (!result) {
+                  auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelAnnotationFail", identity, id);
+                }
+              });
+          });
+      });
+    }
+    callback(true);
   }
 
   //Removes the shared annotation with the specific id
-  deleteSharedAnnotation(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue('sharedAnnotations', generateSharedAnnotationsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-        let voided = new Annotation(JSON.parse(data)).toVoidRecord();
-        this.sessionData.addTimestampValue('timestamp:sharedAnnotations', new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(voided.id), JSON.stringify(voided));
-        this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-          requestType: "newSharedAnnotation",
-          data: voided
-        })));
-      }
+  deleteSharedAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+    for (let i = 0; i < ids.length; i++) {
+      let id = ids[i];
+      this.sessionData.getHashValue('sharedAnnotations', generateSharedAnnotationsKey(id), (data) => {
+        if (data) {
+          this.sessionData.queueForLrsVoid(data);
+          let voided = new Annotation(JSON.parse(data)).toVoidRecord();
+          this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, new Date(voided.stored).getTime(), voided.id);
+          this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(voided.id), JSON.stringify(voided));
+          this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
+            requestType: "newSharedAnnotation",
+            data: voided
+          })));
+        }
 
-      this.sessionData.deleteSortedTimestampMember('timestamp:sharedAnnotations',
-        id,
-        (deleted: number) => {
-          this.sessionData.deleteHashValue('sharedAnnotations',
-            generateSharedAnnotationsKey(id), (result: boolean) => {
-              if (!result) {
-                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelSharedAnnotationFail", identity, id);
-              }
-              callback(result);
-            });
-        });
-    });
+        this.sessionData.deleteSortedTimestampMember(TIMESTAMP_SHARED_ANNOTATIONS,
+          id,
+          (deleted: number) => {
+            this.sessionData.deleteHashValue('sharedAnnotations',
+              generateSharedAnnotationsKey(id), (result: boolean) => {
+                if (!result) {
+                  auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelSharedAnnotationFail", identity, id);
+                }
+
+              });
+          });
+      });
+    }
+    callback(true);
   }
 }

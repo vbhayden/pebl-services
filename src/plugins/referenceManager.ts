@@ -12,12 +12,12 @@ import { auditLogger } from "../main";
 
 export class DefaultReferenceManager extends PeBLPlugin implements ReferenceManager {
   private sessionData: SessionDataManager;
-  private notificationManager: NotificationManager;
+  // private notificationManager: NotificationManager;
 
   constructor(sessionData: SessionDataManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
-    this.notificationManager = notificationManager;
+    // this.notificationManager = notificationManager;
     this.addMessageTemplate(new MessageTemplate("getReferences",
       this.validateGetReferences.bind(this),
       this.authorizeGetReferences.bind(this),
@@ -120,7 +120,7 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
         data: stmt
       })));
     }
-    this.notificationManager.saveNotifications(identity, notifs, (success) => { });
+    // this.notificationManager.saveNotifications(identity, notifs, (success) => { });
     this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
     callback(true);
   }
