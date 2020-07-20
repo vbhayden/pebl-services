@@ -91,9 +91,13 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
   }
 
   validateDeleteQuiz(payload: { [key: string]: any }): boolean {
-    if (payload.xId && typeof payload.xId === "string")
-      return true;
-    return false;
+    if (Array.isArray(payload.xId)) {
+      for (let xId of payload.xId) {
+        if (typeof xId === "string")
+          return false;
+      }
+    }
+    return true;
   }
 
   authorizeDeleteQuiz(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -137,9 +141,13 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
   }
 
   validateDeleteQuestion(payload: { [key: string]: any }): boolean {
-    if (payload.xId && typeof payload.xId === "string")
-      return true;
-    return false;
+    if (Array.isArray(payload.xId)) {
+      for (let xId of payload.xId) {
+        if (typeof xId === "string")
+          return false;
+      }
+    }
+    return true;
   }
 
   authorizeDeleteQuestion(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -166,20 +174,21 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
     callback(true);
   }
 
-  deleteQuiz(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserQuizesKey(identity), generateQuizesKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-      }
-      this.sessionData.deleteHashValue(generateUserQuizesKey(identity),
-        generateQuizesKey(id), (result: boolean) => {
-          if (!result) {
-            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
-            callback(false);
-          } else
-            callback(true);
-        });
-    });
+  deleteQuiz(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+    for (let id of ids) {
+      this.sessionData.getHashValue(generateUserQuizesKey(identity), generateQuizesKey(id), (data) => {
+        if (data) {
+          this.sessionData.queueForLrsVoid(data);
+        }
+        this.sessionData.deleteHashValue(generateUserQuizesKey(identity),
+          generateQuizesKey(id), (result: boolean) => {
+            if (!result) {
+              auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
+            }
+          });
+      });
+    }
+    callback(true);
   }
 
   getQuestions(identity: string, callback: ((questions: Question[]) => void)): void {
@@ -192,26 +201,28 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
   }
 
   saveQuestions(identity: string, questions: Question[], callback: ((success: boolean) => void)): void {
+    let arr = [];
     for (let question of questions) {
-      let questionStr = JSON.stringify(question);
-      this.sessionData.queueForLrs(questionStr);
+      arr.push(JSON.stringify(question));
     }
+    this.sessionData.queueForLrs(arr);
     callback(true);
   }
 
-  deleteQuestion(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserQuestionsKey(identity), generateQuestionsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-      }
-      this.sessionData.deleteHashValue(generateUserQuestionsKey(identity),
-        generateQuestionsKey(id), (result: boolean) => {
-          if (!result) {
-            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
-            callback(false);
-          } else
-            callback(true);
-        });
-    });
+  deleteQuestion(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+    for (let id of ids) {
+      this.sessionData.getHashValue(generateUserQuestionsKey(identity), generateQuestionsKey(id), (data) => {
+        if (data) {
+          this.sessionData.queueForLrsVoid(data);
+        }
+        this.sessionData.deleteHashValue(generateUserQuestionsKey(identity),
+          generateQuestionsKey(id), (result: boolean) => {
+            if (!result) {
+              auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
+            }
+          });
+      });
+    }
+    callback(true);
   }
 }
