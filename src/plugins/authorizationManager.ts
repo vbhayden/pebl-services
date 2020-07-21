@@ -41,7 +41,7 @@ export class DefaultAuthorizationManager {
               //   for (let groupId in session.identity.memberships) {
               //     if (!groupPermissions[groupId])
               //       groupPermissions[groupId] = {};
-                  
+
               //     groupPermissions[groupId]['pinSharedAnnotation'] = true;
               //     groupPermissions[groupId]['unpinSharedAnnotation'] = true;
               //     groupPermissions[groupId]['saveAnnotations'] = true;

@@ -14,8 +14,6 @@ export class Navigation extends XApiStatement {
     this.type = this.verb.display["en-US"];
 
     let object = this.object as ActivityObject;
-    if (!object.definition)
-      object.definition = {};
 
     this.activityId = object.id;
 
@@ -25,14 +23,15 @@ export class Navigation extends XApiStatement {
     else if (this.book.indexOf(PREFIX_PEBL_THREAD) != -1)
       this.book = this.book.substring(this.book.indexOf(PREFIX_PEBL_THREAD) + PREFIX_PEBL_THREAD.length);
 
-    let extensions = object.definition.extensions;
+    if (object.definition && object.definition.extensions) {
+      let extensions = object.definition.extensions;
 
-    if (extensions) {
       this.firstCfi = extensions[PREFIX_PEBL_EXTENSION + "firstCfi"];
       this.lastCfi = extensions[PREFIX_PEBL_EXTENSION + "lastCfi"];
       if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
         this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
     }
+
   }
 
   static is(x: XApiStatement): boolean {
