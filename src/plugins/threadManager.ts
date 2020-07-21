@@ -146,6 +146,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           payload.message[i] = new Message(message);
         }
       }
+      return true;
     }
     return false;
   }
@@ -168,8 +169,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           payload.message[i] = new Message(message);
         }
       }
+      return true;
     }
-    return true;
+    return false;
   }
 
   authorizeUnpinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -191,9 +193,9 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
             return false;
 
           payload.message[i] = new Message(message);
-          return true;
         }
       }
+      return true;
     }
     return false;
   }
@@ -409,6 +411,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   unpinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
     for (let message of messages) {
       message.pinned = false;
+      message.pinMessage = undefined;
 
       let thread = message.thread;
       if (message.groupId)
