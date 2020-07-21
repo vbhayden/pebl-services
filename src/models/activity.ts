@@ -1,3 +1,5 @@
+import { genUUID } from "../utils/utils";
+
 export class Activity {
   readonly id: string;
   readonly type: string;
@@ -11,17 +13,7 @@ export class Activity {
   constructor(raw: { [key: string]: any }) {
     this.dirtyEdits = {};
     if (!raw.id) {
-      /*!
-        Excerpt from: Math.uuid.js (v1.4)
-        http://www.broofa.com
-        mailto:robert@broofa.com
-        Copyright (c) 2010 Robert Kieffer
-        Dual licensed under the MIT and GPL licenses.
-      */
-      this.id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
+      this.id = genUUID();
       this.isNew = true;
     } else {
       this.id = raw.id;
