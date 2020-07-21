@@ -286,6 +286,8 @@ export class ActivityObject {
     this.objectType = "Activity";
     this.id = raw.id;
     this.definition = raw.definition;
+    if (this.definition && this.definition.description && Object.entries(this.definition.description).length === 0)
+      delete this.definition.description;
   }
 
   // static replaceInvalidJson(x: ActivityObject): ActivityObject {
