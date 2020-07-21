@@ -321,19 +321,34 @@ export class RedisSessionDataCache implements SessionDataManager {
     }
   }
 
-  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void {
-    this.redis.hdel(key, field, (err, result) => {
-      if (err) {
-        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteHashValue", err);
-        if (callback !== undefined) {
-          callback(false);
+  deleteHashValue(key: string, field: (string | string[]), callback: (deleted: boolean) => void): void {
+    if (field instanceof Array) {
+      this.redis.hdel(key, ...field, (err, result) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteHashValue", err);
+          if (callback !== undefined) {
+            callback(false);
+          }
+        } else {
+          if (callback !== undefined) {
+            callback(result > 0);
+          }
         }
-      } else {
-        if (callback !== undefined) {
-          callback(result > 0);
+      });
+    } else {
+      this.redis.hdel(key, field, (err, result) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDeleteHashValue", err);
+          if (callback !== undefined) {
+            callback(false);
+          }
+        } else {
+          if (callback !== undefined) {
+            callback(result > 0);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   scan10(cursor: string, pattern: string, callback: (data: [string, string[]]) => void): void {
@@ -375,11 +390,32 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
-  addTimestampValue(key: string, timestamp: number, value: string) {
-    this.redis.zadd(key, timestamp, value);
+  addTimestampValue(key: string, timestamp: number, value: string, callback?: (added: number) => void) {
+    this.redis.zadd(key, timestamp, value, (err, resp) => {
+      if (err) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisAddTimestamp", err);
+        if (callback) {
+          callback(-1);
+        }
+      } else {
+        if (callback) {
+          callback(resp);
+        }
+      }
+    });
   }
 
-  addTimestampValues(key: string, timestampPairs: (number | string)[]) {
+  addTimestampValues(key: string, timestampPairs: (number | string)[], callback?: (added: number) => void) {
+    let tps: (number | string | ((err: any, x: number) => void))[] = timestampPairs;
+    if (callback)
+      tps.push((err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisAddTimestamps", err);
+          callback(-1);
+        } else {
+          callback(resp);
+        }
+      });
     this.redis.zadd(key, ...timestampPairs);
   }
 
