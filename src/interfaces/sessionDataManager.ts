@@ -14,7 +14,7 @@ export interface SessionDataManager {
   getHashMultiField(key: string, fields: string[], callback: (data: string[]) => void): void;
   getHashMultiKeys(keys: string[], callback: (data: { [key: string]: string[] }) => void): void;
 
-  deleteHashValue(key: string, field: string, callback: (deleted: boolean) => void): void;
+  deleteHashValue(key: string, field: (string | string[]), callback: (deleted: boolean) => void): void;
   deleteValue(key: string, callback?: (deleted: boolean) => void): void;
   deleteValues(keys: string[], callback: (deleted: boolean) => void): void;
 
@@ -24,8 +24,8 @@ export interface SessionDataManager {
   deleteSetValue(key: string, value: (string | string[]), callback?: (deleted: boolean) => void): void
   unionSetValues(key: string | string[], callback: (data: string[]) => void): void;
 
-  addTimestampValue(key: string, timestamp: number, value: string): void;
-  addTimestampValues(key: string, timestampPairs: (number | string)[]): void;
+  addTimestampValue(key: string, timestamp: number, value: string, callback?: (added: number) => void): void;
+  addTimestampValues(key: string, timestampPairs: (number | string)[], callback?: (added: number) => void): void;
 
   getValuesGreaterThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
   // getValuesLessThanTimestamp(key: string, timestamp: number, callback: ((data: string[]) => void)): void;
