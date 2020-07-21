@@ -40,7 +40,7 @@ export class Annotation extends XApiStatement {
     this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
     this.idRef = extensions[PREFIX_PEBL_EXTENSION + "idRef"];
     this.style = extensions[PREFIX_PEBL_EXTENSION + "style"];
-    
+
     if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
       this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
 
