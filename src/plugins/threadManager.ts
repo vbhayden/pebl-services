@@ -136,12 +136,16 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   validatePinThreadedMessage(payload: { [key: string]: any }): boolean {
-    if (payload.message && Message.is(payload.message)) {
-      if (!this.validateThread(payload.message.thread))
-        return false;
+    if (Array.isArray(payload.message)) {
+      for (let i = 0; i < payload.message.length; i++) {
+        let message = payload.message[i];
+        if (message && Message.is(message)) {
+          if (!this.validateThread(message.thread))
+            return false;
 
-      payload.message = new Message(payload.message);
-      return true;
+          payload.message[i] = new Message(message);
+        }
+      }
     }
     return false;
   }
@@ -154,14 +158,18 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   validateUnpinThreadedMessage(payload: { [key: string]: any }): boolean {
-    if (payload.message && Message.is(payload.message)) {
-      if (!this.validateThread(payload.message.thread))
-        return false;
+    if (Array.isArray(payload.message)) {
+      for (let i = 0; i < payload.message.length; i++) {
+        let message = payload.message[i];
+        if (message && Message.is(message)) {
+          if (!this.validateThread(message.thread))
+            return false;
 
-      payload.message = new Message(payload.message);
-      return true;
+          payload.message[i] = new Message(message);
+        }
+      }
     }
-    return false;
+    return true;
   }
 
   authorizeUnpinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
@@ -362,70 +370,74 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return thread + '_user-' + username;
   }
 
-  pinThreadedMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
-    message.pinned = true;
+  pinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+    for (let message of messages) {
+      message.pinned = true;
 
-    let thread = message.thread;
-    if (message.groupId)
-      thread = this.getGroupScopedThread(thread, message.groupId);
-    else if (message.isPrivate)
-      thread = this.getPrivateScopedThread(thread, userId);
+      let thread = message.thread;
+      if (message.groupId)
+        thread = this.getGroupScopedThread(thread, message.groupId);
+      else if (message.isPrivate)
+        thread = this.getPrivateScopedThread(thread, userId);
 
-    let date = new Date();
-    message.stored = date.toISOString();
+      let date = new Date();
+      message.stored = date.toISOString();
 
-    let messageStr = JSON.stringify(message);
+      let messageStr = JSON.stringify(message);
 
-    this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+      this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+      this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
-    if (!message.isPrivate) {
-      this.getSubscribedUsers(thread, (users) => {
-        for (let user of users) {
-          if (user !== userId) { //Don't send the message to the sender
-            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-              requestType: "newThreadedMessage",
-              data: message,
-              thread: message.thread,
-              options: { isPrivate: message.isPrivate, groupId: message.groupId }
-            })));
+      if (!message.isPrivate) {
+        this.getSubscribedUsers(thread, (users) => {
+          for (let user of users) {
+            if (user !== userId) { //Don't send the message to the sender
+              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+                requestType: "newThreadedMessage",
+                data: message,
+                thread: message.thread,
+                options: { isPrivate: message.isPrivate, groupId: message.groupId }
+              })));
+            }
           }
-        }
-      });
+        });
+      }
     }
     callback(true);
   }
 
-  unpinThreadedMessage(userId: string, message: Message, callback: ((success: boolean) => void)): void {
-    message.pinned = false;
+  unpinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+    for (let message of messages) {
+      message.pinned = false;
 
-    let thread = message.thread;
-    if (message.groupId)
-      thread = this.getGroupScopedThread(thread, message.groupId);
-    else if (message.isPrivate)
-      thread = this.getPrivateScopedThread(thread, userId);
+      let thread = message.thread;
+      if (message.groupId)
+        thread = this.getGroupScopedThread(thread, message.groupId);
+      else if (message.isPrivate)
+        thread = this.getPrivateScopedThread(thread, userId);
 
-    let date = new Date();
-    message.stored = date.toISOString();
+      let date = new Date();
+      message.stored = date.toISOString();
 
-    let messageStr = JSON.stringify(message);
+      let messageStr = JSON.stringify(message);
 
-    this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-    this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+      this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+      this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
-    if (!message.isPrivate) {
-      this.getSubscribedUsers(thread, (users) => {
-        for (let user of users) {
-          if (user !== userId) { //Don't send the message to the sender
-            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-              requestType: "newThreadedMessage",
-              data: message,
-              thread: message.thread,
-              options: { isPrivate: message.isPrivate, groupId: message.groupId }
-            })));
+      if (!message.isPrivate) {
+        this.getSubscribedUsers(thread, (users) => {
+          for (let user of users) {
+            if (user !== userId) { //Don't send the message to the sender
+              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+                requestType: "newThreadedMessage",
+                data: message,
+                thread: message.thread,
+                options: { isPrivate: message.isPrivate, groupId: message.groupId }
+              })));
+            }
           }
-        }
-      });
+        });
+      }
     }
     callback(true);
   }
