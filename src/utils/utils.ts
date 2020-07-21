@@ -33,3 +33,19 @@ export function popThroughArray<T>(arr: T[], fn: (x: T, next: (() => void)) => v
   }
   p();
 }
+
+
+/*!
+  Excerpt from: Math.uuid.js (v1.4)
+  http://www.broofa.com
+  mailto:robert@broofa.com
+  Copyright (c) 2010 Robert Kieffer
+  Dual licensed under the MIT and GPL licenses.
+*/
+export function genUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
+    function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+}

@@ -217,7 +217,6 @@ let upgrades = [
     }
   },
 
-
   { // clear incoming queue
     "version": 8,
     "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
@@ -228,7 +227,16 @@ let upgrades = [
           });
         })
     }
+  },
+
+
+  { // remove xAPI with bad description field
+    "version": 9,
+    "fn": (redis: SessionDataManager, completedUpgrade: () => void) => {
+      redis.deleteValue("outgoingXapi", completedUpgrade);
+    }
   }
+
 
 ];
 
