@@ -10,7 +10,8 @@ export class DefaultValidationManager {
 
   isMessageFormat(obj: any): boolean {
     if (obj instanceof Object) {
-      if (obj.requestType && obj.identity) {
+      if ((typeof obj.requestType === "string") &&
+        (typeof obj.identity === "string")) {
         return true;
       }
     }

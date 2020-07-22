@@ -1,14 +1,12 @@
 import { GroupManager } from "../interfaces/groupManager"
 import { PeBLPlugin } from "../models/peblPlugin";
-import { MessageTemplate } from "../models/messageTemplate";
 import { Group } from "../models/group";
-// import { Role } from "../models/role";
-// import { GroupRole } from "../models/groupRole";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { PermissionSet } from "../models/permission";
 import { SET_ALL_GROUPS, generateGroupToGroupMembershipKey, generateUserToGroupMembershipKey, generateGroupToUserMembersKey, generateGroupToGroupMembersKey, LogCategory, Severity } from "../utils/constants";
 import { UserManager } from "../interfaces/userManager";
 import { auditLogger } from "../main";
+import { MessageTemplate } from "../models/messageTemplate";
 
 export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
 
@@ -85,7 +83,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     //   }
     // }
 
-    return true;
+    return false;
   }
 
   validateDeleteGroup(payload: { [key: string]: any }): boolean {
@@ -113,7 +111,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
   }
 
   authorizeAddGroup(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    return permissions.user[payload.requestType];
+    return false;
   }
 
   authorizeDeleteGroup(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
