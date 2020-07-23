@@ -253,19 +253,19 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
-    if (Array.isArray(payload.messages)) {
-      for (let i = 0; i < payload.messages.length; i++) {
-        let thread = payload.messages[i].thread;
-        let xId = payload.messages[i].id;
-        let message = payload.messages[i];
+    if (Array.isArray(payload.message)) {
+      for (let i = 0; i < payload.message.length; i++) {
+        let thread = payload.message[i].thread;
+        let xId = payload.message[i].id;
+        let message = payload.message[i];
         if (!thread || typeof thread !== "string" || !this.validateThread(thread))
           return false;
         if (!xId || typeof xId !== "string")
           return false;
-          if (message.isPrivate && typeof message.isPrivate !== "boolean")
-            return false;
-          if (message.groupId && typeof message.groupId !== "string")
-            return false;
+        if (message.isPrivate && typeof message.isPrivate !== "boolean")
+          return false;
+        if (message.groupId && typeof message.groupId !== "string")
+          return false;
       }
       return true;
     }
