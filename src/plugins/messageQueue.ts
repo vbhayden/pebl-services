@@ -62,7 +62,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         let serviceMessage = ServiceMessage.parse(message);
         let payload = JSON.stringify(serviceMessage.payload);
         for (let socket in this.sessionSocketMap) {
-          this.sessionSocketMap[socket].send(payload);
+          if (this.sessionSocketMap[socket].readyState === 1) {
+            this.sessionSocketMap[socket].send(payload);
+          }
         }
       } else {
         let sessionId = channel.substr(QUEUE_OUTGOING_MESSAGE_PREFIX.length);
@@ -318,7 +320,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   private terminateConnections(): void {
     for (let sessionId in this.sessionSocketMap) {
-      this.sessionSocketMap[sessionId].close();
+      if (this.sessionSocketMap[sessionId].readyState === 1) {
+        this.sessionSocketMap[sessionId].close();
+      }
       this.removeOutgoingQueue(sessionId);
     }
     for (let userId in this.useridSocketMap) {
