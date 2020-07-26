@@ -22,6 +22,7 @@
     "sessionSecret": "<long random string>",
     "sessionTTL": 3600,
 
+    
     "cookieSameSite": "lax",
 
     "logFileDirectory": "./logging/",
