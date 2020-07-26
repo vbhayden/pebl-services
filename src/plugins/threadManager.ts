@@ -67,7 +67,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       this.validateDeleteThreadedMessage.bind(this),
       this.authorizeDeleteThreadedMessage.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteMessage(payload.identity, payload.thread, payload.xId, dispatchCallback, payload.options);
+        this.deleteMessage(payload.identity, payload.message, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getSubscribedThreads",
@@ -253,21 +253,19 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   validateDeleteThreadedMessage(payload: { [key: string]: any }): boolean {
-    if (Array.isArray(payload.thread) && Array.isArray(payload.options) && Array.isArray(payload.xId)) {
-      for (let i = 0; i < payload.thread.length; i++) {
-        let options = payload.options[i];
-        let thread = payload.thread[i];
-        let xId = payload.xId[i];
+    if (Array.isArray(payload.message)) {
+      for (let i = 0; i < payload.message.length; i++) {
+        let thread = payload.message[i].thread;
+        let xId = payload.message[i].id;
+        let message = payload.message[i];
         if (!thread || typeof thread !== "string" || !this.validateThread(thread))
           return false;
         if (!xId || typeof xId !== "string")
           return false;
-        if (options) {
-          if (options.isPrivate && typeof options.isPrivate !== "boolean")
-            return false;
-          if (options.groupId && typeof options.groupId !== "string")
-            return false;
-        }
+        if (message.isPrivate && typeof message.isPrivate !== "boolean")
+          return false;
+        if (message.groupId && typeof message.groupId !== "string")
+          return false;
       }
       return true;
     }
@@ -522,14 +520,15 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     processThreads(threadRequests);
   }
 
-  deleteMessage(userId: string, baseThreads: string[], messageIds: string[], callback: ((success: boolean) => void), options?: { [key: string]: any }): void {
-    for (let i = 0; i < baseThreads.length; i++) {
-      let baseThread = baseThreads[i];
-      let messageId = messageIds[i];
+  deleteMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+    for (let i = 0; i < messages.length; i++) {
+      let baseThread = messages[i].thread;
+      let messageId = messages[i].id;
+      let message = messages[i];
       let thread = baseThread;
-      if (options && options.groupId)
-        thread = this.getGroupScopedThread(baseThread, options.groupId);
-      else if (options && options.isPrivate)
+      if (message.groupId)
+        thread = this.getGroupScopedThread(baseThread, message.groupId);
+      else if (message.isPrivate)
         thread = this.getPrivateScopedThread(baseThread, userId)
 
       this.sessionData.getHashValue(generateThreadKey(thread), messageId, (data) => {
@@ -538,14 +537,17 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           let voided = new Message(JSON.parse(data)).toVoidRecord();
           this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
           this.sessionData.setHashValue(generateThreadKey(thread), voided.id, JSON.stringify(voided));
-          if (!(options && options.isPrivate)) {
+          if (!(message.isPrivate)) {
             this.getSubscribedUsers(thread, (users) => {
               for (let user of users) {
                 this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
                   requestType: "newThreadedMessage",
                   data: voided,
                   thread: baseThread,
-                  options: options
+                  options: {
+                    isPrivate: message.isPrivate,
+                    groupId: message.groupId
+                  }
                 })));
               }
             });

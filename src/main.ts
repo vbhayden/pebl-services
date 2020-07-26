@@ -436,12 +436,16 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
   }
 
   if (!validRedirectDomainLookup[origin] && !validRedirectDomainLookup["*"]) {
-    ws.terminate();
+    if (ws.readyState === 1) {
+      ws.terminate();
+    }
     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
     return;
   } else {
     if (messageQueue.isUpgradeInProgress()) {
-      ws.close();
+      if (ws.readyState === 1) {
+        ws.close();
+      }
       auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeInProgress", req.session?.id, req.ip, originUrl);
       return;
     }
@@ -460,14 +464,16 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
               if (payload) {
                 if (!validationManager.validate(payload)) {
                   auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip, payload.requestType);
-                  ws.send(JSON.stringify({
-                    identity: username,
-                    requestType: "error",
-                    payload: {
-                      description: "Invalid Message",
-                      payload: payload
-                    }
-                  }));
+                  if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({
+                      identity: username,
+                      requestType: "error",
+                      payload: {
+                        description: "Invalid Message",
+                        payload: payload
+                      }
+                    }));
+                  }
                   processMessages(messages);
                 } else if (req.session) {
                   authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
@@ -476,11 +482,13 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                       processMessages(messages);
                     } else {
                       auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId, req.ip);
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "loggedOut"
-                      }));
-                      ws.close();
+                      if (ws.readyState === 1) {
+                        ws.send(JSON.stringify({
+                          identity: username,
+                          requestType: "loggedOut"
+                        }));
+                        ws.close();
+                      }
                     }
                   });
                 }
@@ -492,64 +500,74 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                 (clearedNotificationTimestamp) => {
                   redisCache.getSetValues(generateUserClearedNotificationsKey(username),
                     (clearedNotifications) => {
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "serverReady"
-                      }));
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "setLastNotifiedDates",
-                        clearedTimestamps: clearedNotificationTimestamp,
-                        clearedNotifications: clearedNotifications
-                      }));
+                      if (ws.readyState === 1) {
+                        ws.send(JSON.stringify({
+                          identity: username,
+                          requestType: "serverReady"
+                        }));
+                        ws.send(JSON.stringify({
+                          identity: username,
+                          requestType: "setLastNotifiedDates",
+                          clearedTimestamps: clearedNotificationTimestamp,
+                          clearedNotifications: clearedNotifications
+                        }));
 
-                      ws.on('message', (msg) => {
-                        if (req.session) {
-                          if (typeof msg === 'string') {
-                            let payload: any;
-                            try {
-                              payload = JSON.parse(msg);
-                            } catch (e) {
-                              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
-                              ws.send(JSON.stringify({
-                                identity: username,
-                                requestType: "error",
-                                payload: {
-                                  description: "Bad Message",
-                                  target: msg
+                        ws.on('message', (msg) => {
+                          if (req.session) {
+                            if (typeof msg === 'string') {
+                              let payload: any;
+                              try {
+                                payload = JSON.parse(msg);
+                              } catch (e) {
+                                auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+                                if (ws.readyState === 1) {
+                                  ws.send(JSON.stringify({
+                                    identity: username,
+                                    requestType: "error",
+                                    payload: {
+                                      description: "Bad Message",
+                                      target: msg
+                                    }
+                                  }));
                                 }
-                              }));
-                              return;
-                            }
+                                return;
+                              }
 
-                            if (!validationManager.isMessageFormat(payload)) {
-                              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
-                              ws.send(JSON.stringify({
-                                identity: username,
-                                requestType: "error",
-                                payload: {
-                                  description: "Invalid Message Format",
-                                  target: payload.id,
-                                  payload: payload
+                              if (!validationManager.isMessageFormat(payload)) {
+                                auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
+                                if (ws.readyState === 1) {
+                                  ws.send(JSON.stringify({
+                                    identity: username,
+                                    requestType: "error",
+                                    payload: {
+                                      description: "Invalid Message Format",
+                                      target: payload.id,
+                                      payload: payload
+                                    }
+                                  }));
                                 }
-                              }));
-                            }
+                              }
 
-                            let messages;
-                            if (payload.requestType == "bulkPush") {
-                              messages = payload.data;
-                            } else {
-                              messages = [payload];
-                            }
+                              let messages;
+                              if (payload.requestType == "bulkPush") {
+                                messages = payload.data;
+                              } else {
+                                messages = [payload];
+                              }
 
-                            req.session.touch();
-                            processMessages(messages);
+                              req.session.touch();
+                              processMessages(messages);
+                            }
+                          } else {
+                            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
+                            if (ws.readyState === 1) {
+                              ws.close();
+                            }
                           }
-                        } else {
-                          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
-                          ws.close();
-                        }
-                      });
+                        });
+                      } else {
+                        auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "SocketClosedMain", username, sessionId, req.ip);
+                      }
                     });
                 });
             }
@@ -569,23 +587,28 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
                 }
               });
 
-
-            ws.on('close', function() {
-              messageQueue.removeOutgoingQueue(sessionId);
-              messageQueue.unsubscribeNotifications(username);
-            });
+            if (ws.readyState === 1) {
+              ws.on('close', function() {
+                messageQueue.removeOutgoingQueue(sessionId);
+                messageQueue.unsubscribeNotifications(username);
+              });
+            }
           } else {
             auditLogger.report(LogCategory.AUTH, Severity.WARNING, "ProcessMsgInvalidAuth", req.ip);
-            ws.send(JSON.stringify({
-              identity: "guest",
-              requestType: "loggedOut"
-            }));
-            ws.close();
+            if (ws.readyState === 1) {
+              ws.send(JSON.stringify({
+                identity: "guest",
+                requestType: "loggedOut"
+              }));
+              ws.close();
+            }
           }
         });
     } else {
       auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSNoSession", req.ip);
-      ws.terminate();
+      if (ws.readyState === 1) {
+        ws.terminate();
+      }
     }
   }
 });
