@@ -3,3 +3,5 @@
 logging/*
 /src/serverConfig.json
 /src/serverConfig2.json
+/run.sh
+/src/serB
