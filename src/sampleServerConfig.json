@@ -15,11 +15,6 @@
     "authenticationResponseTypes": ["code"],
     "authenticationScope": ["openid email profile"],
 
-    "adminApiUrl": "dev.keycloak.eduworks.com",
-    "adminApiRealm": "test-realm",
-    "adminApiClientId": "keycloak-api",
-    "adminApiClientSecret": "secret",
-
     "authenticationMethod": "openid",
 
     "redisAuth": "<redis auth key>",
@@ -27,7 +22,8 @@
     "sessionSecret": "<long random string>",
     "sessionTTL": 3600,
 
-    "cookieSameSite": "none",
+    
+    "cookieSameSite": "lax",
 
     "logFileDirectory": "./logging/",
     "logFileSizeLimit": "10MB",
