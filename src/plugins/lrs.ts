@@ -16,7 +16,6 @@ export class LRSPlugin implements LRS {
   }
 
   private cleanXApiStatement(xapi: { [key: string]: any }): { [key: string]: any } {
-
     if (xapi.object.definition) {
       if (xapi.object.definition.name && Object.keys(xapi.object.definition.name).length == 0) {
         delete xapi.object.definition.name;
