@@ -230,31 +230,43 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
     return canUser || canGroup;
   }
 
-  pinSharedAnnotation(identity: string, annotation: SharedAnnotation, callback: ((success: boolean) => void)): void {
+  pinSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
+    let arr = [];
     let date = new Date();
-    annotation.stored = date.toISOString();
-    annotation.pinned = true;
-    let str = JSON.stringify(annotation);
-    this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), annotation.id);
+    for (let annotation of annotations) {
+      annotation.stored = date.toISOString();
+      annotation.pinned = true;
+      let str = JSON.stringify(annotation);
+      arr.push(generateSharedAnnotationsKey(annotation.id));
+      arr.push(str);
+      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), annotation.id);
+    }
+
     this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
       requestType: "newSharedAnnotation",
-      data: [annotation]
+      data: annotations
     })));
-    this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(annotation.id), str);
+    this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
 
-  unpinSharedAnnotation(identity: string, annotation: SharedAnnotation, callback: ((success: boolean) => void)): void {
+  unpinSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
+    let arr = [];
     let date = new Date();
-    annotation.stored = date.toISOString();
-    annotation.pinned = false;
-    let str = JSON.stringify(annotation);
-    this.sessionData.addTimestampValue('timestamp:sharedAnnotations', date.getTime(), annotation.id);
+    for (let annotation of annotations) {
+      annotation.stored = date.toISOString();
+      annotation.pinned = false;
+      let str = JSON.stringify(annotation);
+      arr.push(generateSharedAnnotationsKey(annotation.id));
+      arr.push(str);
+      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), annotation.id);
+    }
+
     this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
       requestType: "newSharedAnnotation",
-      data: [annotation]
+      data: annotations
     })));
-    this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(annotation.id), str);
+    this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
 
