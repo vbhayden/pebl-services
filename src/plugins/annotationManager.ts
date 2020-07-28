@@ -3,7 +3,7 @@ import { AnnotationManager } from "../interfaces/annotationManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Annotation } from "../models/annotation";
 import { SharedAnnotation } from "../models/sharedAnnotation";
-import { generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS, LogCategory, Severity, TIMESTAMP_SHARED_ANNOTATIONS } from "../utils/constants";
+import { generateSubscribedSharedAnnotationsUsersKey, generateGroupSharedAnnotationsTimestamps, generateGroupSharedAnnotationsKey, generateUserAnnotationsKey, generateSharedAnnotationsKey, generateAnnotationsKey, generateTimestampForAnnotations, generateBroadcastQueueForUserId, QUEUE_ALL_USERS, LogCategory, Severity, TIMESTAMP_SHARED_ANNOTATIONS } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
@@ -35,7 +35,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       this.validateGetSharedAnnotations.bind(this),
       this.authorizeGetSharedAnnotations.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getSharedAnnotations(payload.identity, payload.timestamp, dispatchCallback);
+        this.getSharedAnnotations(payload.identity, payload.groupId, payload.timestamp, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveSharedAnnotations",
@@ -56,7 +56,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       this.validateDeleteSharedAnnotation.bind(this),
       this.authorizeDeleteSharedAnnotation.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteSharedAnnotation(payload.identity, payload.xId, dispatchCallback);
+        this.deleteSharedAnnotation(payload.identity, payload.annotation, dispatchCallback);
       }));
 
     this.addMessageTemplate(new MessageTemplate("pinSharedAnnotation",
@@ -71,6 +71,20 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       this.authorizeUnpinSharedAnnotation.bind(this),
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
         this.unpinSharedAnnotation(payload.identity, payload.annotation, dispatchCallback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("subscribeSharedAnnotations",
+      this.validateSubscribeSharedAnnotations.bind(this),
+      this.authorizeSubscribeSharedAnnotations.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.subscribeSharedAnnotations(payload.identity, payload.groupId, dispatchCallback);
+      }));
+
+    this.addMessageTemplate(new MessageTemplate("unsubscribeSharedAnnotations",
+      this.validateUnsubscribeSharedAnnotations.bind(this),
+      this.authorizeUnsubscribeSharedAnnotations.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.unsubscribeSharedAnnotations(payload.identity, payload.groupId, dispatchCallback);
       }));
   }
 
@@ -92,10 +106,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizePinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
-
-    return canUser || canGroup;
+    for (let annotation of payload.annotation) {
+      if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
+        return false;
+    }
+    return true;
   }
 
   validateUnpinSharedAnnotation(payload: { [key: string]: any }): boolean {
@@ -116,10 +131,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeUnpinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
-
-    return canUser || canGroup;
+    for (let annotation of payload.annotation) {
+      if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
+        return false;
+    }
+    return true;
   }
 
   validateGetAnnotations(payload: { [key: string]: any }): boolean {
@@ -127,10 +143,9 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeGetAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    let canUser = (username == payload.identity && permissions.user[payload.requestType])
 
-    return canUser || canGroup;
+    return canUser;
   }
 
   validateSaveAnnotations(payload: { [key: string]: any }): boolean {
@@ -149,19 +164,20 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeSaveAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    let canUser = (username == payload.identity && permissions.user[payload.requestType])
 
-    return canUser || canGroup;
+    return canUser;
   }
 
   validateGetSharedAnnotations(payload: { [key: string]: any }): boolean {
+    if (!payload.groupId || typeof payload.groupId !== 'string' || payload.groupId.length === 0)
+      return false;
     return true;
   }
 
   authorizeGetSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    let canUser = (username == payload.identity && permissions.user[payload.requestType])
+    let canGroup = permissions.group[payload.groupId] && permissions.group[payload.groupId][payload.requestType]
 
     return canUser || canGroup;
   }
@@ -186,10 +202,11 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeSaveSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
-
-    return canUser || canGroup;
+    // for (let annotation of payload.stmts) {
+    //   if (!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType])
+    //     return false;
+    // }
+    return true;
   }
 
   validateDeleteAnnotation(payload: { [key: string]: any }): boolean {
@@ -206,28 +223,90 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   authorizeDeleteAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
 
-    return canUser || canGroup;
+    return canUser;
   }
 
   validateDeleteSharedAnnotation(payload: { [key: string]: any }): boolean {
-    if (Array.isArray(payload.xId)) {
-      for (let id of payload.xId) {
-        if (typeof id !== "string") {
+    if (Array.isArray(payload.annotation) && payload.annotation.length > 0) {
+      for (let annotation of payload.annotation) {
+        if (SharedAnnotation.is(annotation)) {
+          annotation = new SharedAnnotation(annotation);
+        } else {
           return false;
         }
       }
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   authorizeDeleteSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+    for (let annotation of payload.annotation) {
+      if (!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType])
+        return false;
+    }
+    return true;
+  }
+
+  validateSubscribeSharedAnnotations(payload: { [key: string]: any }): boolean {
+    if (Array.isArray(payload.groupId)) {
+      for (let i = 0; i < payload.groupId.length; i++) {
+        let groupId = payload.groupId[i];
+        if (typeof groupId !== "string" || groupId.length === 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeSubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
 
     return canUser || canGroup;
+  }
+
+  validateUnsubscribeSharedAnnotations(payload: { [key: string]: any }): boolean {
+    if (Array.isArray(payload.groupId)) {
+      for (let i = 0; i < payload.groupId.length; i++) {
+        let groupId = payload.groupId[i];
+        if (typeof groupId !== "string" || groupId.length === 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeUnsubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
+    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+
+    return canUser || canGroup;
+  }
+
+  subscribeSharedAnnotations(userId: string, groupIds: string[], callback: ((data: { [key: string]: any }) => void)): void {
+    for (let i = 0; i < groupIds.length; i++) {
+      let groupId = groupIds[i];
+      this.sessionData.setHashValue(generateSubscribedSharedAnnotationsUsersKey(groupId), userId, userId);
+    }
+
+    callback({
+      data: true,
+      requestType: "subscribeThread"
+    });
+  }
+
+  unsubscribeSharedAnnotations(userId: string, groupIds: string[], callback: ((success: boolean) => void)): void {
+    let f = () => { };
+    for (let i = 0; i < groupIds.length; i++) {
+      let groupId = groupIds[i];
+      this.sessionData.deleteHashValue(generateSubscribedSharedAnnotationsUsersKey(groupId), userId, f);
+    }
+    callback(true);
   }
 
   pinSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
@@ -310,9 +389,9 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   // getSharedAnnotationsForBook(identity: string, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
 
   //Retrieve shared annotations visible to the user made across all books
-  getSharedAnnotations(identity: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void {
-    this.sessionData.getValuesGreaterThanTimestamp(TIMESTAMP_SHARED_ANNOTATIONS, timestamp, (data) => {
-      this.sessionData.getHashMultiField('sharedAnnotations', data.map((x) => generateSharedAnnotationsKey(x)), (result) => {
+  getSharedAnnotations(identity: string, groupId: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void {
+    this.sessionData.getValuesGreaterThanTimestamp(generateGroupSharedAnnotationsTimestamps(groupId), timestamp, (data) => {
+      this.sessionData.getHashMultiField(generateGroupSharedAnnotationsKey(groupId), data.map((x) => generateSharedAnnotationsKey(x)), (result) => {
         callback(result.map(function(x) {
           let obj = JSON.parse(x);
           if (SharedAnnotation.is(obj))
@@ -326,21 +405,25 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   //Store shared annotations visible to the user made within the specific book
   saveSharedAnnotations(identity: string, stmts: SharedAnnotation[], callback: ((success: boolean) => void)): void {
-    let arr = [];
     let date = new Date();
     for (let stmt of stmts) {
       stmt.stored = date.toISOString();
       let stmtStr = JSON.stringify(stmt);
-      arr.push(generateSharedAnnotationsKey(stmt.id));
-      arr.push(stmtStr);
+
+      this.sessionData.setHashValue(generateGroupSharedAnnotationsKey(stmt.groupId), generateSharedAnnotationsKey(stmt.id), stmtStr);
       this.sessionData.queueForLrs(stmtStr);
-      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), stmt.id);
+      this.sessionData.addTimestampValue(generateGroupSharedAnnotationsTimestamps(stmt.groupId), date.getTime(), stmt.id);
+      this.getSubscribedUsers(stmt.groupId, (users) => {
+        for (let user of users) {
+          if (user !== identity) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newSharedAnnotation",
+              data: [stmt]
+            })));
+          }
+        }
+      });
     }
-    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-      requestType: "newSharedAnnotation",
-      data: stmts
-    })));
-    this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
 
@@ -404,5 +487,9 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       });
     }
     callback(true);
+  }
+
+  private getSubscribedUsers(groupId: string, callback: ((users: string[]) => void)): void {
+    this.sessionData.getHashValues(generateSubscribedSharedAnnotationsUsersKey(groupId), callback);
   }
 }

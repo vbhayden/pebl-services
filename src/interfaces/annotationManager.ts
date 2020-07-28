@@ -19,7 +19,7 @@ export interface AnnotationManager extends PeBLPlugin {
   saveAnnotations(identity: string, stmts: Annotation[], callback: ((success: boolean) => void)): void; //Store annotations made by the user within the specific book
 
   // getSharedAnnotationsForBook(identity: string, book: string): SharedAnnotation[]; //Retrieve shared annotations visible to the user made within a specific book
-  getSharedAnnotations(identity: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void; //Retrieve shared annotations visible to the user made across all books
+  getSharedAnnotations(identity: string, groupId: string, timestamp: number, callback: ((stmts: (SharedAnnotation | Voided)[]) => void)): void; //Retrieve shared annotations visible to the user made across all books
   saveSharedAnnotations(identity: string, stmts: SharedAnnotation[], callback: ((success: boolean) => void)): void; //Store shared annotations visible to the user made within the specific book
 
   deleteAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void; //Removes the annotation with the specific id
