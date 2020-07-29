@@ -4,7 +4,7 @@ import { PREFIX_PEBL_EXTENSION } from "../utils/constants";
 
 
 export class SharedAnnotation extends Annotation {
-	groupId: string;
+  groupId: string;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -12,20 +12,20 @@ export class SharedAnnotation extends Annotation {
     let object = this.object as ActivityObject;
 
     if (object.definition && object.definition.extensions) {
-    	let extensions = object.definition.extensions;
-    	this.groupId = extensions[PREFIX_PEBL_EXTENSION + 'groupId'];
+      let extensions = object.definition.extensions;
+      this.groupId = extensions[PREFIX_PEBL_EXTENSION + 'groupId'];
     } else {
-    	this.groupId = '';
+      this.groupId = '';
     }
-    
+
   }
 
-  static is(x: SharedAnnotation): boolean {
+  static is(x: any): boolean {
     if (!XApiStatement.is(x))
       return false;
 
-  	if (!x.groupId || typeof x.groupId !== 'string' || x.groupId.length === 0)
-  		return false;
+    if (!x.groupId || typeof x.groupId !== 'string' || x.groupId.length === 0)
+      return false;
 
     let verb = x.verb.display["en-US"];
     return (verb == "shared");

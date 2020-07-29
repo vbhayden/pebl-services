@@ -100,30 +100,46 @@ export class DefaultAuthorizationManager {
     return false;
   }
 
-  private setGroupPermissionsLearner(permissionsObj: {[key: string]: boolean}) {
+  private setGroupPermissionsLearner(permissionsObj: { [key: string]: boolean }) {
     permissionsObj['getSharedAnnotations'] = true;
     permissionsObj['saveSharedAnnotations'] = true;
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
   }
 
-  private setGroupPermissionsInstructor(permissionsObj: {[key: string]: boolean}) {
+  private setGroupPermissionsInstructor(permissionsObj: { [key: string]: boolean }) {
     permissionsObj['getSharedAnnotations'] = true;
     permissionsObj['saveSharedAnnotations'] = true;
     permissionsObj['deleteSharedAnnotation'] = true;
     permissionsObj['pinSharedAnnotation'] = true;
     permissionsObj['unpinSharedAnnotation'] = true;
 
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
     permissionsObj['deleteThreadedMessage'] = true;
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
+
   }
 
-  private setGroupPermissionsAdmin(permissionsObj: {[key: string]: boolean}) {
+  private setGroupPermissionsAdmin(permissionsObj: { [key: string]: boolean }) {
     permissionsObj['getSharedAnnotations'] = true;
     permissionsObj['saveSharedAnnotations'] = true;
     permissionsObj['deleteSharedAnnotation'] = true;
     permissionsObj['pinSharedAnnotation'] = true;
     permissionsObj['unpinSharedAnnotation'] = true;
 
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
     permissionsObj['deleteThreadedMessage'] = true;
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
