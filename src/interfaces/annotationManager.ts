@@ -23,5 +23,5 @@ export interface AnnotationManager extends PeBLPlugin {
   saveSharedAnnotations(identity: string, stmts: SharedAnnotation[], callback: ((success: boolean) => void)): void; //Store shared annotations visible to the user made within the specific book
 
   deleteAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void; //Removes the annotation with the specific id
-  deleteSharedAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void; //Removes the shared annotation with the specific id
+  deleteSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void; //Removes the shared annotation with the specific id
 }

@@ -106,10 +106,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizePinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    for (let annotation of payload.annotation) {
-      if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
-        return false;
-    }
+    // for (let annotation of payload.annotation) {
+    //   if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
+    //     return false;
+    // }
     return true;
   }
 
@@ -131,10 +131,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeUnpinSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    for (let annotation of payload.annotation) {
-      if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
-        return false;
-    }
+    // for (let annotation of payload.annotation) {
+    //   if (!permissions.group[annotation.groupId] || !permissions.group[payload.groupId][payload.requestType])
+    //     return false;
+    // }
     return true;
   }
 
@@ -243,10 +243,10 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeDeleteSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    for (let annotation of payload.annotation) {
-      if (!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType])
-        return false;
-    }
+    // for (let annotation of payload.annotation) {
+    //   if (!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType])
+    //     return false;
+    // }
     return true;
   }
 
@@ -310,42 +310,50 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   pinSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
-    let arr = [];
     let date = new Date();
     for (let annotation of annotations) {
       annotation.stored = date.toISOString();
       annotation.pinned = true;
       let str = JSON.stringify(annotation);
-      arr.push(generateSharedAnnotationsKey(annotation.id));
-      arr.push(str);
-      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), annotation.id);
+
+      this.sessionData.setHashValue(generateGroupSharedAnnotationsKey(annotation.groupId), generateSharedAnnotationsKey(annotation.id), str);
+      this.sessionData.addTimestampValue(generateGroupSharedAnnotationsTimestamps(annotation.groupId), date.getTime(), annotation.id);
+      this.getSubscribedUsers(annotation.groupId, (users) => {
+        for (let user of users) {
+          if (user !== identity) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newSharedAnnotation",
+              data: [annotation]
+            })));
+          }
+        }
+      });
     }
 
-    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-      requestType: "newSharedAnnotation",
-      data: annotations
-    })));
-    this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
 
   unpinSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
-    let arr = [];
     let date = new Date();
     for (let annotation of annotations) {
       annotation.stored = date.toISOString();
       annotation.pinned = false;
       let str = JSON.stringify(annotation);
-      arr.push(generateSharedAnnotationsKey(annotation.id));
-      arr.push(str);
-      this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, date.getTime(), annotation.id);
+
+      this.sessionData.setHashValue(generateGroupSharedAnnotationsKey(annotation.groupId), generateSharedAnnotationsKey(annotation.id), str);
+      this.sessionData.addTimestampValue(generateGroupSharedAnnotationsTimestamps(annotation.groupId), date.getTime(), annotation.id);
+      this.getSubscribedUsers(annotation.groupId, (users) => {
+        for (let user of users) {
+          if (user !== identity) { //Don't send the message to the sender
+            this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newSharedAnnotation",
+              data: [annotation]
+            })));
+          }
+        }
+      });
     }
 
-    this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-      requestType: "newSharedAnnotation",
-      data: annotations
-    })));
-    this.sessionData.setHashValues('sharedAnnotations', arr);
     callback(true);
   }
 
@@ -458,28 +466,35 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   //Removes the shared annotation with the specific id
-  deleteSharedAnnotation(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
-    for (let i = 0; i < ids.length; i++) {
-      let id = ids[i];
-      this.sessionData.getHashValue('sharedAnnotations', generateSharedAnnotationsKey(id), (data) => {
+  deleteSharedAnnotation(identity: string, annotations: SharedAnnotation[], callback: ((success: boolean) => void)): void {
+    for (let i = 0; i < annotations.length; i++) {
+      let annotation = annotations[i];
+      this.sessionData.getHashValue(generateGroupSharedAnnotationsKey(annotation.groupId), generateSharedAnnotationsKey(annotation.id), (data) => {
         if (data) {
           this.sessionData.queueForLrsVoid(data);
-          let voided = new Annotation(JSON.parse(data)).toVoidRecord();
-          this.sessionData.addTimestampValue(TIMESTAMP_SHARED_ANNOTATIONS, new Date(voided.stored).getTime(), voided.id);
-          this.sessionData.setHashValue('sharedAnnotations', generateSharedAnnotationsKey(voided.id), JSON.stringify(voided));
-          this.sessionData.broadcast(QUEUE_ALL_USERS, JSON.stringify(new ServiceMessage(identity, {
-            requestType: "newSharedAnnotation",
-            data: voided
-          })));
+          let ann = new SharedAnnotation(JSON.parse(data));
+          let voided = ann.toVoidRecord();
+          this.sessionData.addTimestampValue(generateGroupSharedAnnotationsTimestamps(ann.groupId), new Date(voided.stored).getTime(), voided.id);
+          this.sessionData.setHashValue(generateGroupSharedAnnotationsKey(ann.groupId), generateSharedAnnotationsKey(voided.id), JSON.stringify(voided));
+          this.getSubscribedUsers(ann.groupId, (users) => {
+            for (let user of users) {
+              if (user !== identity) { //Don't send the message to the sender
+                this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+                  requestType: "newSharedAnnotation",
+                  data: voided
+                })));
+              }
+            }
+          });
         }
 
-        this.sessionData.deleteSortedTimestampMember(TIMESTAMP_SHARED_ANNOTATIONS,
-          id,
+        this.sessionData.deleteSortedTimestampMember(generateGroupSharedAnnotationsTimestamps(annotation.groupId),
+          annotation.id,
           (deleted: number) => {
-            this.sessionData.deleteHashValue('sharedAnnotations',
-              generateSharedAnnotationsKey(id), (result: boolean) => {
+            this.sessionData.deleteHashValue(generateGroupSharedAnnotationsKey(annotation.groupId),
+              generateSharedAnnotationsKey(annotation.id), (result: boolean) => {
                 if (!result) {
-                  auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelSharedAnnotationFail", identity, id);
+                  auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelSharedAnnotationFail", identity, annotation.id);
                 }
 
               });
