@@ -36,20 +36,21 @@ export class DefaultAuthorizationManager {
                 }
               }
 
+              //TODO: Do this the right way
               // Get permissions based on memberships object from keycloak attributes
-              // if (session.identity && session.identity.memberships) {
-              //   for (let groupId in session.identity.memberships) {
-              //     if (!groupPermissions[groupId])
-              //       groupPermissions[groupId] = {};
+              if (session.identity && session.identity.memberships) {
+                for (let groupId in session.identity.memberships) {
+                  if (!groupPermissions[groupId])
+                    groupPermissions[groupId] = {};
 
-              //     groupPermissions[groupId]['pinSharedAnnotation'] = true;
-              //     groupPermissions[groupId]['unpinSharedAnnotation'] = true;
-              //     groupPermissions[groupId]['saveAnnotations'] = true;
-              //     groupPermissions[groupId]['getAnnotations'] = true;
-              //     groupPermissions[groupId]['saveSharedAnnotations'] = true;
-              //     groupPermissions[groupId]['getSharedAnnotations'] = true;
-              //   }
-              // }
+                  if (session.identity.memberships[groupId] === 'learner')
+                    this.setGroupPermissionsLearner(groupPermissions[groupId]);
+                  else if (session.identity.memberships[groupId] === 'instructor')
+                    this.setGroupPermissionsInstructor(groupPermissions[groupId]);
+                  else if (session.identity.memberships[groupId] === 'admin')
+                    this.setGroupPermissionsAdmin(groupPermissions[groupId]);
+                }
+              }
 
               //TODO implement nested group permission resolution
               let getGroupRoles = (groupIds: string[]) => {
@@ -97,5 +98,50 @@ export class DefaultAuthorizationManager {
     }
 
     return false;
+  }
+
+  private setGroupPermissionsLearner(permissionsObj: { [key: string]: boolean }) {
+    permissionsObj['getSharedAnnotations'] = true;
+    permissionsObj['saveSharedAnnotations'] = true;
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
+  }
+
+  private setGroupPermissionsInstructor(permissionsObj: { [key: string]: boolean }) {
+    permissionsObj['getSharedAnnotations'] = true;
+    permissionsObj['saveSharedAnnotations'] = true;
+    permissionsObj['deleteSharedAnnotation'] = true;
+    permissionsObj['pinSharedAnnotation'] = true;
+    permissionsObj['unpinSharedAnnotation'] = true;
+
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
+    permissionsObj['deleteThreadedMessage'] = true;
+    permissionsObj['pinThreadedMessage'] = true;
+    permissionsObj['unpinThreadedMessage'] = true;
+
+  }
+
+  private setGroupPermissionsAdmin(permissionsObj: { [key: string]: boolean }) {
+    permissionsObj['getSharedAnnotations'] = true;
+    permissionsObj['saveSharedAnnotations'] = true;
+    permissionsObj['deleteSharedAnnotation'] = true;
+    permissionsObj['pinSharedAnnotation'] = true;
+    permissionsObj['unpinSharedAnnotation'] = true;
+
+
+    permissionsObj['subscribeThread'] = true;
+    permissionsObj['unsubscribeThread'] = true;
+    permissionsObj['getThreadedMessages'] = true;
+    permissionsObj['saveThreadedMessage'] = true;
+    permissionsObj['deleteThreadedMessage'] = true;
+    permissionsObj['pinThreadedMessage'] = true;
+    permissionsObj['unpinThreadedMessage'] = true;
   }
 }

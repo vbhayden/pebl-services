@@ -82,6 +82,14 @@ export function generateUserSharedAnnotationsKey(identity: string) {
   return 'user:' + identity + ':' + KEY_SHARED_ANNOTATIONS;
 }
 
+export function generateGroupSharedAnnotationsKey(groupId: string) {
+  return 'group:' + groupId + ':' + KEY_SHARED_ANNOTATIONS;
+}
+
+export function generateGroupSharedAnnotationsTimestamps(groupId: string) {
+  return 'group:' + groupId + ':' + TIMESTAMP_SHARED_ANNOTATIONS;
+}
+
 export function generateUserEventsKey(identity: string): string {
   return 'user:' + identity + ':' + KEY_EVENTS;
 }
@@ -267,6 +275,10 @@ export function generateUserGroupThreadsKey(id: string, groupId: string): string
 
 export function generateSubscribedUsersKey(thread: string): string {
   return 'users:thread:' + thread;
+}
+
+export function generateSubscribedSharedAnnotationsUsersKey(groupId: string): string {
+  return 'users:sharedAnnotations:' + groupId;
 }
 
 export function generateTimestampForAnnotations(id: string): string {

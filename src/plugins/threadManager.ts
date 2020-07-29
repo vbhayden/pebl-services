@@ -129,8 +129,27 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeGetThreadedMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let request of payload.requests) {
+      if (request.options && request.options.isPrivate) {
+        canUser = true;
+      } else if (request.options && request.options.groupId) {
+        if (permissions.group[request.options.groupId] && permissions.group[request.options.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        canUser = true;
+      }
+    }
+
+
 
     return canUser || canGroup;
   }
@@ -152,8 +171,26 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizePinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let message of payload.message) {
+      if (message.isPrivate) {
+        canUser = true;
+      } else if (message.groupId) {
+        if (permissions.group[message.groupId] && permissions.group[message.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
 
     return canUser || canGroup;
   }
@@ -175,8 +212,26 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeUnpinThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let message of payload.message) {
+      if (message.isPrivate) {
+        canUser = true;
+      } else if (message.groupId) {
+        if (permissions.group[message.groupId] && permissions.group[message.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
 
     return canUser || canGroup;
   }
@@ -201,8 +256,25 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeStoreThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+    for (let message of payload.message) {
+      if (message.isPrivate) {
+        canUser = true;
+      } else if (message.groupId) {
+        if (permissions.group[message.groupId] && permissions.group[message.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        canUser = true;
+      }
+    }
+
 
     return canUser || canGroup;
   }
@@ -225,8 +297,25 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeSubscribeThread(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let option of payload.options) {
+      if (option.isPrivate) {
+        canUser = true;
+      } else if (option.groupId) {
+        if (permissions.group[option.groupId] && permissions.group[option.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        canUser = true;
+      }
+    }
 
     return canUser || canGroup;
   }
@@ -246,8 +335,25 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeUnsubscribeThread(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let option of payload.options) {
+      if (option.isPrivate) {
+        canUser = true;
+      } else if (option.groupId) {
+        if (permissions.group[option.groupId] && permissions.group[option.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        canUser = true;
+      }
+    }
 
     return canUser || canGroup;
   }
@@ -273,8 +379,26 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   authorizeDeleteThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType]);
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType];
+    let canUser = false;
+    let canGroup = false;
+
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let message of payload.message) {
+      if (message.isPrivate) {
+        canUser = true;
+      } else if (message.groupId) {
+        if (permissions.group[message.groupId] && permissions.group[message.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
 
     return canUser || canGroup;
   }
