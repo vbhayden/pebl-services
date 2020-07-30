@@ -272,7 +272,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   authorizeSubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     for (let groupId of payload.groupId) {
-      if (!permissions.group[groupId] && permissions.group[groupId][payload.requestType])
+      if (!permissions.group[groupId] || !permissions.group[groupId][payload.requestType])
         return false;
     }
 
@@ -293,7 +293,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
   authorizeUnsubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     for (let groupId of payload.groupId) {
-      if (!permissions.group[groupId] && permissions.group[groupId][payload.requestType])
+      if (!permissions.group[groupId] || !permissions.group[groupId][payload.requestType])
         return false;
     }
 
