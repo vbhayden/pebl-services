@@ -103,6 +103,8 @@ export class DefaultAuthorizationManager {
   private setGroupPermissionsLearner(permissionsObj: { [key: string]: boolean }) {
     permissionsObj['getSharedAnnotations'] = true;
     permissionsObj['saveSharedAnnotations'] = true;
+    permissionsObj['subscribeSharedAnnotations'] = true;
+    permissionsObj['unsubscribeSharedAnnotations'] = true;
 
     permissionsObj['subscribeThread'] = true;
     permissionsObj['unsubscribeThread'] = true;
@@ -116,6 +118,8 @@ export class DefaultAuthorizationManager {
     permissionsObj['deleteSharedAnnotation'] = true;
     permissionsObj['pinSharedAnnotation'] = true;
     permissionsObj['unpinSharedAnnotation'] = true;
+    permissionsObj['subscribeSharedAnnotations'] = true;
+    permissionsObj['unsubscribeSharedAnnotations'] = true;
 
 
     permissionsObj['subscribeThread'] = true;
@@ -134,6 +138,8 @@ export class DefaultAuthorizationManager {
     permissionsObj['deleteSharedAnnotation'] = true;
     permissionsObj['pinSharedAnnotation'] = true;
     permissionsObj['unpinSharedAnnotation'] = true;
+    permissionsObj['subscribeSharedAnnotations'] = true;
+    permissionsObj['unsubscribeSharedAnnotations'] = true;
 
 
     permissionsObj['subscribeThread'] = true;

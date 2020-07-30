@@ -10,6 +10,7 @@ import { PermissionSet } from "../models/permission";
 import { ServiceMessage } from "../models/serviceMessage";
 import { auditLogger } from "../main";
 
+
 export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationManager {
 
   private sessionData: SessionDataManager;
@@ -270,9 +271,12 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeSubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canGroup = permissions.group[payload.groupId] && permissions.group[payload.groupId][payload.requestType];
+    for (let groupId of payload.groupId) {
+      if (!permissions.group[groupId] && permissions.group[groupId][payload.requestType])
+        return false;
+    }
 
-    return canGroup;
+    return true;
   }
 
   validateUnsubscribeSharedAnnotations(payload: { [key: string]: any }): boolean {
@@ -288,9 +292,12 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeUnsubscribeSharedAnnotations(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canGroup = permissions.group[payload.groupId] && permissions.group[payload.groupId][payload.requestType];
+    for (let groupId of payload.groupId) {
+      if (!permissions.group[groupId] && permissions.group[groupId][payload.requestType])
+        return false;
+    }
 
-    return canGroup;
+    return true;
   }
 
   subscribeSharedAnnotations(userId: string, groupIds: string[], callback: ((data: { [key: string]: any }) => void)): void {
@@ -301,7 +308,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
 
     callback({
       data: true,
-      requestType: "subscribeThread"
+      requestType: "subscribeSharedAnnotations"
     });
   }
 
