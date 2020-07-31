@@ -4,7 +4,7 @@ import { SessionDataManager } from "../interfaces/sessionDataManager";
 import { Action } from "../models/action";
 import { PermissionSet } from "../models/permission";
 import { MessageTemplate } from "../models/messageTemplate";
-import { SqlDataStore } from "../interfaces/SqlDataStore";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   private sessionData: SessionDataManager;

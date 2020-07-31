@@ -9,7 +9,7 @@ import { PermissionSet } from "../models/permission";
 import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
-import { SqlDataStore } from "../interfaces/SqlDataStore";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;

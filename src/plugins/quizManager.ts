@@ -7,7 +7,7 @@ import { generateUserQuizesKey, generateQuizesKey, generateUserQuestionsKey, gen
 import { PermissionSet } from "../models/permission";
 import { MessageTemplate } from "../models/messageTemplate";
 import { auditLogger } from "../main";
-import { SqlDataStore } from "../interfaces/SqlDataStore";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
   private sessionData: SessionDataManager;
