@@ -4,7 +4,7 @@ import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
-import { SqlDataStore } from "../interfaces/SqlDataStore";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
