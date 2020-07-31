@@ -130,6 +130,10 @@ export class DefaultAuthorizationManager {
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
 
+    permissionsObj['getChapterCompletionPercentages'] = true;
+    permissionsObj['getMostAnsweredQuestions'] = true;
+    permissionsObj['getLeastAnsweredQuestions'] = true;
+    permissionsObj['getQuizAttempts'] = true;
   }
 
   private setGroupPermissionsAdmin(permissionsObj: { [key: string]: boolean }) {
@@ -149,5 +153,10 @@ export class DefaultAuthorizationManager {
     permissionsObj['deleteThreadedMessage'] = true;
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
+
+    permissionsObj['getChapterCompletionPercentages'] = true;
+    permissionsObj['getMostAnsweredQuestions'] = true;
+    permissionsObj['getLeastAnsweredQuestions'] = true;
+    permissionsObj['getQuizAttempts'] = true;
   }
 }

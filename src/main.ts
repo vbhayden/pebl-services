@@ -9,6 +9,8 @@ import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
 import { OpenIDConnectAuthentication } from './plugins/openidConnect';
 
+import { SqlDataStore } from './interfaces/sqlDataStore';
+import { PgSqlDataStore } from './plugins/sqlDataStore';
 import { RedisSessionDataCache } from './plugins/sessionCache';
 import { RedisMessageQueuePlugin } from './plugins/messageQueue';
 import { DefaultAuthorizationManager } from './plugins/authorizationManager'
@@ -119,7 +121,14 @@ const redisClient = redis.createClient({
   detect_buffers: true
 });
 
+const { Pool } = require('pg')
+
+const pgPool = new Pool({
+  connectionString: config.sqlConnectionString
+})
+
 const pluginManager: PluginManager = new DefaultPluginManager();
+const sqlManager: SqlDataStore = new PgSqlDataStore(pgPool);
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
 const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
@@ -134,11 +143,11 @@ const competencyManager: CompetencyManager = new DefaultCompetencyManager(redisC
 const membershipManager: MembershipManager = new DefaultMembershipManager(redisCache);
 const messageManager: MessageManager = new DefaultMessageManager(redisCache);
 const moduleEventsManager: ModuleEventsManager = new DefaultModuleEventsManager(redisCache);
-const threadManager: ThreadManager = new DefaultThreadManager(redisCache, groupManager, notificationManager);
+const threadManager: ThreadManager = new DefaultThreadManager(redisCache, sqlManager, groupManager, notificationManager);
 const referenceManager: ReferenceManager = new DefaultReferenceManager(redisCache, notificationManager);
-const actionManager: ActionManager = new DefaultActionManager(redisCache);
-const quizManager: QuizManager = new DefaultQuizManager(redisCache);
-const sessionManager: SessionManager = new DefaultSessionManager(redisCache);
+const actionManager: ActionManager = new DefaultActionManager(redisCache, sqlManager);
+const quizManager: QuizManager = new DefaultQuizManager(redisCache, sqlManager);
+const sessionManager: SessionManager = new DefaultSessionManager(redisCache, sqlManager);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
 
 let e;

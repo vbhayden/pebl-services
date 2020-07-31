@@ -48,6 +48,7 @@ export const KEY_USERS = 'users';
 export const KEY_NAVIGATIONS = 'navigations';
 export const KEY_QUIZES = "quizes";
 export const KEY_QUESTIONS = "questions";
+export const KEY_CACHED_QUERIES = 'cachedQueries';
 
 export const LRS_SYNC_TIMEOUT = 1500;
 // export const LRS_SYNC_TIMEOUT = 300000;
@@ -71,6 +72,8 @@ export const MESSAGE_QUEUE_JOBS = 'jobs';
 export const MESSAGE_QUEUE_INCOMING_MESSAGES = 'incomingMessages';
 
 export const TIMESTAMP_SHARED_ANNOTATIONS = 'timestamp:sharedAnnotations';
+
+export const TIMESTAMP_CACHED_QUERIES = 'timestamp:cachedQueries';
 
 // Store ids
 
@@ -241,6 +244,10 @@ export function generateQuestionsKey(id: string): string {
   return 'question:' + id;
 }
 
+export function generateCachedQueryKey(query: string): string {
+  return 'cachedQueries:' + query;
+}
+
 export function generateBroadcastQueueForUserId(id: string): string {
   return QUEUE_REALTIME_BROADCAST_PREFIX + id;
 }
@@ -291,6 +298,10 @@ export function generateTimestampForReference(id: string): string {
 
 export function generateTimestampForNotification(id: string): string {
   return 'timestamp:notifications:' + id;
+}
+
+export function generateTimestampCachedQueryKey(query: string): string {
+  return 'timestamp:cachedQueries:' + query;
 }
 
 

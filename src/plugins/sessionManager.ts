@@ -4,13 +4,16 @@ import { SessionManager } from "../interfaces/sessionManager";
 import { Session } from "../models/session";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
+import { SqlDataStore } from "../interfaces/SqlDataStore";
 
 export class DefaultSessionManager extends PeBLPlugin implements SessionManager {
   private sessionData: SessionDataManager;
+  private sqlData: SqlDataStore;
 
-  constructor(sessionData: SessionDataManager) {
+  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore) {
     super();
     this.sessionData = sessionData;
+    this.sqlData = sqlData;
 
     // this.addMessageTemplate(new MessageTemplate("getSessions",
     //   this.validateGetSessions.bind(this),
@@ -94,9 +97,15 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   // }
 
   saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
+    let logins = [];
     for (let session of sessions) {
       this.sessionData.queueForLrs(JSON.stringify(session));
+      if (Session.isLogin(session))
+        logins.push(session);
     }
+    if (logins.length > 0)
+      this.sqlData.insertLogins(logins);
+
     callback(true);
   }
 
