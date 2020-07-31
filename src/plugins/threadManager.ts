@@ -9,15 +9,18 @@ import { PermissionSet } from "../models/permission";
 import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
 import { NotificationManager } from "../interfaces/notificationManager";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
   private groupManager: GroupManager;
+  private sqlData: SqlDataStore;
   // private notificationManager: NotificationManager;
 
-  constructor(sessionData: SessionDataManager, groupManager: GroupManager, notificationManager: NotificationManager) {
+  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore, groupManager: GroupManager, notificationManager: NotificationManager) {
     super();
     this.sessionData = sessionData;
+    this.sqlData = sqlData;
     this.groupManager = groupManager;
     // this.notificationManager = notificationManager;
 
@@ -76,6 +79,20 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
         this.getSubscribedThreads(payload.identity, dispatchCallback);
       }))
+
+    this.addMessageTemplate(new MessageTemplate("getLeastAnsweredQuestions",
+      this.validateGetLeastAnsweredQuestions.bind(this),
+      this.authorizeGetLeastAnsweredQuestions.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getLeastAnsweredQuestions(payload.identity, payload.params, dispatchCallback);
+      }))
+
+    this.addMessageTemplate(new MessageTemplate("getMostAnsweredQuestions",
+      this.validateGetMostAnsweredQuestions.bind(this),
+      this.authorizeGetMostAnsweredQuestions.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getMostAnsweredQuestions(payload.identity, payload.params, dispatchCallback);
+      }))
   }
 
   private validateThread(thread: string): boolean {
@@ -84,6 +101,60 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       return false;
     else
       return true;
+  }
+
+  validateGetLeastAnsweredQuestions(payload: { [key: string]: any }): boolean {
+    if (payload.params && Array.isArray(payload.params) && payload.params.length > 0) {
+      for (let params of payload.params) {
+        if (!params.bookId || typeof params.bookId !== 'string' || params.bookId.length === 0)
+          return false;
+        if (!params.teamId || typeof params.teamId !== 'string' || params.teamId.length === 0)
+          return false;
+        if (!params.classId || typeof params.classId !== 'string' || params.classId.length == 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeGetLeastAnsweredQuestions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let params of payload.params) {
+      if (!permissions.group[params.classId] || !permissions.group[params.classId][payload.requestType])
+        return false;
+    }
+
+    return true;
+  }
+
+  validateGetMostAnsweredQuestions(payload: { [key: string]: any }): boolean {
+    if (payload.params && Array.isArray(payload.params) && payload.params.length > 0) {
+      for (let params of payload.params) {
+        if (!params.bookId || typeof params.bookId !== 'string' || params.bookId.length === 0)
+          return false;
+        if (!params.teamId || typeof params.teamId !== 'string' || params.teamId.length === 0)
+          return false;
+        if (!params.classId || typeof params.classId !== 'string' || params.classId.length == 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeGetMostAnsweredQuestions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let params of payload.params) {
+      if (!permissions.group[params.classId] || !permissions.group[params.classId][payload.requestType])
+        return false;
+    }
+
+    return true;
   }
 
   validateGetThreadedMessages(payload: { [key: string]: any }): boolean {
@@ -414,6 +485,22 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
+  getLeastAnsweredQuestions(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
+    for (let param of params) {
+      this.sqlData.getLeastAnsweredDiscussions(param.bookId, param.teamId, param.classId, (discussions) => {
+        callback({ data: discussions });
+      })
+    }
+  }
+
+  getMostAnsweredQuestions(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
+    for (let param of params) {
+      this.sqlData.getMostAnsweredDiscussions(param.bookId, param.teamId, param.classId, (discussions) => {
+        callback({ data: discussions });
+      })
+    }
+  }
+
   subscribeThread(userId: string, baseThreads: string[], options: { [key: string]: any }[], callback: ((data: { [key: string]: any }) => void)): void {
     for (let i = 0; i < baseThreads.length; i++) {
       let thread = baseThreads[i];
@@ -571,6 +658,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     let date = new Date();
     let timestampString = date.toISOString();
     let timestamp = date.getTime();
+    let discussions = [];
 
     for (let message of messages) {
       let thread = message.thread;
@@ -584,6 +672,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       let messageStr = JSON.stringify(message);
 
       this.sessionData.queueForLrs(messageStr);
+
+      if (Message.isDiscussion(message))
+        discussions.push(message);
+
       this.sessionData.addTimestampValue(generateTimestampForThread(thread), timestamp, message.id);
       this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
@@ -602,6 +694,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         });
       }
     }
+
+    if (discussions.length > 0)
+      this.sqlData.insertDiscussions(discussions);
+
     callback(true);
   }
 

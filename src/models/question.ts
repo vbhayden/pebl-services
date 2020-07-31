@@ -18,6 +18,9 @@ export class Question extends XApiStatement {
   readonly prompt?: string;
 
   readonly response?: string;
+  readonly currentTeam?: string;
+  readonly currentClass?: string;
+  readonly contextUrl?: string;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -66,6 +69,10 @@ export class Question extends XApiStatement {
       if (extensions) {
         if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
           this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
+
+        this.currentTeam = extensions[PREFIX_PEBL_EXTENSION + "currentTeam"];
+        this.currentClass = extensions[PREFIX_PEBL_EXTENSION + "currentClass"];
+        this.contextUrl = extensions[PREFIX_PEBL_EXTENSION + "contextUrl"];
       }
 
     }

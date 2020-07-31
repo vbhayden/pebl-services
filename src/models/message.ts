@@ -9,6 +9,7 @@ export class Message extends XApiStatement {
   readonly name: string;
   readonly direct: boolean;
   readonly book?: string;
+  readonly bookId?: string;
   readonly groupId?: string;
   readonly isPrivate?: boolean;
   readonly access?: "private" | "team" | "class" | "all";
@@ -19,6 +20,9 @@ export class Message extends XApiStatement {
   readonly peblAction?: string;
   pinned?: boolean;
   pinMessage?: string;
+  readonly currentTeam?: string;
+  readonly currentClass?: string;
+  readonly contextUrl?: string;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -46,12 +50,17 @@ export class Message extends XApiStatement {
         this.groupId = extensions[PREFIX_PEBL_EXTENSION + "groupId"];
         this.isPrivate = extensions[PREFIX_PEBL_EXTENSION + "isPrivate"];
         this.book = extensions[PREFIX_PEBL_EXTENSION + "book"];
+        this.bookId = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
         this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
         this.idRef = extensions[PREFIX_PEBL_EXTENSION + "idRef"];
         this.peblAction = extensions[PREFIX_PEBL_EXTENSION + "peblAction"];
 
         if (extensions[PREFIX_PEBL_EXTENSION + "thread"])
           this.thread = extensions[PREFIX_PEBL_EXTENSION + "thread"];
+
+        this.currentTeam = extensions[PREFIX_PEBL_EXTENSION + "currentTeam"];
+        this.currentClass = extensions[PREFIX_PEBL_EXTENSION + "currentClass"];
+        this.contextUrl = extensions[PREFIX_PEBL_EXTENSION + "contextUrl"];
       }
     }
 
@@ -65,5 +74,12 @@ export class Message extends XApiStatement {
 
     let verb = x.verb.display["en-US"];
     return (verb == "responded") || (verb == "noted");
+  }
+
+  static isDiscussion(x: any): boolean {
+    let type = x.object.definition.type;
+    if (type === 'http://www.peblproject.com/activities/discussion')
+      return true;
+    return false;
   }
 }

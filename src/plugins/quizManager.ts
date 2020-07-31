@@ -7,13 +7,16 @@ import { generateUserQuizesKey, generateQuizesKey, generateUserQuestionsKey, gen
 import { PermissionSet } from "../models/permission";
 import { MessageTemplate } from "../models/messageTemplate";
 import { auditLogger } from "../main";
+import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
   private sessionData: SessionDataManager;
+  private sqlData: SqlDataStore;
 
-  constructor(sessionData: SessionDataManager) {
+  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore) {
     super();
     this.sessionData = sessionData;
+    this.sqlData = sqlData;
     this.addMessageTemplate(new MessageTemplate("getQuizes",
       this.validateGetQuizes.bind(this),
       this.authorizeGetQuizes.bind(this),
@@ -55,6 +58,40 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
         this.deleteQuestion(payload.identity, payload.xId, dispatchCallback);
       }));
+
+    this.addMessageTemplate(new MessageTemplate("getQuizAttempts",
+      this.validateGetQuizAttempts.bind(this),
+      this.authorizeGetQuizAttempts.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getQuizAttempts(payload.identity, payload.params, dispatchCallback);
+      }))
+  }
+
+  validateGetQuizAttempts(payload: { [key: string]: any }): boolean {
+    if (payload.params && Array.isArray(payload.params) && payload.params.length > 0) {
+      for (let params of payload.params) {
+        if (!params.bookId || typeof params.bookId !== 'string' || params.bookId.length === 0)
+          return false;
+        if (!params.teamId || typeof params.teamId !== 'string' || params.teamId.length === 0)
+          return false;
+        if (!params.classId || typeof params.classId !== 'string' || params.classId.length == 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeGetQuizAttempts(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    if (username !== payload.identity || !permissions.user[payload.requestType])
+      return false;
+
+    for (let params of payload.params) {
+      if (!permissions.group[params.classId] || !permissions.group[params.classId][payload.requestType])
+        return false;
+    }
+
+    return true;
   }
 
   validateGetQuizes(payload: { [key: string]: any }): boolean {
@@ -157,6 +194,33 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
     return canUser || canGroup;
   }
 
+  getQuizAttempts(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
+    for (let param of params) {
+      this.sqlData.getQuizAttempts(param.bookId, param.teamId, param.classId, (attempts) => {
+        let attemptsObject = {} as any;
+        for (let attempt of attempts) {
+          if (!attemptsObject[attempt.quizid])
+            attemptsObject[attempt.quizid] = {};
+
+          if (!attemptsObject[attempt.quizid].prompt)
+            attemptsObject[attempt.quizid].prompt = attempt.question;
+
+          if (!attemptsObject[attempt.quizid].url)
+            attemptsObject[attempt.quizid].url = attempt.url;
+
+          if (!attemptsObject[attempt.quizid].responses)
+            attemptsObject[attempt.quizid].responses = {}
+
+          attemptsObject[attempt.quizid].responses[attempt.response] = {
+            success: attempt.correct,
+            count: attempt.count
+          };
+        }
+        callback({ data: attemptsObject })
+      })
+    }
+  }
+
   getQuizes(identity: string, callback: ((quizes: Quiz[]) => void)): void {
     this.sessionData.getHashValues(generateUserQuizesKey(identity),
       (result: string[]) => {
@@ -206,6 +270,7 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
       arr.push(JSON.stringify(question));
     }
     this.sessionData.queueForLrs(arr);
+    this.sqlData.insertQuizAttempts(questions);
     callback(true);
   }
 
