@@ -211,10 +211,10 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
           if (!attemptsObject[attempt.quizid].responses)
             attemptsObject[attempt.quizid].responses = {}
 
-          if (!attemptsObject[attempt.quizId].totalCount)
-            attemptsObject[attempt.quizId].totalCount = 0;
+          if (!attemptsObject[attempt.quizid].totalCount)
+            attemptsObject[attempt.quizid].totalCount = 0;
 
-          attemptsObject[attempt.quizId].totalCount += attempt.count;
+          attemptsObject[attempt.quizid].totalCount += attempt.count;
 
           attemptsObject[attempt.quizid].responses[attempt.response] = {
             success: attempt.correct,
