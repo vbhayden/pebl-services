@@ -44,7 +44,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.version = 0;
     this.timeouts = {};
     this.pluginManager = pluginManager;
-    this.subscriber = redis.createClient(redisConfig.options);
+    this.subscriber = redis.createClient(redisConfig);
     this.subscriber.subscribe(QUEUE_ACTIVE_JOBS);
     this.subscriber.subscribe(QUEUE_ALL_USERS);
     this.subscriber.on('message', (channel: string, message: string) => {

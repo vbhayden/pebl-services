@@ -1,0 +1,20 @@
+FROM node:latest
+
+COPY package.json /srv/
+COPY localhost.crt /ssl/fullchain.pem
+COPY localhost.key /ssl/privkey.pem
+COPY ca.pem /ssl/ca.pem
+
+WORKDIR /srv/
+
+RUN npm install
+
+EXPOSE 443 6379 5432
+
+COPY dockerConfig/startServices.sh /srv/startServices.sh
+RUN chmod 755 /srv/startServices.sh
+
+COPY dist /srv/dist/
+COPY src/sampleServerConfig.json /srv/dist/serverConfig.json
+
+ENTRYPOINT ["/srv/startServices.sh"]

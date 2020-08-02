@@ -243,19 +243,12 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
   }
 
   authorizeDeleteSharedAnnotation(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = false;
-    let canGroup = false;
-
     for (let annotation of payload.annotation) {
-      if (annotation.owner === username) {
-        canUser = true;
-      }
-
-      if (!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType])
-        canGroup = false;
+      if ((!permissions.group[annotation.groupId] || !permissions.group[annotation.groupId][payload.requestType]) && annotation.owner !== username)
+        return false;
     }
 
-    return canUser || canGroup;
+    return true;
   }
 
   validateSubscribeSharedAnnotations(payload: { [key: string]: any }): boolean {

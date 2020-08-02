@@ -31,6 +31,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         });
       }).catch((err: any) => {
         auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "OpenIDDiscoveryFail", err);
+        process.exit(1);
       });
   }
 

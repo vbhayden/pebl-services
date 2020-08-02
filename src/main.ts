@@ -116,10 +116,13 @@ let httpsServer;
 let expressSession = require('express-session');
 let RedisSessionStore = require('connect-redis')(expressSession);
 
-const redisClient = redis.createClient({
-  password: config.redisAuth,
-  detect_buffers: true
-});
+let redisConfig = {
+  port: (config.redisPort || 6379),
+  host: (config.redisHost || "127.0.0.1"),
+  password: config.redisAuth
+};
+
+const redisClient = redis.createClient(redisConfig);
 
 const { Pool } = require('pg')
 
@@ -195,10 +198,9 @@ roleManager.addRole("systemAdmin",
   });
 
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
-  client: redisClient,
-  options: {
-    password: config.redisAuth
-  },
+  port: (config.redisPort || 6379),
+  host: (config.redisHost || "127.0.0.1"),
+  password: config.redisAuth,
   ns: 'rsmq',
   realtime: true
 }, pluginManager, redisCache, lrsManager, archiveManager);
@@ -252,7 +254,12 @@ var allowCrossDomain = (req: Request, res: Response, next: Function) => {
 expressApp.use(allowCrossDomain);
 
 redisClient.on("error", function(error) {
-  auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisError", error);
+  if (error.errno == -111) {
+    auditLogger.report(LogCategory.STORAGE, Severity.EMERGENCY, "RedisConnectFailed", error);
+    process.exit(1);
+  } else {
+    auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisError", error);
+  }
 });
 
 expressApp.use(

@@ -4,6 +4,8 @@ import { Action } from '../models/action';
 import { Session } from '../models/session';
 import { Message } from '../models/message';
 import { Question } from '../models/question';
+import { auditLogger } from '../main';
+import { LogCategory, Severity } from '../utils/constants';
 
 export class PgSqlDataStore implements SqlDataStore {
   private pool: Pool;
@@ -21,7 +23,10 @@ export class PgSqlDataStore implements SqlDataStore {
       }).finally(() => {
         client.release();
       })
-    })
+    }).catch((e) => {
+      auditLogger.report(LogCategory.STORAGE, Severity.EMERGENCY, "PostgresConnectFailed", e);
+      process.exit(1);
+    });
   }
 
   async insertQuizAttempts(data: Question[]) {
