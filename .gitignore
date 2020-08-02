@@ -5,3 +5,5 @@ logging/*
 /src/serverConfig2.json
 /run.sh
 /src/serB
+/dockerPg.tar.gz
+/dockerRedis.tar.gz

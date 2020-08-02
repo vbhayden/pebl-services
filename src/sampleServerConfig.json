@@ -1,43 +1,46 @@
 {
-    "serverName": "localhost",
+    "serverName": "__SERVER_NAME__",
 
-    "validRedirectDomains": ["localhost"],
+    "validRedirectDomains": ["__CONSUMING_DOMAINS__"],
 
-    "privateKeyPath": "./localhost.key",
-    "certificatePath": "./localhost.crt",
+    "privateKeyPath": "__TLS_PRIVATE_KEY_PATH__",
+    "certificatePath": "__TLS_CERTIFICATE_PATH__",
 
     "version": "VERSION",
 
-    "authenticationUrl": "https://<site>/auth/realms/master",
-    "authenticationClientSecret": "0d747a893906",
-    "authenticationClientId": "PeBL-Services",
-    "authenticationRedirectURIs": ["https://localhost:8080/redirect"],
-    "authenticationResponseTypes": ["code"],
-    "authenticationScope": ["openid email profile"],
+    "authenticationUrl": "__AUTH_PROVIDER_URL__",
+    "authenticationClientSecret": "__AUTH_CLIENT_SECRET__",
+    "authenticationClientId": "__AUTH_CLIENT_ID__",
+    "authenticationRedirectURIs": ["__SERVER_AUTH_REDIRECT_URL__"],
+    "authenticationResponseTypes": ["__AUTH_RESPONSE_TYPES__"],
+    "authenticationScope": ["__AUTH_SCOPE__"],
 
-    "authenticationMethod": "openid",
+    "sqlConnectionString": "__POSTGRES_SQL_URL__",
 
-    "redisAuth": "<redis auth key>",
+    "authenticationMethod": "__AUTH_METHOD__",
 
-    "sessionSecret": "<long random string>",
+    "redisHost": "__REDIS_HOST__",
+    "redisPort": __REDIS_PORT__,
+    "redisAuth": "__REDIS_AUTH__",
+
+    "sessionSecret": "__SESSION_SECRET__",
     "sessionTTL": 3600,
 
-    
-    "cookieSameSite": "lax",
+    "cookieSameSite": "none",
 
-    "logFileDirectory": "./logging/",
+    "logFileDirectory": "__LOGGING_DIRECTORY__",
     "logFileSizeLimit": "10MB",
     "logFileRotation": 7,
 
-    "debugging": true,
+    "debugging": false,
     "usingSyslogFormat": false,
 
-    "port": 8080,
-    "useSSL": true,
+    "port": __SERVER_PORT__,
+    "useSSL": __USE_SSL__,
     "usesProxy": false,
-    "lrsUrl": "https://<url>/data/xapi",
+    "lrsUrl": "__LRS_URL__",
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",
-    	"Authorization": "Basic <client token>"
+    	"Authorization": "Basic __LRS_BASIC_AUTH__"
     }
 }
