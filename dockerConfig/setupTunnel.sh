@@ -1,10 +1,14 @@
 #!/bin/sh
 
-if [ $# -eq 4 ]; then
+if [ $# -eq 3 ]; then
     mkdir -p ~/.ssh/
-    ssh-keyscan $3 > ~/.ssh/known_hosts
+    ssh-keyscan $2 > ~/.ssh/known_hosts
 
-    ssh -NT -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -i $2 -L "0.0.0.0:$4:127.0.0.1:$4" $1@$3
+    chmod 600 /ssl/privkey.pem
+
+    ssh-keygen -y -f /ssl/privkey.pem > /ssl/privkey.pem.pub
+
+    ssh -NT -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -i /ssl/privkey.pem -L "0.0.0.0:$3:127.0.0.1:$3" $1@$2
 else
-    echo "./setupTunnel.sh <username> <private key path> <target ip> <port>"
+    echo "./setupTunnel.sh <username> <target ip> <port>"
 fi
