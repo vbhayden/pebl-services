@@ -6,4 +6,4 @@ RUN chmod 700 ./setupTunnel.sh
 
 RUN apk add --no-cache openssh
 
-CMD ["setupTunnel"]
+CMD ["./setupTunnel"]

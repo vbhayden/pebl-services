@@ -1,11 +1,8 @@
 version: '3'
 services:
   ssh-tunnel:
-    image: ssh-tunnel:1.0.0
-    build:
-      context: .
-      dockerfile: DockerfileTunnel
+    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
     restart: always
     volumes:
-      - /home/veden/Desktop/taco:/ssl/redis.pem
-    command: ["./setupTunnel.sh", "taco", "/ssl/redis.pem", "34.222.38.192", "6379"]
+      - /home/veden/Desktop/taco:/ssl/privkey.pem
+    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]

@@ -64,19 +64,18 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
 
   authorizeSaveSessions(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
     if (permissions.user[payload.requestType]) {
-      for (let key in payload.actions) {
-        let obj = payload.actions[key];
+      for (let key in payload.sessions) {
+        let obj = payload.sessions[key];
         let identity = (<Session>obj).getActorId();
         let canUser = (username == identity);
-        // let canGroup = permissions.group[identity] && permissions.group[identity][obj.requestType]
 
-        if (!(canUser // || canGroup
-        ))
+        if (!canUser)
           return false;
       }
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   // validateDeleteSession(payload: { [key: string]: any }): boolean {

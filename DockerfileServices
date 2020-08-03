@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:14.7.0
 
 COPY package.json /srv/
 COPY localhost.crt /ssl/fullchain.pem

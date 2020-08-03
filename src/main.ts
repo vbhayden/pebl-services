@@ -197,6 +197,35 @@ roleManager.addRole("systemAdmin",
 
   });
 
+roleManager.addRole("default",
+  "Default",
+  [
+    "saveActions",
+    "getAnnotations",
+    "saveAnnotations",
+    "deleteAnnotation",
+    "saveEvents",
+    "getModuleEvents",
+    "saveModuleEvents",
+    "deleteModuleEvent",
+    "saveNavigations",
+    "deleteNotification",
+    "saveQuizes",
+    "saveQuestions",
+    "saveReferences",
+    "getReferences",
+    "deleteReference",
+    "saveSessions",
+    "saveThreadedMessage",
+    "getThreadedMessages",
+    "subscribeThread",
+    "unsubscribeThread",
+    "getSubscribedThreads"
+  ],
+  () => {
+
+  });
+
 const messageQueue: MessageQueueManager = new RedisMessageQueuePlugin({
   port: (config.redisPort || 6379),
   host: (config.redisHost || "127.0.0.1"),
