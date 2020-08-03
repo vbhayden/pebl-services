@@ -1,4 +1,4 @@
-FROM redis:latest
+FROM redis:6.0.6
 
 COPY dockerConfig/redis/redis.conf /etc/redis/redis.conf
 COPY dockerConfig/redis/startRedis.sh /srv/
