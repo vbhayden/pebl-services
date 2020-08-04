@@ -1,13 +1,14 @@
 FROM node:14.7.0
 
 COPY package.json /srv/
+COPY package-lock.json /srv/
 COPY localhost.crt /ssl/fullchain.pem
 COPY localhost.key /ssl/privkey.pem
 COPY ca.pem /ssl/ca.pem
 
 WORKDIR /srv/
 
-RUN npm install
+RUN npm install --production
 
 EXPOSE 443 6379 5432
 

@@ -14,7 +14,7 @@ sed -ie "s|__AUTH_CLIENT_SECRET__|$AUTH_CLIENT_SECRET|g" /srv/dist/serverConfigL
 sed -ie "s|__AUTH_CLIENT_ID__|$AUTH_CLIENT_ID|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__SERVER_AUTH_REDIRECT_URL__|$SERVER_AUTH_REDIRECT_URL|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__AUTH_RESPONSE_TYPES__|$AUTH_RESPONSE_TYPES|g" /srv/dist/serverConfigLive.json
-sed -ie "s|__AUTH_SCOPE__|$REDIS_AUTH|g" /srv/dist/serverConfigLive.json
+sed -ie "s|__AUTH_SCOPE__|$AUTH_SCOPE|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__POSTGRES_SQL_URL__|$POSTGRES_SQL_URL|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__AUTH_METHOD__|$AUTH_METHOD|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__REDIS_HOST__|$REDIS_HOST|g" /srv/dist/serverConfigLive.json

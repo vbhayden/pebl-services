@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       - SERVER_NAME=<domain>
-      - CONSUMING_DOMAIN=<consumingDomain>
+      - CONSUMING_DOMAINS=<consumingDomain>
       - AUTH_PROVIDER_URL=https://<auth_domain>/auth/realms/<realm>
       - AUTH_CLIENT_SECRET=
       - AUTH_CLIENT_ID=
