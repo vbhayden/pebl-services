@@ -47,12 +47,7 @@ buildDocker:
   artifacts:
     paths:
     - dist/
-    - dockerConfig/
     - package.json
-    - package-lock.json
-    - localhost.crt
-    - localhost.key
-    - ca.pem
 
 ########################
 
