@@ -39,7 +39,7 @@ export class DefaultAuthorizationManager {
               //TODO: Do this the right way
               // Get permissions based on role from keycloak attributes
               if (session.identity && session.identity.role) {
-                for (let groupId in session.identity.groups) {
+                for (let groupId of session.identity.groups) {
                   if (!groupPermissions[groupId])
                     groupPermissions[groupId] = {};
 
