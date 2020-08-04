@@ -73,7 +73,7 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   }
 
   authorizeGetChapterCompletionPercentages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    if (username !== payload.identity || !permissions.user[payload.requestType])
+    if (username !== payload.identity)
       return false;
 
     for (let params of payload.params) {
