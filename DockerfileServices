@@ -10,8 +10,6 @@ WORKDIR /srv/
 
 RUN npm install --production
 
-EXPOSE 443 6379 5432
-
 COPY dockerConfig/startServices.sh /srv/startServices.sh
 RUN chmod 755 /srv/startServices.sh
 
