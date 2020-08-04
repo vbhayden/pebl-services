@@ -27,6 +27,7 @@ sed -ie "s|__SERVER_PORT__|$SERVER_PORT|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__USE_SSL__|$USE_SSL|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__LRS_URL__|$LRS_URL|g" /srv/dist/serverConfigLive.json
 sed -ie "s|__LRS_BASIC_AUTH__|$LRS_BASIC_AUTH|g" /srv/dist/serverConfigLive.json
+sed -ie "s|__USE_PROXY__|$USE_PROXY|g" /srv/dist/serverConfigLive.json
 
 cd /srv/dist/
 
