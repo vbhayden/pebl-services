@@ -37,17 +37,17 @@ export class DefaultAuthorizationManager {
               }
 
               //TODO: Do this the right way
-              // Get permissions based on memberships object from keycloak attributes
-              if (session.identity && session.identity.memberships) {
-                for (let groupId in session.identity.memberships) {
+              // Get permissions based on role from keycloak attributes
+              if (session.identity && session.identity.role) {
+                for (let groupId in session.identity.groups) {
                   if (!groupPermissions[groupId])
                     groupPermissions[groupId] = {};
 
-                  if (session.identity.memberships[groupId] === 'learner')
+                  if (session.identity.role === 'learner')
                     this.setGroupPermissionsLearner(groupPermissions[groupId]);
-                  else if (session.identity.memberships[groupId] === 'instructor')
+                  else if (session.identity.role === 'instructor')
                     this.setGroupPermissionsInstructor(groupPermissions[groupId]);
-                  else if (session.identity.memberships[groupId] === 'admin')
+                  else if (session.identity.role === 'admin')
                     this.setGroupPermissionsAdmin(groupPermissions[groupId]);
                 }
               }
