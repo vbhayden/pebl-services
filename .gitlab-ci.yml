@@ -33,7 +33,7 @@ buildDev:
 
 ########################
 
-buildDevDocker:
+buildDocker:
   stage: build
   only:
     - tags
