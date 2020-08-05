@@ -24,6 +24,13 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     this.groupManager = groupManager;
     // this.notificationManager = notificationManager;
 
+    this.addMessageTemplate(new MessageTemplate("reportThreadedMessage",
+      this.validateReportThreadedMessage.bind(this),
+      this.authorizeReportThreadedMessage.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.reportThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      }))
+
     this.addMessageTemplate(new MessageTemplate("pinThreadedMessage",
       this.validatePinThreadedMessage.bind(this),
       this.authorizePinThreadedMessage.bind(this),
@@ -93,6 +100,13 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
         this.getMostAnsweredQuestions(payload.identity, payload.params, dispatchCallback);
       }))
+
+    this.addMessageTemplate(new MessageTemplate("getReportedThreadedMessages",
+      this.validateGetReportedThreadedMessages.bind(this),
+      this.authorizeGetReportedThreadedMessages.bind(this),
+      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+        this.getReportedThreadedMessages(payload.identity, payload.params, dispatchCallback);
+      }))
   }
 
   private validateThread(thread: string): boolean {
@@ -101,6 +115,33 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       return false;
     else
       return true;
+  }
+
+  validateGetReportedThreadedMessages(payload: { [key: string]: any }): boolean {
+    if (payload.params && Array.isArray(payload.params) && payload.params.length > 0) {
+      for (let params of payload.params) {
+        if (!params.bookId || typeof params.bookId !== 'string' || params.bookId.length === 0)
+          return false;
+        if (!params.teamId || typeof params.teamId !== 'string' || params.teamId.length === 0)
+          return false;
+        if (!params.classId || typeof params.classId !== 'string' || params.classId.length == 0)
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  authorizeGetReportedThreadedMessages(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    if (username !== payload.identity)
+      return false;
+
+    for (let params of payload.params) {
+      if (!permissions.group[params.classId] || !permissions.group[params.classId][payload.requestType])
+        return false;
+    }
+
+    return true;
   }
 
   validateGetLeastAnsweredQuestions(payload: { [key: string]: any }): boolean {
@@ -223,6 +264,43 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
 
     return canUser || canGroup;
+  }
+
+  authorizeReportThreadedMessage(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+    let canGroup = false;
+
+    if (username !== payload.identity)
+      return false;
+
+    for (let message of payload.message) {
+      if (message.groupId) {
+        if (permissions.group[message.groupId] && permissions.group[message.groupId][payload.requestType]) {
+          canGroup = true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
+    return canGroup;
+  }
+
+  validateReportThreadedMessage(payload: { [key: string]: any }): boolean {
+    if (Array.isArray(payload.message)) {
+      for (let i = 0; i < payload.message.length; i++) {
+        let message = payload.message[i];
+        if (message && Message.is(message)) {
+          if (!this.validateThread(message.thread))
+            return false;
+
+          payload.message[i] = new Message(message);
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   validatePinThreadedMessage(payload: { [key: string]: any }): boolean {
@@ -476,6 +554,14 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
+  getReportedThreadedMessages(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
+    for (let param of params) {
+      this.sqlData.getReportedThreadedMessages(param.bookId, param.teamId, param.classId, (messages) => {
+        callback({ data: messages });
+      })
+    }
+  }
+
   getLeastAnsweredQuestions(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
     for (let param of params) {
       this.sqlData.getLeastAnsweredDiscussions(param.bookId, param.teamId, param.classId, (discussions) => {
@@ -570,6 +656,18 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
   private getPrivateScopedThread(thread: string, username: string): string {
     return thread + '_user-' + username;
+  }
+
+  reportThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+    let reports = [];
+    for (let message of messages) {
+      if (Message.isDiscussion(message))
+        reports.push(message);
+    }
+    if (reports.length > 0)
+      this.sqlData.insertReportedThreadedMessages(reports);
+
+    callback(true);
   }
 
   pinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
@@ -732,6 +830,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   }
 
   deleteMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+    let messageIds = [];
     for (let i = 0; i < messages.length; i++) {
       let baseThread = messages[i].thread;
       let messageId = messages[i].id;
@@ -775,6 +874,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
           });
 
       });
+      messageIds.push(messageId);
+    }
+    if (messageIds.length > 0) {
+      this.sqlData.deleteReportedThreadedMessage(messageIds)
     }
   }
 }

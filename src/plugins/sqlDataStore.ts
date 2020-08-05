@@ -20,6 +20,8 @@ export class PgSqlDataStore implements SqlDataStore {
         return client.query('CREATE TABLE IF NOT EXISTS discussions (id SERIAL PRIMARY KEY, bookId VARCHAR ( 255 ), thread VARCHAR ( 255 ), prompt TEXT, teamId VARCHAR ( 255 ), classId VARCHAR ( 255 ), count INTEGER, url TEXT, UNIQUE (thread, teamId, classId));');
       }).then(() => {
         return client.query('CREATE TABLE IF NOT EXISTS quizattempts (id SERIAL PRIMARY KEY, bookId VARCHAR ( 255 ), quizId VARCHAR ( 255 ), question TEXT, response TEXT, correct BOOL, teamId VARCHAR ( 255 ), classId VARCHAR ( 255 ), count INTEGER, url TEXT, UNIQUE (quizId, question, response, teamId, classId));');
+      }).then(() => {
+        return client.query('CREATE TABLE IF NOT EXISTS reportedmessages (id SERIAL PRIMARY KEY, messageId uuid, bookId VARCHAR ( 255 ), prompt TEXT, teamId VARCHAR ( 255 ), classId VARCHAR ( 255 ), identity VARCHAR ( 255 ), url TEXT, message TEXT, timestamp BIGINT, count INTEGER, UNIQUE (messageId, teamId, classId));');
       }).finally(() => {
         client.release();
       })
@@ -27,6 +29,52 @@ export class PgSqlDataStore implements SqlDataStore {
       auditLogger.report(LogCategory.STORAGE, Severity.EMERGENCY, "PostgresConnectFailed", e);
       process.exit(1);
     });
+  }
+
+  async insertReportedThreadedMessages(data: Message[]) {
+    const text = 'INSERT INTO reportedmessages(messageId, bookId, prompt, teamId, classId, identity, url, message, timestamp, count) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (messageId, teamId, classId) DO UPDATE SET count = reportedmessages.count + 1, url = $7;';
+    const client = await this.pool.connect();
+    try {
+      for (let message of data) {
+        message = new Message(message);
+        const values = [message.id, message.bookId, message.prompt, message.currentTeam, message.currentClass, (<any>message.actor).account.name, message.contextUrl, JSON.stringify(message), new Date(message.timestamp as string).getTime(), 1];
+        client.query(text, values);
+      }
+    } catch (e) {
+      console.log(e);
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteReportedThreadedMessage(data: string[]) {
+    const text = 'DELETE FROM reportedmessages WHERE messageId = $1;';
+    const client = await this.pool.connect();
+    try {
+      for (let id of data) {
+        const values = [id];
+        client.query(text, values);
+      }
+    } catch (e) {
+      console.log(e);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getReportedThreadedMessages(bookId: string, teamId: string, classId: string, callback: ((stmts: any) => void)) {
+    const text = 'SELECT messageId, prompt, identity, url, message, count FROM reportedmessages WHERE bookId = $1 AND teamId = $2 AND classId = $3;';
+    const client = await this.pool.connect();
+    try {
+      client.query(text, [bookId, teamId, classId]).then((res) => {
+        callback(res.rows);
+      })
+    } catch (e) {
+      console.log(e);
+      callback([]);
+    } finally {
+      client.release();
+    }
   }
 
   async insertQuizAttempts(data: Question[]) {

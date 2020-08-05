@@ -110,6 +110,7 @@ export class DefaultAuthorizationManager {
     permissionsObj['unsubscribeThread'] = true;
     permissionsObj['getThreadedMessages'] = true;
     permissionsObj['saveThreadedMessage'] = true;
+    permissionsObj['reportThreadedMessage'] = true;
   }
 
   private setGroupPermissionsInstructor(permissionsObj: { [key: string]: boolean }) {
@@ -126,14 +127,17 @@ export class DefaultAuthorizationManager {
     permissionsObj['unsubscribeThread'] = true;
     permissionsObj['getThreadedMessages'] = true;
     permissionsObj['saveThreadedMessage'] = true;
+    permissionsObj['reportThreadedMessage'] = true;
     permissionsObj['deleteThreadedMessage'] = true;
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
+
 
     permissionsObj['getChapterCompletionPercentages'] = true;
     permissionsObj['getMostAnsweredQuestions'] = true;
     permissionsObj['getLeastAnsweredQuestions'] = true;
     permissionsObj['getQuizAttempts'] = true;
+    permissionsObj['getReportedThreadedMessages'] = true;
   }
 
   private setGroupPermissionsAdmin(permissionsObj: { [key: string]: boolean }) {
@@ -150,6 +154,7 @@ export class DefaultAuthorizationManager {
     permissionsObj['unsubscribeThread'] = true;
     permissionsObj['getThreadedMessages'] = true;
     permissionsObj['saveThreadedMessage'] = true;
+    permissionsObj['reportThreadedMessage'] = true;
     permissionsObj['deleteThreadedMessage'] = true;
     permissionsObj['pinThreadedMessage'] = true;
     permissionsObj['unpinThreadedMessage'] = true;
@@ -158,5 +163,6 @@ export class DefaultAuthorizationManager {
     permissionsObj['getMostAnsweredQuestions'] = true;
     permissionsObj['getLeastAnsweredQuestions'] = true;
     permissionsObj['getQuizAttempts'] = true;
+    permissionsObj['getReportedThreadedMessages'] = true;
   }
 }
