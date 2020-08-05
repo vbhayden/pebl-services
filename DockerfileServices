@@ -14,6 +14,6 @@ COPY dockerConfig/startServices.sh /srv/startServices.sh
 RUN chmod 755 /srv/startServices.sh
 
 COPY dist /srv/dist/
-COPY src/serverConfig.json /srv/dist/serverConfig.json
+# COPY src/serverConfig.json /srv/dist/serverConfig.json
 
 ENTRYPOINT ["/srv/startServices.sh"]
