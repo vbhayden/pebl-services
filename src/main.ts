@@ -95,9 +95,14 @@ if (config["usingSyslogFormat"]) {
   alm = new ConsoleAuditLogManager(config);
 }
 
+let httpsServer: http.Server;
+
 process.on('uncaughtException', (err) => {
   auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "uncaughtException", err.stack);
   auditLogger.flush();
+  if (httpsServer) {
+    httpsServer.close();
+  }
   process.exit(1);
 });
 
@@ -111,7 +116,6 @@ config.validRedirectDomainLookup = validRedirectDomainLookup;
 let privKey;
 let cert;
 let credentials: { [key: string]: any } = {};
-let httpsServer;
 
 let expressSession = require('express-session');
 let RedisSessionStore = require('connect-redis')(expressSession);
@@ -164,7 +168,7 @@ try {
 } catch (e) {
   auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "Invalid LRS address", config.lrsUrl, e.stack);
   auditLogger.flush();
-  process.exit(1);
+  process.exit(4);
 }
 const lrsManager: LRS = new LRSPlugin(e);
 
@@ -282,10 +286,13 @@ var allowCrossDomain = (req: Request, res: Response, next: Function) => {
 
 expressApp.use(allowCrossDomain);
 
-redisClient.on("error", function(error) {
+redisClient.on("error", (error) => {
   if (error.errno == -111) {
     auditLogger.report(LogCategory.STORAGE, Severity.EMERGENCY, "RedisConnectFailed", error);
-    process.exit(1);
+    if (httpsServer) {
+      httpsServer.close();
+    }
+    process.exit(5);
   } else {
     auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisError", error);
   }
@@ -657,6 +664,18 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
     }
   }
 });
+
+let fn = () => {
+  if (httpsServer) {
+    auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShuttingServicesDown");
+    httpsServer.close();
+  }
+  process.exit(1);
+};
+
+process.on('SIGTERM', fn);
+
+process.on('SIGINT', fn);
 
 httpsServer.listen(config.port, function() {
   auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'ListeningPort', config.port, config.version);

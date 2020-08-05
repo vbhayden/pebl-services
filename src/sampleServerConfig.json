@@ -37,7 +37,7 @@
 
     "port": __SERVER_PORT__,
     "useSSL": __USE_SSL__,
-    "usesProxy": false,
+    "usesProxy": __USE_PROXY__,
     "lrsUrl": "__LRS_URL__",
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",

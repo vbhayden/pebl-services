@@ -353,7 +353,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             res.status(401).end();
           }
         }).catch((err) => {
-          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RedirectFail", session.id, session.ip, err);
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RedirectFail", session.id, session.ip, err.stack);
           res.status(401).end();
         });
     } else {

@@ -1,13 +1,13 @@
 version: '3'
 services:
   pebl-services:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.0.16
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.0.17
     ports:
       - "443:443"
     restart: always
     environment:
       - SERVER_NAME=localhost
-      - CONSUMING_DOMAIN=*
+      - CONSUMING_DOMAINS=*
       - AUTH_PROVIDER_URL=https://dev.keycloak.eduworks.com/auth/realms/master
       - AUTH_CLIENT_SECRET=
       - AUTH_CLIENT_ID=PeBL-Services

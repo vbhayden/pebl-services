@@ -33,6 +33,24 @@ buildDev:
 
 ########################
 
+buildDocker:
+  stage: build
+  only:
+    - tags
+
+  script:
+  - npm install
+  - npm run compile
+  - cp src/sampleServerConfig.json src/serverConfig.json
+  - LAST_TAG=$(git describe --tags --always)
+  - sed -i "s/VERSION/$LAST_TAG/" src/serverConfig.json
+  artifacts:
+    paths:
+    - dist/
+    - src/serverConfig.json
+
+########################
+
 buildQa:
   stage: build
   only:
@@ -84,7 +102,7 @@ buildProdADL:
     paths:
     - dist/
     - package.json
-    
+
 ########################
 
 buildProdMC:
@@ -102,7 +120,7 @@ buildProdMC:
     paths:
     - dist/
     - package.json
-    
+
 ########################
 
 buildProdExtension:
@@ -119,7 +137,7 @@ buildProdExtension:
   artifacts:
     paths:
     - dist/
-    - package.json    
+    - package.json
 
 
 ########################
@@ -153,6 +171,19 @@ deployDev:
    - scp -P22 -r package.json $USERNAME@$DEV_SERVER_IP:/srv/devNode/
    - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && npm install --production"
    - ssh -p22 $USERNAME@$DEV_SERVER_IP "date > /srv/devNodeUpdated"
+
+########################
+
+deployDocker:
+  stage: deploy
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/DockerfileServices --destination $CI_REGISTRY_IMAGE/services:$CI_COMMIT_TAG
+  only:
+    - tags
 
 ########################
 
@@ -244,7 +275,7 @@ deployProdMC:
    - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"
-   
+
 ########################
 
 deployProdADL:
@@ -273,7 +304,7 @@ deployProdADL:
    - scp -i "$ADL_PRIVATE_KEY" -P22 -r package.json $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "cd /srv/prodNode && npm install --production"
    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "date > /srv/prodNodeUpdated"
-   
+
 ########################
 
 deployProdExtension:
