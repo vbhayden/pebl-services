@@ -10,7 +10,10 @@ export interface SqlDataStore {
   insertLogins(data: Session[]): void;
   getLogins(teamId: string, classId: string, timestamp: number, callback: ((stmts: any[]) => void)): void;
 
+  insertReportedThreadedMessages(data: Message[]): void;
   insertDiscussions(data: Message[]): void;
+  getReportedThreadedMessages(bookId: string, teamId: string, classId: string, callback: ((stmts: any[]) => void)): void;
+  deleteReportedThreadedMessage(data: string[]): void;
   getLeastAnsweredDiscussions(bookId: string, teamId: string, classId: string, callback: ((stmts: any[]) => void)): void;
   getMostAnsweredDiscussions(bookId: string, teamId: string, classId: string, callback: ((stmts: any[]) => void)): void;
 
