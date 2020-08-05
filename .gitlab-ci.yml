@@ -41,12 +41,13 @@ buildDocker:
   script:
   - npm install
   - npm run compile
-  - cp src/sampleServerConfig.json dist/serverConfig.json
+  - cp src/sampleServerConfig.json src/serverConfig.json
   - LAST_TAG=$(git describe --tags --always)
-  - sed -i "s/VERSION/$LAST_TAG/" dist/serverConfig.json
+  - sed -i "s/VERSION/$LAST_TAG/" src/serverConfig.json
   artifacts:
     paths:
     - dist/
+    - src/serverConfig.json
 
 ########################
 
