@@ -7,3 +7,5 @@ logging/*
 /src/serB
 /dockerPg.tar.gz
 /dockerRedis.tar.gz
+/pullServices.sh
+/adl-1-docker-compose.yml
