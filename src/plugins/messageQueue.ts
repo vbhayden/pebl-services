@@ -55,7 +55,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       } else if (channel === QUEUE_ACTIVE_JOBS) {
         let job = JobMessage.parse(message);
         let startTime = this.runningJobs[job.jobType];
-        if (!(startTime && (startTime == job.startTime))) {
+        if (!(startTime && (startTime == job.startTime) && !job.finished)) {
           this.processActiveJob(job);
         }
       } else if (channel.startsWith(QUEUE_REALTIME_BROADCAST_PREFIX)) {
