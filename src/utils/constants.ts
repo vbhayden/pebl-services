@@ -55,7 +55,7 @@ export const LRS_SYNC_TIMEOUT = 1500;
 export const ARCHIVE_USER_TIMEOUT = 10000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const UPGRADE_REDIS_TIMEOUT = 240000;
-export const JOB_BUFFER_TIMEOUT = 30000;
+export const JOB_BUFFER_TIMEOUT = 60000;
 
 export const LRS_SYNC_LIMIT = 75;
 

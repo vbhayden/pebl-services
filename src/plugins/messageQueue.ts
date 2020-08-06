@@ -25,6 +25,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private timeouts: { [key: string]: NodeJS.Timeout }
   private sessionDataManager: SessionDataManager;
   private archiveManager: ArchiveManager;
+  private runningJobs: { [key: string]: number };
   private upgradeInProgress: boolean;
   private version: number;
 
@@ -41,6 +42,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.sessionDataManager = sessionDataManager;
     this.sessionSocketMap = {};
     this.useridSocketMap = {};
+    this.runningJobs = {};
     this.version = 0;
     this.timeouts = {};
     this.pluginManager = pluginManager;
@@ -51,7 +53,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       if (channel === QUEUE_INCOMING_MESSAGE) {
         this.receiveIncomingMessages();
       } else if (channel === QUEUE_ACTIVE_JOBS) {
-        this.processActiveJob(message);
+        let job = JobMessage.parse(message);
+        let startTime = this.runningJobs[job.jobType];
+        if (!(startTime && (startTime == job.startTime))) {
+          this.processActiveJob(job);
+        }
       } else if (channel.startsWith(QUEUE_REALTIME_BROADCAST_PREFIX)) {
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
         let socket = this.useridSocketMap[userid];
@@ -80,14 +86,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     return this.upgradeInProgress;
   }
 
-  private processJob(message: string | JobMessage, startup?: boolean): void {
-    let jobMessage: JobMessage;
-    if (message instanceof JobMessage) {
-      jobMessage = message;
-    } else {
-      jobMessage = JobMessage.parse(message);
-    }
-
+  private processJob(jobMessage: JobMessage, startup?: boolean): void {
     jobMessage.startTime = Date.now();
 
     this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
@@ -95,6 +94,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       JSON.stringify(jobMessage),
       (didSet: boolean) => {
         if (didSet) {
+          clearTimeout(this.timeouts[jobMessage.jobType]);
           auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobStarted', jobMessage);
           this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
           this.dispatchJobMessage(jobMessage);
@@ -118,14 +118,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   //When a job is started, all nodes receive a jobStarted message indicating which job was started and how long it should take for it to run
   //They set a timeout to check for failed jobs in the case they do not recieve the paired jobFinished message within the alloted timeout
   //When a jobFinished event arrives, the nodes remove their timeouts for that job
-  private processActiveJob(message: string | JobMessage): void {
-    let jobMessage: JobMessage;
-    if (message instanceof JobMessage) {
-      jobMessage = message;
-    } else {
-      jobMessage = JobMessage.parse(message);
-    }
-
+  private processActiveJob(jobMessage: JobMessage): void {
     if (jobMessage.finished) {
       clearTimeout(this.timeouts[jobMessage.jobType]);
       if (jobMessage.jobType !== JOB_TYPE_UPGRADE) {
@@ -152,6 +145,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       remainingTime -= (Date.now() - jobMessage.startTime);
 
       if (remainingTime > 0) {
+        clearTimeout(this.timeouts[jobMessage.jobType]);
         this.timeouts[jobMessage.jobType] = setTimeout(() => {
           this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
             jobMessage.jobType,
@@ -296,6 +290,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchJobMessage(message: JobMessage): void {
+    this.runningJobs[message.jobType] = message.startTime ? message.startTime : 0;
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobDispatch', message);
     if (message.jobType === 'cleanup') {
       this.dispatchCleanup(message);
