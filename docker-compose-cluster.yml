@@ -11,7 +11,7 @@ services:
       - ./fullchainAndKey.pem:/ssl/fullchainAndKey.crt
 
   pebl-services-1:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.10
     restart: always
     environment:
       - SERVER_NAME=localhost
@@ -34,7 +34,7 @@ services:
       - LRS_BASIC_AUTH=<basic token>
 
   pebl-services-2:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.10
     restart: always
     environment:
       - SERVER_NAME=localhost
@@ -57,7 +57,7 @@ services:
       - LRS_BASIC_AUTH=<basic token>
 
   pebl-services-3:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.10
     restart: always
     environment:
       - SERVER_NAME=localhost
