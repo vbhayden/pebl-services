@@ -5,12 +5,13 @@ services:
     image: git.eduworks.us:5050/pebl/pebl-services/proxy:1.0.0
     ports:
       - "443:443"
+      - "8080:8080"
     restart: always
     volumes:
       - ./fullchainAndKey.pem:/ssl/fullchainAndKey.crt
 
   pebl-services-1:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.3
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
     restart: always
     environment:
       - SERVER_NAME=localhost
@@ -33,7 +34,7 @@ services:
       - LRS_BASIC_AUTH=<basic token>
 
   pebl-services-2:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.3
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
     restart: always
     environment:
       - SERVER_NAME=localhost
@@ -56,7 +57,7 @@ services:
       - LRS_BASIC_AUTH=<basic token>
 
   pebl-services-3:
-    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.3
+    image: git.eduworks.us:5050/pebl/pebl-services/services:1.1.9
     restart: always
     environment:
       - SERVER_NAME=localhost
