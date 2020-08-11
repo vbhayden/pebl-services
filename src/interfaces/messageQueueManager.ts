@@ -13,6 +13,8 @@ export interface MessageQueueManager {
   createIncomingQueue(callback: ((success: boolean) => void)): void;
   createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
 
+  terminate(done: () => void): void;
+
   removeOutgoingQueue(sessionId: string): void;
 
   subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;

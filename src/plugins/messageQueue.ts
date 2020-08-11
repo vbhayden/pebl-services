@@ -14,6 +14,7 @@ import { JobMessage } from '../models/job';
 import { auditLogger } from '../main';
 import { ArchiveManager } from '../interfaces/archiveManager';
 import { upgradeRedis, currentRedisVersion } from '../utils/redisUpgrade';
+import { popThroughArray } from '../utils/utils';
 
 export class RedisMessageQueuePlugin implements MessageQueueManager {
   private lrsManager: LRS;
@@ -84,6 +85,22 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   isUpgradeInProgress(): boolean {
     return this.upgradeInProgress;
+  }
+
+  terminate(done: () => void): void {
+    let termSet = [];
+    if (this.rsmq)
+      termSet.push("rsmq");
+    if (this.subscriber)
+      termSet.push("redis");
+    popThroughArray<string>(termSet,
+      (method, next) => {
+        if (method === "redis")
+          this.subscriber.quit(next);
+        else if (method === "rsmq")
+          (<any>this.rsmq).quit(next);
+      },
+      done);
   }
 
   private processJob(jobMessage: JobMessage, startup?: boolean): void {

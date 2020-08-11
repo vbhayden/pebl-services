@@ -70,6 +70,7 @@ import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 import { LinkedInAuthentication } from "./plugins/linkedInAuth";
 import { DefaultArchiveManager } from "./plugins/archiveManager";
 import { ArchiveManager } from "./interfaces/archiveManager";
+import { popThroughArray } from "./utils/utils";
 
 let express = require('express');
 
@@ -88,6 +89,8 @@ try {
   process.exit(2);
 }
 
+let terminateServices: (cb?: () => void) => void;
+
 let alm: AuditLogManager;
 if (config["usingSyslogFormat"]) {
   alm = new SyslogAuditLogManager(config);
@@ -100,10 +103,14 @@ let httpsServer: http.Server;
 process.on('uncaughtException', (err) => {
   auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "uncaughtException", err.stack);
   auditLogger.flush();
-  if (httpsServer) {
-    httpsServer.close();
+  if (terminateServices) {
+    terminateServices();
+  } else {
+    if (httpsServer) {
+      httpsServer.close();
+    }
+    process.exit(1);
   }
-  process.exit(1);
 });
 
 export const auditLogger: AuditLogManager = alm;
@@ -289,10 +296,14 @@ expressApp.use(allowCrossDomain);
 redisClient.on("error", (error) => {
   if (error.errno == -111) {
     auditLogger.report(LogCategory.STORAGE, Severity.EMERGENCY, "RedisConnectFailed", error);
-    if (httpsServer) {
-      httpsServer.close();
+    if (terminateServices) {
+      terminateServices();
+    } else {
+      if (httpsServer) {
+        httpsServer.close();
+      }
+      process.exit(5);
     }
-    process.exit(5);
   } else {
     auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisError", error);
   }
@@ -665,17 +676,43 @@ expressApp.ws('/', function(ws: WebSocket, req: Request) {
   }
 });
 
-let fn = () => {
-  if (httpsServer) {
-    auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShuttingServicesDown");
-    httpsServer.close();
-  }
-  process.exit(1);
+terminateServices = (cb?: () => void) => {
+  auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShuttingServicesDown");
+  let termSet = [];
+  // if (redisClient)
+  //   termSet.push("redis");
+  // if (pgPool)
+  //   termSet.push("pg");
+  if (messageQueue)
+    termSet.push("msg");
+  if (httpsServer)
+    termSet.push("http");
+  popThroughArray<string>(termSet,
+    (method, next) => {
+      if (method === "pg")
+        pgPool.end(next);
+      else if (method === "redis")
+        redisClient.quit(next);
+      else if (method === "msg")
+        messageQueue.terminate(next);
+      else if (method === "http" && httpsServer.listening)
+        httpsServer.close(next);
+    },
+    () => {
+      auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutdownServices");
+      if (cb) {
+        cb();
+      }
+    });
 };
 
-process.on('SIGTERM', fn);
+process.on('SIGTERM', () => {
+  terminateServices();
+});
 
-process.on('SIGINT', fn);
+process.on('SIGINT', () => {
+  terminateServices();
+});
 
 httpsServer.listen(config.port, function() {
   auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'ListeningPort', config.port, config.version);

@@ -623,8 +623,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     callback(true);
   }
 
-  private getSubscribedUsers(realThread: string, callback: ((users: string[]) => void)): void {
-    this.sessionData.getHashValues(generateSubscribedUsersKey(realThread), callback);
+  private async getSubscribedUsers(realThread: string): Promise<string[]> {
+    return this.sessionData.getHashValues(generateSubscribedUsersKey(realThread));
   }
 
   getSubscribedThreads(userId: string, callback: (data: { [key: string]: any }) => void): void {
@@ -829,7 +829,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     processThreads(threadRequests);
   }
 
-  deleteMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+  async deleteMessage(userId: string, messages: Message[]): Promise<boolean> {
     let messageIds = [];
     for (let i = 0; i < messages.length; i++) {
       let baseThread = messages[i].thread;
@@ -841,43 +841,35 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       else if (message.isPrivate)
         thread = this.getPrivateScopedThread(baseThread, userId)
 
-      this.sessionData.getHashValue(generateThreadKey(thread), messageId, (data) => {
-        if (data) {
-          this.sessionData.queueForLrsVoid(data);
-          let voided = new Message(JSON.parse(data)).toVoidRecord();
-          this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
-          this.sessionData.setHashValue(generateThreadKey(thread), voided.id, JSON.stringify(voided));
-          if (!(message.isPrivate)) {
-            this.getSubscribedUsers(thread, (users) => {
-              for (let user of users) {
-                this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-                  requestType: "newThreadedMessage",
-                  data: voided,
-                  thread: baseThread,
-                  options: {
-                    isPrivate: message.isPrivate,
-                    groupId: message.groupId
-                  }
-                })));
-              }
-            });
+      let data = await this.sessionData.getHashValue(generateThreadKey(thread), messageId);
+      if (data) {
+        await this.sessionData.queueForLrsVoid(data);
+        let voided = new Message(JSON.parse(data)).toVoidRecord();
+        await this.sessionData.addTimestampValue(generateTimestampForThread(thread), new Date(voided.stored).getTime(), voided.id);
+        await this.sessionData.setHashValue(generateThreadKey(thread), voided.id, JSON.stringify(voided));
+        if (!(message.isPrivate)) {
+          let users = await this.getSubscribedUsers(thread);
+          for (let user of users) {
+            await this.sessionData.broadcast(generateBroadcastQueueForUserId(user),
+              JSON.stringify(new ServiceMessage(user, {
+                requestType: "newThreadedMessage",
+                data: voided,
+                thread: baseThread,
+                options: {
+                  isPrivate: message.isPrivate,
+                  groupId: message.groupId
+                }
+              })));
           }
         }
-        this.sessionData.deleteSortedTimestampMember(generateTimestampForThread(thread),
-          messageId,
-          (deleted: number) => {
-            this.sessionData.deleteHashValue(generateThreadKey(thread),
-              messageId,
-              (result: boolean) => {
-                callback(result);
-              });
-          });
-
-      });
+      }
+      await this.sessionData.deleteSortedTimestampMember(generateTimestampForThread(thread), messageId);
+      await this.sessionData.deleteHashValue(generateThreadKey(thread), messageId);
       messageIds.push(messageId);
     }
     if (messageIds.length > 0) {
       this.sqlData.deleteReportedThreadedMessage(messageIds)
     }
+    return true;
   }
 }
