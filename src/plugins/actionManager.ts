@@ -17,28 +17,28 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
     // this.addMessageTemplate(new MessageTemplate("getActions",
     //   this.validateGetActions.bind(this),
     //   this.authorizeGetActions.bind(this),
-    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //   (payload: { [key: string]: any }) => {
     //     this.getActions(payload.identity, dispatchCallback);
     //   }));
 
     this.addMessageTemplate(new MessageTemplate("saveActions",
       this.validateSaveActions.bind(this),
       this.authorizeSaveActions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveActions(payload.identity, payload.actions, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveActions(payload.identity, payload.actions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getChapterCompletionPercentages",
       this.validateGetChapterCompletionPercentages.bind(this),
       this.authorizeGetChapterCompletionPercentages.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getChapterCompletionPercentages(payload.identity, payload.params, dispatchCallback)
+      (payload: { [key: string]: any }) => {
+        return this.getChapterCompletionPercentages(payload.identity, payload.params)
       }))
 
     // this.addMessageTemplate(new MessageTemplate("deleteAction",
     //   this.validateDeleteAction.bind(this),
     //   this.authorizeDeleteAction.bind(this),
-    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //   (payload: { [key: string]: any }) => {
     //     this.deleteAction(payload.identity, payload.xId, dispatchCallback);
     //   }));
   }
@@ -137,32 +137,31 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
   //     });
   // }
 
-  getChapterCompletionPercentages(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
-    for (let param of params) {
-      this.sqlData.getLogins(param.teamId, param.classId, param.timestamp, (logins) => {
-        if (logins.length > 0) {
-          this.sqlData.getCompletions(param.bookId, param.teamId, param.classId, param.timestamp, (completions) => {
-            let completionsByChapter = {} as { [key: string]: any };
-            for (let completion of completions) {
-              if (!completionsByChapter[completion.chapter])
-                completionsByChapter[completion.chapter] = 0;
-              completionsByChapter[completion.chapter]++;
-            }
-
-            for (let chapter in completionsByChapter) {
-              completionsByChapter[chapter] = (completionsByChapter[chapter] / logins.length) * 100;
-            }
-
-            callback({ data: completionsByChapter });
-          })
-        } else {
-          callback({ data: {} });
+  async getChapterCompletionPercentages(identity: string, params: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
+    if (params.length > 0) {
+      let logins = await this.sqlData.getLogins(params[0].teamId, params[0].classId, params[0].timestamp);
+      if (logins.length > 0) {
+        let completions = await this.sqlData.getCompletions(params[0].bookId, params[0].teamId, params[0].classId, params[0].timestamp);
+        let completionsByChapter = {} as { [key: string]: any };
+        for (let completion of completions) {
+          if (!completionsByChapter[completion.chapter])
+            completionsByChapter[completion.chapter] = 0;
+          completionsByChapter[completion.chapter]++;
         }
-      })
+
+        for (let chapter in completionsByChapter) {
+          completionsByChapter[chapter] = (completionsByChapter[chapter] / logins.length) * 100;
+        }
+
+        return { data: completionsByChapter };
+      } else {
+        return { data: {} };
+      }
     }
+    return {};
   }
 
-  saveActions(identity: string, actions: Action[], callback: ((success: boolean) => void)): void {
+  async saveActions(identity: string, actions: Action[]): Promise<true> {
     let arr = [];
     let completions = [];
     for (let action of actions) {
@@ -170,11 +169,11 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
       if (Action.isCompletion(action))
         completions.push(action);
     }
-    this.sessionData.queueForLrs(arr);
+    await this.sessionData.queueForLrs(arr);
     if (completions.length > 0) {
       this.sqlData.insertCompletions(completions);
     }
-    callback(true);
+    return true;
   }
 
   // deleteAction(identity: string, id: string, callback: ((success: boolean) => void)): void {

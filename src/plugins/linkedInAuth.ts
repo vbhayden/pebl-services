@@ -41,18 +41,20 @@ export class LinkedInAuthentication implements AuthenticationManager {
     }
   }
 
-  refresh(session: Express.Session, callback: (refreshed: boolean) => void): void {
-    if (this.activeClient) {
-      if (session.activeTokens) {
-        auditLogger.report(LogCategory.AUTH, Severity.INFO, "RefreshNotAvailable", session.id, session.ip);
-        callback(false);
+  refresh(session: Express.Session): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.activeClient) {
+        if (session.activeTokens) {
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "RefreshNotAvailable", session.id, session.ip);
+          resolve(false);
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
+          resolve(false);
+        }
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
-        callback(false);
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
       }
-    } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
-    }
+    });
   }
 
   login(req: Request, session: Express.Session, res: Response): void {
@@ -126,88 +128,71 @@ export class LinkedInAuthentication implements AuthenticationManager {
     }
   }
 
-  getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
-    if (this.activeClient) {
-      if (session.activeTokens) {
-        if (session.identity) {
-          if (callback instanceof Function) {
-            callback(true);
+  getProfile(session: Express.Session): Promise<{ [key: string]: any } | null> {
+    return new Promise((resolve) => {
+      if (this.activeClient) {
+        if (session.activeTokens) {
+          if (session.identity) {
+            resolve(session.identity);
           } else {
-            callback.send(session.identity).end();
+            getData("api.linkedin.com",
+              "/v2/me?projection=(id,firstName,lastName,profilePicture(displayImage~:playableStreams),address,organizations,phoneNumbers)",
+              {
+                "Authorization": "Bearer " + session.activeTokens.access_token
+              },
+              (profile) => {
+                let profileObj = JSON.parse(profile);
+                getData("api.linkedin.com",
+                  "/v2/emailAddress?q=members&projection=(elements*(handle~))",
+                  {
+                    "Authorization": "Bearer " + session.activeTokens.access_token
+                  },
+                  (email) => {
+                    let emailObj = JSON.parse(email);
+                    session.identity = profileObj;
+                    profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
+                    profileObj.preferred_username = profileObj.id;
+                    profileObj.given_name = profileObj.firstName.localized[profileObj.firstName.preferredLocale.language + "_" + profileObj.firstName.preferredLocale.country];
+                    profileObj.family_name = profileObj.lastName.localized[profileObj.lastName.preferredLocale.language + "_" + profileObj.lastName.preferredLocale.country];
+                    profileObj.name = profileObj.given_name + " " + profileObj.family_name;
+
+                    resolve(profileObj);
+                  },
+                  async (err) => {
+                    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthEmailFail", session.id, session.ip, err);
+                    await this.clearActiveTokens(session);
+                    resolve(null);
+                  });
+              },
+              async (err) => {
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
+                await this.clearActiveTokens(session);
+                resolve(null);
+              });
           }
         } else {
-          getData("api.linkedin.com",
-            "/v2/me?projection=(id,firstName,lastName,profilePicture(displayImage~:playableStreams),address,organizations,phoneNumbers)",
-            {
-              "Authorization": "Bearer " + session.activeTokens.access_token
-            },
-            (profile) => {
-              let profileObj = JSON.parse(profile);
-              getData("api.linkedin.com",
-                "/v2/emailAddress?q=members&projection=(elements*(handle~))",
-                {
-                  "Authorization": "Bearer " + session.activeTokens.access_token
-                },
-                (email) => {
-                  let emailObj = JSON.parse(email);
-                  session.identity = profileObj;
-                  profileObj.email = emailObj.elements[0]["handle~"].emailAddress;
-                  profileObj.preferred_username = profileObj.id;
-                  profileObj.given_name = profileObj.firstName.localized[profileObj.firstName.preferredLocale.language + "_" + profileObj.firstName.preferredLocale.country];
-                  profileObj.family_name = profileObj.lastName.localized[profileObj.lastName.preferredLocale.language + "_" + profileObj.lastName.preferredLocale.country];
-                  profileObj.name = profileObj.given_name + " " + profileObj.family_name;
-
-                  if (callback instanceof Function) {
-                    callback(true);
-                  } else {
-                    callback.send(profileObj).end();
-                  }
-                },
-                (err) => {
-                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthEmailFail", session.id, session.ip, err);
-                  if (callback instanceof Function) {
-                    this.clearActiveTokens(session, callback);
-                  } else {
-                    this.clearActiveTokens(session, () => {
-                      callback.status(401).end();
-                    });
-                  }
-                });
-            },
-            (err) => {
-              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
-              if (callback instanceof Function) {
-                this.clearActiveTokens(session, callback);
-              } else {
-                this.clearActiveTokens(session, () => {
-                  callback.status(401).end();
-                });
-              }
-            });
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id, session.ip);
+          resolve(null);
         }
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id, session.ip);
-        if (callback instanceof Function) {
-          callback(false);
-        } else {
-          callback.status(401).end();
-        }
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id, session.ip);
+        resolve(null);
       }
-    } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id, session.ip);
-    }
+    });
   }
 
-  private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: false) => void): void {
-    session.destroy(() => {
-      if (callback) callback(false);
+  private async clearActiveTokens(session: Express.Session): Promise<false> {
+    return new Promise((resolve) => {
+      session.destroy(() => {
+        resolve(false);
+      });
     });
   }
 
   isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
     if (session.activeTokens) {
       if (this.isAccessTokenExpired(session)) {
-        this.clearActiveTokens(session, callback);
+        this.clearActiveTokens(session);
       } else {
         callback(true);
       }
@@ -223,15 +208,12 @@ export class LinkedInAuthentication implements AuthenticationManager {
     return true;
   }
 
-  private adjustUserPermissions(session: Express.Session, userId: string, accessToken: string, callback: () => void): void {
-
+  private async adjustUserPermissions(session: Express.Session, userId: string, accessToken: string): Promise<void> {
     let arr = ["systemAdmin"];
-    this.userManager.addUserRoles(userId, arr, (added: boolean) => {
-      if (added) {
-        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, arr);
-      }
-      callback();
-    });
+    let added = await this.userManager.addUserRoles(userId, arr);
+    if (added) {
+      auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, arr);
+    }
   }
 
   redirect(req: Request, session: Express.Session, res: Response): void {
@@ -242,26 +224,21 @@ export class LinkedInAuthentication implements AuthenticationManager {
         this.activeClient.callbackParams(req),
         {
           state: session.state
-        }).then((tokenSet: TokenSet) => {
+        }).then(async (tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
             if (tokenSet.expires_at) {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-              this.getProfile(session, (found) => {
-                if (found) {
-                  this.adjustUserPermissions(session, session.identity.preferred_username,
-                    session.activeTokens.access_token,
-                    () => {
-                      auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
-                      res.redirect(session.redirectUrl);
-                    });
-                } else {
-                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id, session.ip);
-                  res.status(401).end();
-                }
-              });
+              let profile = await this.getProfile(session);
+              if (profile) {
+                await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
+                auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
+                res.redirect(session.redirectUrl);
+              } else {
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id, session.ip);
+                res.status(401).end();
+              }
             } else {
-              console.log(tokenSet);
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
               res.status(503).end();
             }

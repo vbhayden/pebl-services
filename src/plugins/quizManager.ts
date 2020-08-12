@@ -20,50 +20,50 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
     this.addMessageTemplate(new MessageTemplate("getQuizes",
       this.validateGetQuizes.bind(this),
       this.authorizeGetQuizes.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getQuizes(payload.identity, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getQuizes(payload.identity);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveQuizes",
       this.validateSaveQuizes.bind(this),
       this.authorizeSaveQuizes.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveQuizes(payload.identity, payload.quizes, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveQuizes(payload.identity, payload.quizes);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteQuiz",
       this.validateDeleteQuiz.bind(this),
       this.authorizeDeleteQuiz.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteQuiz(payload.identity, payload.xId, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteQuiz(payload.identity, payload.xId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getQuestions",
       this.validateGetQuestions.bind(this),
       this.authorizeGetQuestions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getQuestions(payload.identity, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getQuestions(payload.identity);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveQuestions",
       this.validateSaveQuestions.bind(this),
       this.authorizeSaveQuestions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveQuestions(payload.identity, payload.questions, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveQuestions(payload.identity, payload.questions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteQuestion",
       this.validateDeleteQuestion.bind(this),
       this.authorizeDeleteQuestion.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteQuestion(payload.identity, payload.xId, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteQuestion(payload.identity, payload.xId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getQuizAttempts",
       this.validateGetQuizAttempts.bind(this),
       this.authorizeGetQuizAttempts.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getQuizAttempts(payload.identity, payload.params, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getQuizAttempts(payload.identity, payload.params);
       }))
   }
 
@@ -194,105 +194,96 @@ export class DefaultQuizManager extends PeBLPlugin implements QuizManager {
     return canUser || canGroup;
   }
 
-  getQuizAttempts(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
-    for (let param of params) {
-      this.sqlData.getQuizAttempts(param.bookId, param.teamId, param.classId, (attempts) => {
-        let attemptsObject = {} as any;
-        for (let attempt of attempts) {
-          if (!attemptsObject[attempt.quizid])
-            attemptsObject[attempt.quizid] = {};
+  async getQuizAttempts(identity: string, params: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
+    if (params.length > 0) {
+      let attempts = await this.sqlData.getQuizAttempts(params[0].bookId, params[0].teamId, params[0].classId);
+      let attemptsObject = {} as any;
+      for (let attempt of attempts) {
+        if (!attemptsObject[attempt.quizid])
+          attemptsObject[attempt.quizid] = {};
 
-          if (!attemptsObject[attempt.quizid].prompt)
-            attemptsObject[attempt.quizid].prompt = attempt.question;
+        if (!attemptsObject[attempt.quizid].prompt)
+          attemptsObject[attempt.quizid].prompt = attempt.question;
 
-          if (!attemptsObject[attempt.quizid].url)
-            attemptsObject[attempt.quizid].url = attempt.url;
+        if (!attemptsObject[attempt.quizid].url)
+          attemptsObject[attempt.quizid].url = attempt.url;
 
-          if (!attemptsObject[attempt.quizid].responses)
-            attemptsObject[attempt.quizid].responses = {}
+        if (!attemptsObject[attempt.quizid].responses)
+          attemptsObject[attempt.quizid].responses = {}
 
-          if (!attemptsObject[attempt.quizid].totalCount)
-            attemptsObject[attempt.quizid].totalCount = 0;
+        if (!attemptsObject[attempt.quizid].totalCount)
+          attemptsObject[attempt.quizid].totalCount = 0;
 
-          attemptsObject[attempt.quizid].totalCount += attempt.count;
+        attemptsObject[attempt.quizid].totalCount += attempt.count;
 
-          attemptsObject[attempt.quizid].responses[attempt.response] = {
-            success: attempt.correct,
-            count: attempt.count
-          };
-        }
-        callback({ data: attemptsObject })
-      })
+        attemptsObject[attempt.quizid].responses[attempt.response] = {
+          success: attempt.correct,
+          count: attempt.count
+        };
+      }
+      return { data: attemptsObject };
     }
+    return {};
   }
 
-  getQuizes(identity: string, callback: ((quizes: Quiz[]) => void)): void {
-    this.sessionData.getHashValues(generateUserQuizesKey(identity),
-      (result: string[]) => {
-        callback(result.map(function(x) {
-          return new Quiz(JSON.parse(x));
-        }));
-      });
+  async getQuizes(identity: string): Promise<Quiz[]> {
+    let result = await this.sessionData.getHashValues(generateUserQuizesKey(identity));
+    return result.map(function(x) {
+      return new Quiz(JSON.parse(x));
+    });
   }
 
-  saveQuizes(identity: string, quizes: Quiz[], callback: ((success: boolean) => void)): void {
+  async saveQuizes(identity: string, quizes: Quiz[]): Promise<true> {
+    let arr = [];
     for (let quiz of quizes) {
-      let quizStr = JSON.stringify(quiz);
-      this.sessionData.queueForLrs(quizStr);
+      arr.push(JSON.stringify(quiz));
     }
-    callback(true);
+    await this.sessionData.queueForLrs(arr);
+    return true;
   }
 
-  deleteQuiz(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+  async deleteQuiz(identity: string, ids: string[]): Promise<true> {
     for (let id of ids) {
-      this.sessionData.getHashValue(generateUserQuizesKey(identity), generateQuizesKey(id), (data) => {
-        if (data) {
-          this.sessionData.queueForLrsVoid(data);
-        }
-        this.sessionData.deleteHashValue(generateUserQuizesKey(identity),
-          generateQuizesKey(id), (result: boolean) => {
-            if (!result) {
-              auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
-            }
-          });
-      });
+      let data = await this.sessionData.getHashValue(generateUserQuizesKey(identity), generateQuizesKey(id));
+      if (data) {
+        this.sessionData.queueForLrsVoid(data);
+      }
+      let result = await this.sessionData.deleteHashValue(generateUserQuizesKey(identity), generateQuizesKey(id));
+      if (!result) {
+        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
+      }
     }
-    callback(true);
+    return true;
   }
 
-  getQuestions(identity: string, callback: ((questions: Question[]) => void)): void {
-    this.sessionData.getHashValues(generateUserQuestionsKey(identity),
-      (result: string[]) => {
-        callback(result.map(function(x) {
-          return new Question(JSON.parse(x));
-        }));
-      });
+  async getQuestions(identity: string): Promise<Question[]> {
+    let result = await this.sessionData.getHashValues(generateUserQuestionsKey(identity));
+    return result.map(function(x) {
+      return new Question(JSON.parse(x));
+    });
   }
 
-  saveQuestions(identity: string, questions: Question[], callback: ((success: boolean) => void)): void {
+  async saveQuestions(identity: string, questions: Question[]): Promise<true> {
     let arr = [];
     for (let question of questions) {
       arr.push(JSON.stringify(question));
     }
-    this.sessionData.queueForLrs(arr);
+    await this.sessionData.queueForLrs(arr);
     this.sqlData.insertQuizAttempts(questions);
-    callback(true);
+    return true;
   }
 
-  deleteQuestion(identity: string, ids: string[], callback: ((success: boolean) => void)): void {
+  async deleteQuestion(identity: string, ids: string[]): Promise<true> {
     for (let id of ids) {
-      this.sessionData.getHashValue(generateUserQuestionsKey(identity), generateQuestionsKey(id), (data) => {
-        if (data) {
-          this.sessionData.queueForLrsVoid(data);
-        }
-        this.sessionData.deleteHashValue(generateUserQuestionsKey(identity),
-          generateQuestionsKey(id), (result: boolean) => {
-            if (!result) {
-              auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
-            }
-          });
-      });
+      let data = await this.sessionData.getHashValue(generateUserQuestionsKey(identity), generateQuestionsKey(id));
+      if (data) {
+        await this.sessionData.queueForLrsVoid(data);
+      }
+      let result = await this.sessionData.deleteHashValue(generateUserQuestionsKey(identity), generateQuestionsKey(id));
+      if (!result) {
+        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelActionFail", identity, id);
+      }
     }
-    callback(true);
+    return true;
   }
 }

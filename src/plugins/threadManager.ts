@@ -8,104 +8,101 @@ import { Voided } from "../models/xapiStatement";
 import { PermissionSet } from "../models/permission";
 import { generateBroadcastQueueForUserId, generateTimestampForThread, generateThreadKey, generateUserThreadsKey, generateUserPrivateThreadsKey, generateUserGroupThreadsKey, generateSubscribedUsersKey } from "../utils/constants";
 import { GroupManager } from "../interfaces/groupManager";
-import { NotificationManager } from "../interfaces/notificationManager";
 import { SqlDataStore } from "../interfaces/sqlDataStore";
 
 export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   private sessionData: SessionDataManager;
   private groupManager: GroupManager;
   private sqlData: SqlDataStore;
-  // private notificationManager: NotificationManager;
 
-  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore, groupManager: GroupManager, notificationManager: NotificationManager) {
+  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore, groupManager: GroupManager) {
     super();
     this.sessionData = sessionData;
     this.sqlData = sqlData;
     this.groupManager = groupManager;
-    // this.notificationManager = notificationManager;
 
     this.addMessageTemplate(new MessageTemplate("reportThreadedMessage",
       this.validateReportThreadedMessage.bind(this),
       this.authorizeReportThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.reportThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.reportThreadedMessage(payload.identity, payload.message);
       }))
 
     this.addMessageTemplate(new MessageTemplate("pinThreadedMessage",
       this.validatePinThreadedMessage.bind(this),
       this.authorizePinThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.pinThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.pinThreadedMessage(payload.identity, payload.message);
       }))
 
     this.addMessageTemplate(new MessageTemplate("unpinThreadedMessage",
       this.validateUnpinThreadedMessage.bind(this),
       this.authorizeUnpinThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.unpinThreadedMessage(payload.identity, payload.message, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.unpinThreadedMessage(payload.identity, payload.message);
       }))
 
     this.addMessageTemplate(new MessageTemplate("saveThreadedMessage",
       this.validateStoreThreadedMessage.bind(this),
       this.authorizeStoreThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.storeMessage(payload.identity, payload.message, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.storeMessage(payload.identity, payload.message);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getThreadedMessages",
       this.validateGetThreadedMessages.bind(this),
       this.authorizeGetThreadedMessages.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getMessages(payload.identity, payload.requests, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getMessages(payload.identity, payload.requests);
       }));
 
     this.addMessageTemplate(new MessageTemplate("subscribeThread",
       this.validateSubscribeThread.bind(this),
       this.authorizeSubscribeThread.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.subscribeThread(payload.identity, payload.thread, payload.options, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.subscribeThread(payload.identity, payload.thread, payload.options);
       }));
 
     this.addMessageTemplate(new MessageTemplate("unsubscribeThread",
       this.validateUnsubscribeThread.bind(this),
       this.authorizeUnsubscribeThread.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.unsubscribeThread(payload.identity, payload.thread, payload.options, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.unsubscribeThread(payload.identity, payload.thread, payload.options);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteThreadedMessage",
       this.validateDeleteThreadedMessage.bind(this),
       this.authorizeDeleteThreadedMessage.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteMessage(payload.identity, payload.message, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteMessage(payload.identity, payload.message);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getSubscribedThreads",
       this.validateGetSubscribedThreads.bind(this),
       this.authorizeGetSubscribedThreads.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getSubscribedThreads(payload.identity, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getSubscribedThreads(payload.identity);
       }))
 
     this.addMessageTemplate(new MessageTemplate("getLeastAnsweredQuestions",
       this.validateGetLeastAnsweredQuestions.bind(this),
       this.authorizeGetLeastAnsweredQuestions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getLeastAnsweredQuestions(payload.identity, payload.params, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getLeastAnsweredQuestions(payload.identity, payload.params);
       }))
 
     this.addMessageTemplate(new MessageTemplate("getMostAnsweredQuestions",
       this.validateGetMostAnsweredQuestions.bind(this),
       this.authorizeGetMostAnsweredQuestions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getMostAnsweredQuestions(payload.identity, payload.params, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getMostAnsweredQuestions(payload.identity, payload.params);
       }))
 
     this.addMessageTemplate(new MessageTemplate("getReportedThreadedMessages",
       this.validateGetReportedThreadedMessages.bind(this),
       this.authorizeGetReportedThreadedMessages.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getReportedThreadedMessages(payload.identity, payload.params, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getReportedThreadedMessages(payload.identity, payload.params);
       }))
   }
 
@@ -261,8 +258,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       }
     }
 
-
-
     return canUser || canGroup;
   }
 
@@ -337,7 +332,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       }
     }
 
-
     return canGroup;
   }
 
@@ -374,7 +368,6 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         return false;
       }
     }
-
 
     return canGroup;
   }
@@ -554,100 +547,93 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return canUser || canGroup;
   }
 
-  getReportedThreadedMessages(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
-    for (let param of params) {
-      this.sqlData.getReportedThreadedMessages(param.bookId, param.teamId, param.classId, (messages) => {
-        callback({ data: messages });
-      })
+  async getReportedThreadedMessages(identity: string, params: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
+    if (params.length > 0) {
+      let messages = await this.sqlData.getReportedThreadedMessages(params[0].bookId, params[0].teamId, params[0].classId);
+      return { data: messages };
     }
+    return {};
   }
 
-  getLeastAnsweredQuestions(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
-    for (let param of params) {
-      this.sqlData.getLeastAnsweredDiscussions(param.bookId, param.teamId, param.classId, (discussions) => {
-        callback({ data: discussions });
-      })
+  async getLeastAnsweredQuestions(identity: string, params: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
+    if (params.length > 0) {
+      let discussions = await this.sqlData.getLeastAnsweredDiscussions(params[0].bookId, params[0].teamId, params[0].classId);
+      return { data: discussions };
     }
+    return {};
   }
 
-  getMostAnsweredQuestions(identity: string, params: { [key: string]: any }[], callback: ((data: any) => void)): void {
-    for (let param of params) {
-      this.sqlData.getMostAnsweredDiscussions(param.bookId, param.teamId, param.classId, (discussions) => {
-        callback({ data: discussions });
-      })
+  async getMostAnsweredQuestions(identity: string, params: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
+    if (params.length > 0) {
+      let discussions = await this.sqlData.getMostAnsweredDiscussions(params[0].bookId, params[0].teamId, params[0].classId);
+      return { data: discussions };
     }
+    return {};
   }
 
-  subscribeThread(userId: string, baseThreads: string[], options: { [key: string]: any }[], callback: ((data: { [key: string]: any }) => void)): void {
+  async subscribeThread(userId: string, baseThreads: string[], options: { [key: string]: any }[]): Promise<{ [key: string]: any }> {
     for (let i = 0; i < baseThreads.length; i++) {
       let thread = baseThreads[i];
       let option = options[i];
       if (option && option.groupId) {
-        this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, option.groupId), thread, thread);
-        this.sessionData.setHashValue(generateSubscribedUsersKey(this.getGroupScopedThread(thread, option.groupId)),
+        await this.sessionData.setHashValue(generateUserGroupThreadsKey(userId, option.groupId), thread, thread);
+        await this.sessionData.setHashValue(generateSubscribedUsersKey(this.getGroupScopedThread(thread, option.groupId)),
           userId,
           userId);
       } else if (option && option.isPrivate) {
-        this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), thread, thread);
+        await this.sessionData.setHashValue(generateUserPrivateThreadsKey(userId), thread, thread);
       } else {
-        this.sessionData.setHashValue(generateUserThreadsKey(userId), thread, thread);
-        this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
+        await this.sessionData.setHashValue(generateUserThreadsKey(userId), thread, thread);
+        await this.sessionData.setHashValue(generateSubscribedUsersKey(thread), userId, userId);
       }
     }
 
-    callback({
+    return {
       data: true,
       // thread: baseThreads,
       // options: options,
       requestType: "subscribeThread"
-    });
+    };
   }
 
-  unsubscribeThread(userId: string, baseThreads: string[], options: { [key: string]: any }[], callback: ((success: boolean) => void)): void {
-    let f = () => { };
+  async unsubscribeThread(userId: string, baseThreads: string[], options: { [key: string]: any }[]): Promise<true> {
     for (let i = 0; i < baseThreads.length; i++) {
       let thread = baseThreads[i];
       let option = options[i];
       if (option && option.groupId) {
-        this.sessionData.deleteHashValue(generateUserGroupThreadsKey(userId, option.groupId), thread, f);
-        this.sessionData.deleteHashValue(generateSubscribedUsersKey(this.getGroupScopedThread(thread, option.groupId)),
-          userId,
-          f);
+        await this.sessionData.deleteHashValue(generateUserGroupThreadsKey(userId, option.groupId), thread);
+        await this.sessionData.deleteHashValue(generateSubscribedUsersKey(this.getGroupScopedThread(thread, option.groupId)), userId);
       } else if (option && option.isPrivate) {
-        this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), thread, f);
+        await this.sessionData.deleteHashValue(generateUserPrivateThreadsKey(userId), thread);
       } else {
-        this.sessionData.deleteHashValue(generateUserThreadsKey(userId), thread, f);
-        this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId, f);
+        await this.sessionData.deleteHashValue(generateUserThreadsKey(userId), thread);
+        await this.sessionData.deleteHashValue(generateSubscribedUsersKey(thread), userId);
       }
     }
-    callback(true);
+    return true;
   }
 
   private async getSubscribedUsers(realThread: string): Promise<string[]> {
     return this.sessionData.getHashValues(generateSubscribedUsersKey(realThread));
   }
 
-  getSubscribedThreads(userId: string, callback: (data: { [key: string]: any }) => void): void {
+  async getSubscribedThreads(userId: string): Promise<{ [key: string]: any }> {
     let threadsObject = {
       threads: [] as string[],
       privateThreads: [] as string[],
       groupThreads: {} as { [key: string]: string[] }
     };
-    this.groupManager.getUsersGroups(userId, (groupIds) => {
-      let groupKeys = groupIds.map((groupId) => {
-        return generateUserGroupThreadsKey(userId, groupId);
-      });
-      this.sessionData.getHashMultiKeys(groupKeys, (groupThreads) => {
-        threadsObject.groupThreads = groupThreads;
-        this.sessionData.getHashKeys(generateUserThreadsKey(userId), (threads) => {
-          threadsObject.threads = threads;
-          this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId), (privateThreads) => {
-            threadsObject.privateThreads = privateThreads;
-            callback({ data: threadsObject, requestType: "getSubscribedThreads" });
-          });
-        });
-      });
+    let groupIds = await this.groupManager.getUsersGroups(userId);
+    let groupKeys = groupIds.map((groupId) => {
+      return generateUserGroupThreadsKey(userId, groupId);
     });
+    let groupThreads = await this.sessionData.getHashMultiKeys(groupKeys);
+    threadsObject.groupThreads = groupThreads;
+    let threads = await this.sessionData.getHashKeys(generateUserThreadsKey(userId));
+    threadsObject.threads = threads;
+    let privateThreads = await this.sessionData.getHashKeys(generateUserPrivateThreadsKey(userId));
+    threadsObject.privateThreads = privateThreads;
+    return { data: threadsObject, requestType: "getSubscribedThreads" };
   }
 
   private getGroupScopedThread(thread: string, groupId: string): string {
@@ -658,7 +644,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     return thread + '_user-' + username;
   }
 
-  reportThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+  async reportThreadedMessage(userId: string, messages: Message[]): Promise<true> {
     let reports = [];
     for (let message of messages) {
       if (Message.isDiscussion(message))
@@ -667,10 +653,10 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     if (reports.length > 0)
       this.sqlData.insertReportedThreadedMessages(reports);
 
-    callback(true);
+    return true;
   }
 
-  pinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+  async pinThreadedMessage(userId: string, messages: Message[]): Promise<true> {
     for (let message of messages) {
       message.pinned = true;
 
@@ -685,28 +671,27 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
       let messageStr = JSON.stringify(message);
 
-      this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-      this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+      await this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+      await this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
       if (!message.isPrivate) {
-        this.getSubscribedUsers(thread, (users) => {
-          for (let user of users) {
-            if (user !== userId) { //Don't send the message to the sender
-              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-                requestType: "newThreadedMessage",
-                data: message,
-                thread: message.thread,
-                options: { isPrivate: message.isPrivate, groupId: message.groupId }
-              })));
-            }
+        let users = await this.getSubscribedUsers(thread);
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            await this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
           }
-        });
+        }
       }
     }
-    callback(true);
+    return true;
   }
 
-  unpinThreadedMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+  async unpinThreadedMessage(userId: string, messages: Message[]): Promise<true> {
     for (let message of messages) {
       message.pinned = false;
       message.pinMessage = undefined;
@@ -722,28 +707,27 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
       let messageStr = JSON.stringify(message);
 
-      this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
-      this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+      await this.sessionData.addTimestampValue(generateTimestampForThread(thread), date.getTime(), message.id);
+      await this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
       if (!message.isPrivate) {
-        this.getSubscribedUsers(thread, (users) => {
-          for (let user of users) {
-            if (user !== userId) { //Don't send the message to the sender
-              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-                requestType: "newThreadedMessage",
-                data: message,
-                thread: message.thread,
-                options: { isPrivate: message.isPrivate, groupId: message.groupId }
-              })));
-            }
+        let users = await this.getSubscribedUsers(thread);
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            await this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
           }
-        });
+        }
       }
     }
-    callback(true);
+    return true;
   }
 
-  storeMessage(userId: string, messages: Message[], callback: ((success: boolean) => void)): void {
+  async storeMessage(userId: string, messages: Message[]): Promise<true> {
     let date = new Date();
     let timestampString = date.toISOString();
     let timestamp = date.getTime();
@@ -760,73 +744,63 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
       let messageStr = JSON.stringify(message);
 
-      this.sessionData.queueForLrs(messageStr);
+      await this.sessionData.queueForLrs(messageStr);
 
       if (Message.isDiscussion(message))
         discussions.push(message);
 
-      this.sessionData.addTimestampValue(generateTimestampForThread(thread), timestamp, message.id);
-      this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
+      await this.sessionData.addTimestampValue(generateTimestampForThread(thread), timestamp, message.id);
+      await this.sessionData.setHashValue(generateThreadKey(thread), message.id, messageStr);
 
       if (!message.isPrivate) {
-        this.getSubscribedUsers(thread, (users) => {
-          for (let user of users) {
-            if (user !== userId) { //Don't send the message to the sender
-              this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
-                requestType: "newThreadedMessage",
-                data: message,
-                thread: message.thread,
-                options: { isPrivate: message.isPrivate, groupId: message.groupId }
-              })));
-            }
+        let users = await this.getSubscribedUsers(thread);
+        for (let user of users) {
+          if (user !== userId) { //Don't send the message to the sender
+            await this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+              requestType: "newThreadedMessage",
+              data: message,
+              thread: message.thread,
+              options: { isPrivate: message.isPrivate, groupId: message.groupId }
+            })));
           }
-        });
+        }
       }
     }
 
     if (discussions.length > 0)
       this.sqlData.insertDiscussions(discussions);
 
-    callback(true);
+    return true;
   }
 
-  getMessages(userId: string, threadRequests: { [key: string]: any }[], callback: ((data: { [key: string]: any }[]) => void)): void {
+  async getMessages(userId: string, threadRequests: { [key: string]: any }[]): Promise<{ [key: string]: any }[]> {
     let results: { [key: string]: any }[] = [];
 
-    let processThreads = (threadRequests: { [key: string]: any }[]) => {
-      let threadRequest = threadRequests.pop();
-      if (threadRequest) {
-        let baseThread = threadRequest.thread;
-        let timestamp = threadRequest.timestamp;
-        let options = threadRequest.options;
-        let thread = baseThread;
-        if (options && options.groupId)
-          thread = this.getGroupScopedThread(thread, options.groupId);
-        else if (options && options.isPrivate)
-          thread = this.getPrivateScopedThread(thread, userId);
+    threadRequests.map(async (threadRequest: { [key: string]: any }) => {
+      let baseThread = threadRequest.thread;
+      let timestamp = threadRequest.timestamp;
+      let options = threadRequest.options;
+      let thread = baseThread;
+      if (options && options.groupId)
+        thread = this.getGroupScopedThread(thread, options.groupId);
+      else if (options && options.isPrivate)
+        thread = this.getPrivateScopedThread(thread, userId);
 
-        this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp, (data) => {
-          this.sessionData.getHashMultiField(generateThreadKey(thread), data, (vals) => {
-            results.push({
-              data: vals.map((val) => {
-                let obj = JSON.parse(val);
-                if (Message.is(obj))
-                  return new Message(obj);
-                else
-                  return new Voided(obj);
-              }),
-              thread: baseThread,
-              options: options
-            });
-            processThreads(threadRequests);
-          });
-        });
-      } else {
-        callback(results);
-      }
-    };
-
-    processThreads(threadRequests);
+      let data = await this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForThread(thread), timestamp);
+      let vals = await this.sessionData.getHashMultiField(generateThreadKey(thread), data);
+      results.push({
+        data: vals.map((val) => {
+          let obj = JSON.parse(val);
+          if (Message.is(obj))
+            return new Message(obj);
+          else
+            return new Voided(obj);
+        }),
+        thread: baseThread,
+        options: options
+      });
+    });
+    return results;
   }
 
   async deleteMessage(userId: string, messages: Message[]): Promise<boolean> {

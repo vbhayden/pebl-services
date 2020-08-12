@@ -25,8 +25,8 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
     this.addMessageTemplate(new MessageTemplate("saveSessions",
       this.validateSaveSessions.bind(this),
       this.authorizeSaveSessions.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveSessions(payload.identity, payload.sessions, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveSessions(payload.identity, payload.sessions);
       }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteSession",
@@ -95,17 +95,17 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
   //     });
   // }
 
-  saveSessions(identity: string, sessions: Session[], callback: ((success: boolean) => void)): void {
+  async saveSessions(identity: string, sessions: Session[]): Promise<true> {
     let logins = [];
     for (let session of sessions) {
-      this.sessionData.queueForLrs(JSON.stringify(session));
+      await this.sessionData.queueForLrs(JSON.stringify(session));
       if (Session.isLogin(session))
         logins.push(session);
     }
     if (logins.length > 0)
       this.sqlData.insertLogins(logins);
 
-    callback(true);
+    return true;
   }
 
   // deleteSession(identity: string, id: string, callback: ((success: boolean) => void)): void {

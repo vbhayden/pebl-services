@@ -28,6 +28,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private archiveManager: ArchiveManager;
   private runningJobs: { [key: string]: number };
   private upgradeInProgress: boolean;
+  private terminating: boolean;
   private version: number;
 
   constructor(redisConfig: { [key: string]: any },
@@ -36,6 +37,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     lrsManager: LRS,
     archiveManager: ArchiveManager) {
 
+    this.terminating = false;
     this.archiveManager = archiveManager;
     this.lrsManager = lrsManager;
     this.rsmq = new RedisSMQ(redisConfig);
@@ -88,6 +90,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   terminate(done: () => void): void {
+    this.terminating = true;
     let termSet = [];
     if (this.rsmq)
       termSet.push("rsmq");
@@ -103,55 +106,51 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       done);
   }
 
-  private processJob(jobMessage: JobMessage, startup?: boolean): void {
-    jobMessage.startTime = Date.now();
+  private processJob(jobMessage: JobMessage, startup?: boolean): Promise<void> {
+    return new Promise(async (resolve) => {
+      jobMessage.startTime = Date.now();
 
-    this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
-      jobMessage.jobType,
-      JSON.stringify(jobMessage),
-      (didSet: boolean) => {
-        if (didSet) {
-          clearTimeout(this.timeouts[jobMessage.jobType]);
-          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobStarted', jobMessage);
-          this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
-          this.dispatchJobMessage(jobMessage);
-        } else {
-          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobAlreadyStarted', jobMessage);
-          if (startup) {
-            this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS,
-              jobMessage.jobType,
-              (data?: string) => {
-                if (data) {
-                  this.processActiveJob(JobMessage.parse(data));
-                } else {
-                  this.processJob(jobMessage);
-                }
-              });
+      let didSet = this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
+        jobMessage.jobType,
+        JSON.stringify(jobMessage));
+      if (didSet) {
+        clearTimeout(this.timeouts[jobMessage.jobType]);
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobStarted', jobMessage);
+        await this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
+        this.dispatchJobMessage(jobMessage);
+        resolve();
+      } else {
+        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobAlreadyStarted', jobMessage);
+        if (startup) {
+          let data = await this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType);
+          if (data) {
+            this.processActiveJob(JobMessage.parse(data));
+          } else {
+            this.processJob(jobMessage);
           }
         }
-      });
+        resolve();
+      }
+    });
   }
 
   //When a job is started, all nodes receive a jobStarted message indicating which job was started and how long it should take for it to run
   //They set a timeout to check for failed jobs in the case they do not recieve the paired jobFinished message within the alloted timeout
   //When a jobFinished event arrives, the nodes remove their timeouts for that job
-  private processActiveJob(jobMessage: JobMessage): void {
+  private async processActiveJob(jobMessage: JobMessage): Promise<void> {
     if (jobMessage.finished) {
       clearTimeout(this.timeouts[jobMessage.jobType]);
       if (jobMessage.jobType !== JOB_TYPE_UPGRADE) {
-        this.timeouts[jobMessage.jobType] = setTimeout(() => {
-          this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
+        this.timeouts[jobMessage.jobType] = setTimeout(async () => {
+          await this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
         }, jobMessage.timeout);
       } else {
-        this.sessionDataManager.getHashValue(SET_ALL_PEBL_CONFIG,
-          DB_VERSION,
-          (data) => {
-            let newVersion = (data ? parseInt(data) : 0);
-            if (this.version > newVersion) {
-              // this.processJob(new JobMessage(JOB_TYPE_UPGRADE, JOB_BUFFER_TIMEOUT))
-            }
-            this.upgradeInProgress = newVersion != this.version;
-          });
+        let data = await this.sessionDataManager.getHashValue(SET_ALL_PEBL_CONFIG, DB_VERSION);
+        let newVersion = (data ? parseInt(data) : 0);
+        if (this.version > newVersion) {
+          // this.processJob(new JobMessage(JOB_TYPE_UPGRADE, JOB_BUFFER_TIMEOUT))
+        }
+        this.upgradeInProgress = newVersion != this.version;
       }
     } else if (jobMessage.startTime) {
       if (!this.upgradeInProgress && (jobMessage.jobType === JOB_TYPE_UPGRADE)) {
@@ -163,17 +162,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
       if (remainingTime > 0) {
         clearTimeout(this.timeouts[jobMessage.jobType]);
-        this.timeouts[jobMessage.jobType] = setTimeout(() => {
-          this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
-            jobMessage.jobType,
-            (deleted: boolean) => {
-              this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
-            });
+        this.timeouts[jobMessage.jobType] = setTimeout(async () => {
+          await this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType);
+          await this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
         }, remainingTime);
       } else {
-        this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType, (deleted: boolean) => {
-          this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
-        });
+        await this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType);
+        await this.processJob(new JobMessage(jobMessage.jobType, jobMessage.timeout));
       }
     }
   }
@@ -182,34 +177,32 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     return (msg as RedisSMQ.QueueMessage).id !== undefined;
   }
 
-  initialize(): void {
-    this.sessionDataManager.getHashValue(SET_ALL_PEBL_CONFIG,
-      DB_VERSION,
-      (data) => {
-        if (!data) {
-          data = "0";
-        }
-        this.version = parseInt(data)
-        if (currentRedisVersion() != this.version) {
-          let upgradeJob = new JobMessage(JOB_TYPE_UPGRADE, UPGRADE_REDIS_TIMEOUT);
-          this.processJob(upgradeJob, true);
-        } else {
-          this.startProcessing();
-        }
-      });
+  async initialize(): Promise<void> {
+    let data = await this.sessionDataManager.getHashValue(SET_ALL_PEBL_CONFIG, DB_VERSION);
+    if (!data) {
+      data = "0";
+    }
+    this.version = parseInt(data)
+    if (currentRedisVersion() != this.version) {
+      let upgradeJob = new JobMessage(JOB_TYPE_UPGRADE, UPGRADE_REDIS_TIMEOUT);
+      await this.processJob(upgradeJob, true);
+    } else {
+      this.startProcessing();
+    }
   }
 
-  createIncomingQueue(callback: ((success: boolean) => void)): void {
-    this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
-      if (err) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateInQueueFail", err);
-        callback(false);
-      } else if (resp === 1) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateInQueue", err);
-        callback(true);
-      }
-      this.rsmq.setQueueAttributes({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, () => {
-        this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
+  createIncomingQueue(): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.rsmq.createQueue({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, (err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateInQueueFail", err);
+        } else if (resp === 1) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateInQueue", err);
+        }
+        this.rsmq.setQueueAttributes({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, maxsize: -1 }, () => {
+          this.subscriber.subscribe(QUEUE_INCOMING_MESSAGE);
+          resolve(!err && (resp == 1));
+        });
       });
     });
   }
@@ -230,36 +223,23 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  private startProcessing(): void {
-    this.createIncomingQueue((success) => {
-      this.sessionDataManager.deleteValue(SET_ALL_JOBS,
-        () => {
-          let jobSet = [
-            new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
-            new JobMessage("lrsSync", LRS_SYNC_TIMEOUT),
-            new JobMessage("archiveUsersJob", ARCHIVE_USER_TIMEOUT)
-          ];
+  private async startProcessing(): Promise<void> {
+    await this.createIncomingQueue();
+    await this.sessionDataManager.deleteValue(SET_ALL_JOBS);
+    let jobSet = [
+      new JobMessage("cleanup", QUEUE_CLEANUP_TIMEOUT),
+      new JobMessage("lrsSync", LRS_SYNC_TIMEOUT),
+      new JobMessage("archiveUsersJob", ARCHIVE_USER_TIMEOUT)
+    ];
 
-          let walkJobs = (jobs: JobMessage[]) => {
-            let job = jobs.pop();
-            if (job) {
-              this.sessionDataManager.addSetValue(SET_ALL_JOBS,
-                JSON.stringify(job),
-                (added: number) => {
-                  walkJobs(jobs);
-                });
-            } else {
-              this.sessionDataManager.getSetValues(SET_ALL_JOBS,
-                (jobs: string[]) => {
-                  auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "AvailableJobs", jobs);
-                  jobs.map((job) => this.processJob(JobMessage.parse(job), true));
-                  this.receiveIncomingMessages();
-                });
-            }
-          }
-          walkJobs(jobSet);
-        });
+    jobSet.map(async (job) => {
+      await this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(job));
     });
+
+    let jobs: string[] = await this.sessionDataManager.getSetValues(SET_ALL_JOBS);
+    auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "AvailableJobs", jobs);
+    jobs.map(async (job) => await this.processJob(JobMessage.parse(job), true));
+    this.receiveIncomingMessages();
   }
 
   subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
@@ -298,7 +278,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
           callback(false);
         } else {
-          callback(true);
+           callback(true);
         }
       });
     } else {
@@ -307,6 +287,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   dispatchJobMessage(message: JobMessage): void {
+    if (this.terminating) {
+      this.clearActiveJob(message);
+      return;
+    }
     this.runningJobs[message.jobType] = message.startTime ? message.startTime : 0;
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobDispatch', message);
     if (message.jobType === 'cleanup') {
@@ -342,92 +326,91 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     }
   }
 
-  private clearActiveJob(message: JobMessage): void {
-    this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS,
-      message.jobType,
-      () => {
-        message.finished = true;
-        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
-        this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
-      });
+  private async clearActiveJob(message: JobMessage): Promise<void> {
+    await this.sessionDataManager.deleteHashValue(SET_ALL_ACTIVE_JOBS, message.jobType);
+    message.finished = true;
+    auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "JobFinished", message);
+    await this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(message));
   }
 
-  private dispatchToLrs(message: JobMessage): void {
-    this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT, (values) => {
-      if (values && !this.upgradeInProgress) {
-        let vals = this.lrsManager.parseStatements(values);
-        if (vals[0].length > 0) {
-          this.lrsManager.storeStatements(vals[0], () => {
-            this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
-            auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobSuccess', message);
-            this.clearActiveJob(message);
-          }, (e) => {
-            auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, 'LRSPostFailed', e);
-            if (!(e instanceof Error)) {
-              let errJson;
-              try {
-                errJson = JSON.parse(e.message);
-                if (errJson.message) {
-                  let chunks = errJson.message.split(" ");
-                  for (let chunk of chunks) {
-                    if (chunk.length >= 36) {
-                      let stmt = vals[3][chunk]
-                      if (stmt) {
-                        auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSDelStmt", stmt);
-                        this.sessionDataManager.removeBadLRSStatement(stmt);
-                      }
+  private async dispatchToLrs(message: JobMessage): Promise<void> {
+    let values = await this.sessionDataManager.retrieveForLrs(LRS_SYNC_LIMIT);
+
+    if (values && !this.upgradeInProgress) {
+      let vals = this.lrsManager.parseStatements(values);
+      if (vals[0].length > 0) {
+        this.lrsManager.storeStatements(vals[0], () => {
+          this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobSuccess', message);
+          this.clearActiveJob(message);
+        }, (e) => {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, 'LRSPostFailed', e);
+          if (!(e instanceof Error)) {
+            let errJson;
+            try {
+              errJson = JSON.parse(e.message);
+              if (errJson.message) {
+                let chunks = errJson.message.split(" ");
+                for (let chunk of chunks) {
+                  if (chunk.length >= 36) {
+                    let stmt = vals[3][chunk]
+                    if (stmt) {
+                      auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSDelStmt", stmt);
+                      this.sessionDataManager.removeBadLRSStatement(stmt);
                     }
                   }
-                } else if (errJson.warnings) {
-                  for (let warning of errJson.warnings) {
-                    let chunks = warning.split(" ");
-                    let found = false
-                    for (let chunk of chunks) {
-                      if (chunk.length >= 36) {
-                        if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
-                          let slimChunk = chunk.substring(2, chunk.length - 2);
-                          let stmt = vals[3][slimChunk];
-                          if (stmt) {
-                            found = true;
-                            // auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "", stmt);
-                            // this.sessionDataManager.removeBadLRSStatement(stmt);
-                          }
+                }
+              } else if (errJson.warnings) {
+                for (let warning of errJson.warnings) {
+                  let chunks = warning.split(" ");
+                  let found = false
+                  for (let chunk of chunks) {
+                    if (chunk.length >= 36) {
+                      if (chunk.startsWith("\'\"") && chunk.endsWith("\"\'")) {
+                        let slimChunk = chunk.substring(2, chunk.length - 2);
+                        let stmt = vals[3][slimChunk];
+                        if (stmt) {
+                          found = true;
+                          // auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "", stmt);
+                          // this.sessionDataManager.removeBadLRSStatement(stmt);
                         }
                       }
                     }
-                    if (!found) {
-                      auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", warning);
-                    }
                   }
-                } else {
-                  auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "LRSUnknownError", e);
+                  if (!found) {
+                    auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSUnknownWarningMsg", warning);
+                  }
                 }
-              } catch (e) {
-                auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "LRSBadJsonParse", e);
+              } else {
+                auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "LRSUnknownError", e);
               }
+            } catch (e) {
+              auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "LRSBadJsonParse", e);
             }
-            this.clearActiveJob(message);
-          });
-        } else {
+          }
           this.clearActiveJob(message);
-        }
-        if (vals[1].length > 0)
-          for (let activity of vals[1])
-            this.lrsManager.storeActivity(activity, (success) => { });
-        if (vals[2].length > 0)
-          for (let profile of vals[2])
-            this.lrsManager.storeProfile(profile, (success) => { });
-      } else if (!this.upgradeInProgress) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchLRSUpgInPrg", message);
-        this.clearActiveJob(message);
+        });
       } else {
         this.clearActiveJob(message);
       }
-    });
+      if (vals[1].length > 0)
+        for (let activity of vals[1])
+          this.lrsManager.storeActivity(activity, (success) => { });
+      if (vals[2].length > 0)
+        for (let profile of vals[2])
+          this.lrsManager.storeProfile(profile, (success) => { });
+    } else if (!this.upgradeInProgress) {
+      auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchLRSUpgInPrg", message);
+      this.clearActiveJob(message);
+    } else {
+      this.clearActiveJob(message);
+    }
   }
 
-  private dispatchToCache(message: ServiceMessage): void {
-    let dispatchCallback = (data: any) => {
+  private async dispatchToCache(message: ServiceMessage): Promise<void> {
+    let messageTemplate = this.pluginManager.getMessageTemplate(message.getRequestType());
+    if (messageTemplate) {
+      let data = await messageTemplate.action(message.payload);
       let o;
       if ((data != null) && (typeof (data) === "object") && (data.length === undefined)) {
         if (!data["requestType"]) {
@@ -445,10 +428,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         message.sessionId,
         message.messageId);
       this.dispatchToClient(sm);
-    }
-    let messageTemplate = this.pluginManager.getMessageTemplate(message.getRequestType());
-    if (messageTemplate) {
-      messageTemplate.action(message.payload, dispatchCallback);
     } else {
       auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "CacheBadMsgTemplate", message);
       if (message.messageId) {
@@ -474,7 +453,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   }
 
   private receiveIncomingMessages(): void {
-    if (!this.upgradeInProgress) {
+    if (!this.upgradeInProgress && !this.terminating) {
       this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES }, (err, resp: RedisSMQ.QueueMessage | {}) => {
         if (err) {
           auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "receiveIncomeMsgFailed");
@@ -538,24 +517,23 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     //   });
   }
 
-  private dispatchCleanup(message: JobMessage): void {
-    let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
-      this.sessionDataManager.scan10(cursor, pattern, (result: [string, string[]]) => {
-        cursor = result[0];
-        accumulator.push(...result[1]);
-        if (cursor !== '0') {
-          scanAll(cursor, pattern, accumulator, callback);
-        } else {
-          callback(accumulator);
-        }
-      });
+  private async dispatchCleanup(message: JobMessage): Promise<void> {
+    let scanAll = async (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
+      let result: [string, string[]] = await this.sessionDataManager.scan10(cursor, pattern);
+      cursor = result[0];
+      accumulator.push(...result[1]);
+      if (cursor !== '0') {
+        scanAll(cursor, pattern, accumulator, callback);
+      } else {
+        callback(accumulator);
+      }
     }
 
-    this.rsmq.listQueues((err, queues) => {
+    this.rsmq.listQueues(async (err, queues) => {
       if (err) {
         //TODO
         auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "SessionCleanupFail", message);
-        this.clearActiveJob(message);
+        await this.clearActiveJob(message);
       } else {
         scanAll('0', 'sess:*', [], (sessions: string[]) => {
           let filtered = queues.filter((queue: string) => {

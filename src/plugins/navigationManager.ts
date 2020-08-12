@@ -21,8 +21,8 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
     this.addMessageTemplate(new MessageTemplate("saveNavigations",
       this.validateSaveNavigations.bind(this),
       this.authorizeSaveNavigations.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveNavigations(payload.identity, payload.navigations, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveNavigations(payload.identity, payload.navigations);
       }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteNavigation",
@@ -94,12 +94,13 @@ export class DefaultNavigationManager extends PeBLPlugin implements NavigationMa
   //     })
   // }
 
-  saveNavigations(identity: string, navigations: Navigation[], callback: ((success: boolean) => void)): void {
+  async saveNavigations(identity: string, navigations: Navigation[]): Promise<true> {
+    let arr = [];
     for (let navigation of navigations) {
-      this.sessionData.queueForLrs(JSON.stringify(navigation));
+      arr.push(JSON.stringify(navigation));
     }
-
-    callback(true);
+    await this.sessionData.queueForLrs(arr);
+    return true;
   }
 
   // deleteNavigation(identity: string, id: string, callback: ((success: boolean) => void)): void {
