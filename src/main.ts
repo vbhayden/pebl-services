@@ -108,9 +108,6 @@ process.on('uncaughtException', (err) => {
   if (terminateServices) {
     terminateServices();
   } else {
-    if (httpsServer) {
-      httpsServer.close();
-    }
     process.exit(1);
   }
 });
@@ -295,9 +292,6 @@ pluginManager.register(navigationManager);
       if (terminateServices) {
         terminateServices();
       } else {
-        if (httpsServer) {
-          httpsServer.close();
-        }
         process.exit(5);
       }
     } else {
@@ -724,4 +718,12 @@ pluginManager.register(navigationManager);
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'ListeningPort', config.port, config.version);
   });
 
-})();
+})().catch((err)=>{
+  auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "uncaughtExceptionP", err);
+  auditLogger.flush();
+  if (terminateServices) {
+    terminateServices();
+  } else {
+    process.exit(1);
+  }
+});

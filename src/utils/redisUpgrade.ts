@@ -1,5 +1,5 @@
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity, generateUserClearedNotificationsKey, generateUserClearedTimestamps, generateThreadKey } from "./constants";
+import { SET_ALL_NOTIFICATIONS, SET_ALL_NOTIFICATIONS_REFS, SET_ALL_PEBL_CONFIG, DB_VERSION, LogCategory, Severity, generateUserClearedNotificationsKey, generateUserClearedTimestamps, generateThreadKey, generateTimestampForAnnotations, generateUserAnnotationsKey, generateAnnotationsKey } from "./constants";
 import { auditLogger } from "../main";
 import { Voided, XApiStatement } from "../models/xapiStatement";
 import { SharedAnnotation } from "../models/sharedAnnotation";
@@ -160,6 +160,36 @@ let upgrades = [
     "version": 9,
     "fn": async (redis: SessionDataManager, completedUpgrade: () => void) => {
       await redis.deleteValue("outgoingXapi");
+      completedUpgrade();
+    }
+  },
+
+  { // remove orphaned annotations
+    "version": 10,
+    "fn": async (redis: SessionDataManager, completedUpgrade: () => void) => {
+
+      let usersAnnotationTimestamps = await redis.keys(generateTimestampForAnnotations("*"));
+      let subLength = generateTimestampForAnnotations("").length;
+
+      for (let usersAnnotationTimestamp of usersAnnotationTimestamps) {
+        let identity = usersAnnotationTimestamp.substring(subLength);
+        let ids: string[] = await redis.getValuesGreaterThanTimestamp(generateTimestampForAnnotations(identity), 1);
+        let result = await redis.getHashMultiField(generateUserAnnotationsKey(identity), ids.map((x) => generateAnnotationsKey(x)));
+        let lookup: { [key: string]: true } = {};
+        for (let r of result) {
+          if (r)
+            lookup[JSON.parse(r).id] = true;
+        }
+
+        let removeIds = [];
+        for (let id of ids) {
+          if (!lookup[id])
+            removeIds.push(id);
+        }
+        if (removeIds.length > 0) {
+          await redis.deleteSortedTimestampMember(generateTimestampForAnnotations(identity), removeIds);
+        }
+      }
       completedUpgrade();
     }
   }
