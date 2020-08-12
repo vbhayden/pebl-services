@@ -4,8 +4,6 @@ export interface AuthorizationManager {
     permissions: any,
     payload: { [key: string]: any }): boolean;
 
-  assemblePermissionSet(identity: string,
-    permissionLastModified: Express.Session,
-    callback: () => void): void;
+  assemblePermissionSet(identity: string, permissionLastModified: Express.Session): Promise<void>;
 }
 

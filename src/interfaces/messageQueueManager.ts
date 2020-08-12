@@ -7,14 +7,16 @@ export interface MessageQueueManager {
 
   isUpgradeInProgress(): boolean;
 
-  enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
-  enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void;
+  enqueueIncomingMessage(message: ServiceMessage): Promise<boolean>;
+  enqueueOutgoingMessage(message: ServiceMessage): Promise<boolean>;
 
-  createIncomingQueue(callback: ((success: boolean) => void)): void;
-  createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
+  createIncomingQueue(): Promise<boolean>;
+  createOutgoingQueue(sessionId: string, websocket: WebSocket): Promise<boolean>;
+
+  terminate(done: () => void): void;
 
   removeOutgoingQueue(sessionId: string): void;
 
-  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void;
+  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket): Promise<boolean>;
   unsubscribeNotifications(userid: string): void;
 }

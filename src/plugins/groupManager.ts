@@ -20,50 +20,50 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     this.addMessageTemplate(new MessageTemplate("addGroup",
       this.validateAddGroup.bind(this),
       this.authorizeAddGroup.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.addGroup(payload.id, payload.groupName, payload.groupDescription, dispatchCallback, payload.groupAvatar);
+      (payload: { [key: string]: any }) => {
+        return this.addGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroup",
       this.validateDeleteGroup.bind(this),
       this.authorizeDeleteGroup.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteGroup(payload.id, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteGroup(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroup",
       this.validateUpdateGroup.bind(this),
       this.authorizeUpdateGroup.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.updateGroup(payload.id, dispatchCallback, payload.groupName, payload.groupDescription, payload.groupAvatar);
+      (payload: { [key: string]: any }) => {
+        return this.updateGroup(payload.id, payload.groupName, payload.groupDescription, payload.groupAvatar);
       }));
 
     this.addMessageTemplate(new MessageTemplate("addGroupMemberUser",
       this.validateAddGroupMemberUser.bind(this),
       this.authorizeAddGroupMemberUser.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.addGroupMemberUser(payload.id, payload.userId, payload.roles, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.addGroupMemberUser(payload.id, payload.userId, payload.roles);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteGroupMemberUser",
       this.validateDeleteGroupMemberUser.bind(this),
       this.authorizeDeleteGroupMemberUser.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteGroupMemberUser(payload.id, payload.userId, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteGroupMemberUser(payload.id, payload.userId);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateGroupMemberUser",
       this.validateUpdateGroupMemberUser.bind(this),
       this.authorizeUpdateGroupMemberUser.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.updateGroupMemberUser(payload.id, payload.userId, payload.roles, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.updateGroupMemberUser(payload.id, payload.userId, payload.roles);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getGroups",
       this.validateGetGroups.bind(this),
       this.authorizeGetGroups.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getGroups(dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getGroups();
       }));
   }
 
@@ -138,213 +138,152 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     return false;
   }
 
-  addGroup(id: string, groupName: string, groupDescription: string, callback: (data: any) => void, groupAvatar?: string): void {
-    this.sessionData.setHashValue(SET_ALL_GROUPS,
+  async addGroup(id: string, groupName: string, groupDescription: string, groupAvatar?: string): Promise<true> {
+    await this.sessionData.setHashValue(SET_ALL_GROUPS,
       id,
       JSON.stringify({
         name: groupName,
         description: groupDescription,
         avatar: groupAvatar
       }));
-    callback(true);
+    return true;
   }
 
-  deleteGroup(id: string, callback: (data: any) => void): void {
-    this.sessionData.deleteHashValue(SET_ALL_GROUPS,
-      id,
-      (deleted: boolean) => {
-        if (!deleted) {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupFail", id);
-        }
-        callback(deleted);
+  async deleteGroup(id: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteHashValue(SET_ALL_GROUPS, id);
 
-        let modified = Date.now() + "";
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupFail", id);
+    }
 
-        //TODO re-write using MULTI/EXEC
-        this.getGroupMemberUsers(id, (userIds: string[]) => {
-          this.getGroupMemberGroups(id, (groupIds: string[]) => {
+    let modified = Date.now() + "";
 
-            let processUsers = (userIds: string[]) => {
-              let userId = userIds.pop();
-              if (userId === undefined) {
-                processGroups(groupIds);
-              } else {
-                this.userManager.setLastModifiedPermissions(userId, modified);
-                this.deleteGroupMemberUser(id, userId, () => {
-                  processUsers(userIds);
-                });
-              }
-            }
+    //TODO re-write using MULTI/EXEC
+    let userIds: string[] = await this.getGroupMemberUsers(id);
+    let groupIds: string[] = await this.getGroupMemberGroups(id);
 
-            let processGroups = (groupIds: string[]) => {
-              let groupId = groupIds.pop();
-              if (groupId === undefined) {
-                this.sessionData.deleteValue(generateGroupToUserMembersKey(id),
-                  (deleted: boolean) => {
-                    if (!deleted) {
-                      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
-                    }
-                    this.sessionData.deleteValue(generateGroupToGroupMembersKey(id),
-                      (deleted: boolean) => {
-                        if (!deleted) {
-                          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
-                        }
-                      });
-                  });
-              } else {
-                this.deleteGroupMemberGroup(id, groupId, () => {
-                  processGroups(groupIds);
-                });
-              }
-            }
+    for (let userId of userIds) {
+      await this.userManager.setLastModifiedPermissions(userId, modified);
+      await this.deleteGroupMemberUser(id, userId);
+    }
 
-            processUsers(userIds);
-          });
-        });
-      });
+    for (let groupId of groupIds) {
+      await this.deleteGroupMemberGroup(id, groupId);
+    }
+
+    let userSetDeleted = await this.sessionData.deleteValue(generateGroupToUserMembersKey(id));
+    if (!userSetDeleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
+    }
+    let groupSetDeleted = await this.sessionData.deleteValue(generateGroupToGroupMembersKey(id));
+    if (!groupSetDeleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemFail", id);
+    }
+
+    return deleted;
   }
 
-  getGroup(id: string, callback: (group: Group) => void) {
-    this.sessionData.getHashValue(SET_ALL_GROUPS,
-      id,
-      (group?: string) => {
-        if (group !== undefined) {
-          callback(Group.convert(group));
-        } else {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "GetGroupFail", id);
-        }
-      });
+  async getGroup(id: string): Promise<Group | null> {
+    let group = await this.sessionData.getHashValue(SET_ALL_GROUPS, id);
+
+    auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "GetGroupFail", id);
+    return group !== undefined ? Group.convert(group) : null;
   }
 
-  updateGroup(id: string, callback: (data: any) => void, groupName?: string, groupDescription?: string, groupAvatar?: string): void {
-    this.sessionData.setHashValue(SET_ALL_GROUPS,
+  async updateGroup(id: string, groupName?: string, groupDescription?: string, groupAvatar?: string): Promise<true> {
+    await this.sessionData.setHashValue(SET_ALL_GROUPS,
       id,
       JSON.stringify({
         name: groupName,
         description: groupDescription,
         avatar: groupAvatar
       }));
-    callback(true);
+    return true;
   }
 
 
-  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void {
-    this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
-    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    this.sessionData.addSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
-    callback(true);
+  async addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): Promise<true> {
+    await this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
+    await this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
+    await this.sessionData.addSetValue(generateUserToGroupMembershipKey(memberUserId), groupId);
+    return true;
   }
 
-  addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {
-    this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
+  async addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): Promise<true> {
+    await this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
     //TODO groups need to trigger for nested groups
     //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    this.sessionData.addSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
+    await this.sessionData.addSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
+    return true;
   }
 
-
-
-  getGroupMemberUser(groupId: string, memberUserId: string, callback: (roleIds: string[]) => void): void {
-    this.sessionData.getHashValue(generateGroupToUserMembersKey(groupId),
-      memberUserId,
-      (data?: string) => {
-        if (data !== undefined) {
-          callback(JSON.parse(data));
-        }
-      });
+  async getGroupMemberUser(groupId: string, memberUserId: string): Promise<string[]> {
+    let data = await this.sessionData.getHashValue(generateGroupToUserMembersKey(groupId), memberUserId);
+    return data !== undefined ? JSON.parse(data) : [];
   }
 
-  getGroupMemberUsers(groupId: string, callback: (userIds: string[]) => void): void {
-    this.sessionData.getHashKeys(generateGroupToUserMembersKey(groupId),
-      (data: string[]) => {
-        if (data !== undefined) {
-          callback(data);
-        }
-      });
+  async getGroupMemberUsers(groupId: string): Promise<string[]> {
+    let data: string[] = await this.sessionData.getHashKeys(generateGroupToUserMembersKey(groupId));
+    return data !== undefined ? data : [];
   }
 
-
-
-  getGroupMemberGroup(groupId: string, memberGroupId: string, callback: (roleIds: string[]) => void): void {
-    this.sessionData.getHashValue(generateGroupToGroupMembersKey(groupId),
-      memberGroupId,
-      (data?: string) => {
-        if (data !== undefined) {
-          callback(JSON.parse(data));
-        }
-      });
+  async getGroupMemberGroup(groupId: string, memberGroupId: string): Promise<string[]> {
+    let data = await this.sessionData.getHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId);
+    return data !== undefined ? JSON.parse(data) : [];
   }
 
-  getGroupMemberGroups(groupId: string, callback: (groupIds: string[]) => void): void {
-    this.sessionData.getHashKeys(generateGroupToGroupMembersKey(groupId),
-      (data: string[]) => {
-        callback(data);
-      });
+  async getGroupMemberGroups(groupId: string): Promise<string[]> {
+    let data: string[] = await this.sessionData.getHashKeys(generateGroupToGroupMembersKey(groupId));
+    return data;
   }
 
-
-
-  deleteGroupMemberUser(groupId: string, memberUserId: string, callback: (data: any) => void): void {
-    this.sessionData.deleteHashValue(generateGroupToUserMembersKey(groupId),
-      memberUserId,
-      (deleted: boolean) => {
-        if (!deleted) {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemUserFail", groupId, memberUserId);
-        }
-        callback(deleted);
-      });
-    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    this.sessionData.deleteSetValue(generateUserToGroupMembershipKey(memberUserId), groupId)
+  async deleteGroupMemberUser(groupId: string, memberUserId: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteHashValue(generateGroupToUserMembersKey(groupId), memberUserId);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemUserFail", groupId, memberUserId);
+    }
+    await this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
+    await this.sessionData.deleteSetValue(generateUserToGroupMembershipKey(memberUserId), groupId)
+    return deleted;
   }
 
-  deleteGroupMemberGroup(groupId: string, memberGroupId: string, callback: (data: any) => void): void {
-    this.sessionData.deleteHashValue(generateGroupToGroupMembersKey(groupId),
-      memberGroupId,
-      (deleted: boolean) => {
-        if (!deleted) {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemGroupFail", groupId, memberGroupId);
-        }
-        callback(deleted);
-      });
+  async deleteGroupMemberGroup(groupId: string, memberGroupId: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemGroupFail", groupId, memberGroupId);
+    }
+
     //TODO groups need to trigger for nested groups
     //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    this.sessionData.deleteSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
+    await this.sessionData.deleteSetValue(generateGroupToGroupMembershipKey(memberGroupId), groupId);
+    return deleted;
   }
 
-
-
-  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void {
-    this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
-    this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
-    callback(true);
+  async updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): Promise<true> {
+    await this.sessionData.setHashValue(generateGroupToUserMembersKey(groupId), memberUserId, JSON.stringify(roleIds));
+    await this.userManager.setLastModifiedPermissions(memberUserId, Date.now() + "");
+    return true;
   }
 
-  updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void {
-    this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
+  async updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): Promise<true> {
+    await this.sessionData.setHashValue(generateGroupToGroupMembersKey(groupId), memberGroupId, JSON.stringify(roleIds));
     //TODO groups need to trigger for nested groups
     //this.setLastModifiedPermissions(memberUserId, Date.now() + "");
+    return true;
   }
 
-
-
-  getGroups(callback: ((groups: Group[]) => void)): void {
-    this.sessionData.getHashValues(SET_ALL_GROUPS,
-      (groupData: string[]) => {
-        callback(groupData.map((x) => Group.convert(x)));
-      });
+  async getGroups(): Promise<Group[]> {
+    let groupData = await this.sessionData.getHashValues(SET_ALL_GROUPS);
+    return groupData.map((x) => Group.convert(x));
   }
 
-  getUsersGroups(userId: string, callback: ((groupIds: string[]) => void)): void {
-    this.sessionData.getSetValues(generateUserToGroupMembershipKey(userId),
-      (groupIds: string[]) => {
-        callback(groupIds);
-      });
+  async getUsersGroups(userId: string): Promise<string[]> {
+    let groupIds = await this.sessionData.getSetValues(generateUserToGroupMembershipKey(userId));
+    return groupIds;
   }
 
-  getGroupsGroups(groupId: string, callback: ((groupIds: string[]) => void)): void {
-    this.sessionData.getSetValues(generateGroupToGroupMembershipKey(groupId),
-      (groupIds: string[]) => {
-        callback(groupIds);
-      });
+  async getGroupsGroups(groupId: string): Promise<string[]> {
+    let groupIds = await this.sessionData.getSetValues(generateGroupToGroupMembershipKey(groupId));
+    return groupIds;
   }
 }

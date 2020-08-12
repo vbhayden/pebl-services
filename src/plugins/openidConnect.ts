@@ -51,48 +51,50 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  refresh(session: Express.Session, callback: (refreshed: boolean) => void): void {
-    if (this.activeClient) {
-      if (session.activeTokens) {
-        this.activeClient.refresh(session.activeTokens.refresh_token)
-          .then((tokenSet) => {
-            if (Object.keys(tokenSet).length != 0) {
-              session.activeTokens = tokenSet;
-              if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
-                session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-                let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-                session.refreshTokenExpiration = Date.now() + refreshExpiration;
-                this.getProfile(session, (refreshed: boolean) => {
-                  this.adjustUserPermissions(session, session.identity.preferred_username,
-                    session.activeTokens.access_token,
-                    () => {
-                      if (refreshed) {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
-                      } else {
-                        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id, session.ip);
-                      }
-                      callback(refreshed);
-                    });
-                });
+  async refresh(session: Express.Session): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.activeClient) {
+        if (session.activeTokens) {
+          this.activeClient.refresh(session.activeTokens.refresh_token)
+            .then(async (tokenSet) => {
+              if (Object.keys(tokenSet).length != 0) {
+                session.activeTokens = tokenSet;
+                if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+                  session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
+                  let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                  session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                  let profile = await this.getProfile(session);
+                  if (profile) {
+                    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
+                    await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
+                  } else {
+                    auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id, session.ip);
+                  }
+                  resolve(profile != null);
+                } else {
+                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
+                  await this.clearActiveTokens(session);
+                  resolve(false);
+                }
               } else {
-                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
-                this.clearActiveTokens(session, callback);
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id, session.ip);
+                await this.clearActiveTokens(session);
+                resolve(false);
               }
-            } else {
-              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoTokensFound", session.id, session.ip);
-              this.clearActiveTokens(session, callback);
-            }
-          }).catch((e) => {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, session.ip, e);
-            this.clearActiveTokens(session, callback);
-          });
+            }).catch(async (e) => {
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshTokenFail", session.id, session.ip, e);
+              await this.clearActiveTokens(session);
+              resolve(false);
+            });
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
+          resolve(false);
+        }
       } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokenStored", session.id, session.ip);
-        callback(false);
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
+        resolve(false);
       }
-    } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
-    }
+    });
   }
 
   login(req: Request, session: Express.Session, res: Response): void {
@@ -174,69 +176,62 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     }
   }
 
-  getProfile(session: Express.Session, callback: (((found: boolean) => void) | Response)): void {
-    if (this.activeClient) {
-      if (session.activeTokens) {
-        this.activeClient.userinfo(session.activeTokens.access_token)
-          .then((userInfo) => {
-            session.identity = userInfo;
-            auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
-            if (callback instanceof Function) {
-              callback(true);
-            } else {
-              callback.send(userInfo).end();
-            }
-          }).catch((err) => {
-            auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
-            if (callback instanceof Function) {
-              this.clearActiveTokens(session, callback);
-            } else {
-              this.clearActiveTokens(session, () => {
-                callback.status(401).end();
-              });
-            }
-          });
-      } else {
-        auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id, session.ip);
-        if (callback instanceof Function) {
-          callback(false);
+  getProfile(session: Express.Session): Promise<{ [key: string]: any } | null> {
+    return new Promise((resolve) => {
+      if (this.activeClient) {
+        if (session.activeTokens) {
+          this.activeClient.userinfo(session.activeTokens.access_token)
+            .then((userInfo) => {
+              session.identity = userInfo;
+              auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
+              resolve(userInfo);
+            }).catch(async (err) => {
+              auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
+              await this.clearActiveTokens(session);
+              resolve(null);
+            });
         } else {
-          callback.status(401).end();
+          auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileNoTokens", session.id, session.ip);
+          resolve(null);
         }
+      } else {
+        auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id, session.ip);
+        resolve(null);
       }
-    } else {
-      auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "GetProfileNoAuthClient", session.id, session.ip);
-    }
-  }
-
-  private clearActiveTokens(session: Express.Session, callback?: (isLoggedIn: false) => void): void {
-    session.destroy(() => {
-      if (callback) callback(false);
     });
   }
 
-  isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
-    if (session.activeTokens) {
-      if (this.isAccessTokenExpired(session)) {
-        if (this.isRefreshTokenExpired(session)) {
-          this.clearActiveTokens(session, callback);
-        } else {
-          this.refresh(session, (refreshed: boolean) => {
+  private async clearActiveTokens(session: Express.Session): Promise<false> {
+    return new Promise((resolve) => {
+      session.destroy(() => {
+        resolve(false);
+      });
+    });
+  }
+
+  isLoggedIn(session: Express.Session): Promise<boolean> {
+    return new Promise(async (resolve) => {
+      if (session.activeTokens) {
+        if (this.isAccessTokenExpired(session)) {
+          if (this.isRefreshTokenExpired(session)) {
+            resolve(this.clearActiveTokens(session));
+          } else {
+            let refreshed = this.refresh(session);
             session.save(() => {
               if (refreshed) {
-                callback(true);
+                resolve(true);
               } else {
-                this.clearActiveTokens(session, callback);
+                resolve(this.clearActiveTokens(session));
               }
             });
-          });
+          }
+        } else {
+          resolve(true);
         }
       } else {
-        callback(true);
+        resolve(false);
       }
-    } else {
-      callback(false);
-    }
+    });
   }
 
   private isAccessTokenExpired(session: Express.Session): boolean {
@@ -253,69 +248,56 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     return true;
   }
 
-  private adjustUserPermissions(session: Express.Session, userId: string, accessToken: string, callback: () => void): void {
+  private async adjustUserPermissions(session: Express.Session, userId: string, accessToken: string): Promise<true> {
 
-    this.userManager.getUserRoles(userId, (roleIds: string[]) => {
-      let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
+    let roleIds = await this.userManager.getUserRoles(userId);
+    let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
 
-      let removeRoles = (roles: string[], done: () => void) => {
-        let role = roles.pop();
-        if (role) {
-          this.userManager.deleteUserRole(userId,
-            role,
-            () => {
-              removeRoles(roles, done);
-            });
-        } else {
-          done();
-        }
-      }
-      if (accessTokenObject.resource_access) {
-        let rolesToRemove: string[] = [];
-        let rolesToAdd: string[] = [];
-        let ps = accessTokenObject.resource_access["PeBL-Services"];
-        if (ps && ps.roles) {
-          for (let incomingRole of ps.roles) {
-            let found = false;
-            for (let roleId of roleIds) {
-              if (roleId === incomingRole) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              rolesToAdd.push(incomingRole);
-            }
-          }
+    if (accessTokenObject.resource_access) {
+      let rolesToRemove: string[] = [];
+      let rolesToAdd: string[] = [];
+      let ps = accessTokenObject.resource_access["PeBL-Services"];
+      if (ps && ps.roles) {
+        for (let incomingRole of ps.roles) {
+          let found = false;
           for (let roleId of roleIds) {
-            let found = false;
-            for (let incomingRole of ps.roles) {
-              if (roleId === incomingRole) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              rolesToRemove.push(roleId);
+            if (roleId === incomingRole) {
+              found = true;
+              break;
             }
           }
-
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
-          removeRoles(rolesToRemove, () => {
-            if (rolesToAdd.length > 0) {
-              this.userManager.addUserRoles(userId, rolesToAdd, (added: boolean) => {
-                callback();
-              });
-            } else {
-              callback();
+          if (!found) {
+            rolesToAdd.push(incomingRole);
+          }
+        }
+        for (let roleId of roleIds) {
+          let found = false;
+          for (let incomingRole of ps.roles) {
+            if (roleId === incomingRole) {
+              found = true;
+              break;
             }
-          });
-        } else {
-          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
-          removeRoles(roleIds, callback);
+          }
+          if (!found) {
+            rolesToRemove.push(roleId);
+          }
+        }
+
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
+        for (let roleId of rolesToRemove) {
+          await this.userManager.deleteUserRole(userId, roleId);
+        }
+        if (rolesToAdd.length > 0) {
+          await this.userManager.addUserRoles(userId, rolesToAdd);
+        }
+      } else {
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
+        for (let roleId of roleIds) {
+          await this.userManager.deleteUserRole(userId, roleId);
         }
       }
-    });
+    }
+    return true;
   }
 
   redirect(req: Request, session: Express.Session, res: Response): void {
@@ -324,26 +306,22 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         this.config.authenticationRedirectURIs[0],
         this.activeClient.callbackParams(req),
         { code_verifier: session.codeVerifier })
-        .then((tokenSet: TokenSet) => {
+        .then(async (tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
             if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
               let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
               session.refreshTokenExpiration = Date.now() + refreshExpiration;
-              this.getProfile(session, (found) => {
-                if (found) {
-                  this.adjustUserPermissions(session, session.identity.preferred_username,
-                    session.activeTokens.access_token,
-                    () => {
-                      auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
-                      res.redirect(session.redirectUrl);
-                    });
-                } else {
-                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id, session.ip);
-                  res.status(401).end();
-                }
-              });
+              let found = await this.getProfile(session);
+              if (found) {
+                await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
+                auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
+                res.redirect(session.redirectUrl);
+              } else {
+                auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoProfileIdentity", session.id, session.ip);
+                res.status(401).end();
+              }
             } else {
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "TokensDontExpire", session.id, session.ip);
               res.status(503).end();

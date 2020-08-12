@@ -22,8 +22,8 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     this.addMessageTemplate(new MessageTemplate("saveEvents",
       this.validateSaveEvents.bind(this),
       this.authorizeSaveEvents.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveEvents(payload.identity, payload.stmts, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveEvents(payload.identity, payload.stmts);
       }));
 
     // this.addMessageTemplate(new MessageTemplate("deleteEvent",
@@ -93,11 +93,13 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   // saveEventsForBook(identity: string, book: string, events: XApiStatement[]): void; // Store the events for this user made within the specific book
 
   // Store the events for this user
-  saveEvents(identity: string, stmts: XApiStatement[], callback: ((success: boolean) => void)): void {
+  async saveEvents(identity: string, stmts: XApiStatement[]): Promise<true> {
+    let arr = [];
     for (let stmt of stmts) {
-      this.sessionData.queueForLrs(JSON.stringify(stmt));
+      arr.push(JSON.stringify(stmt));
     }
-    callback(true);
+    this.sessionData.queueForLrs(arr);
+    return true;
   }
 
   //Removes the event with the specified id

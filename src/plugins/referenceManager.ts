@@ -21,22 +21,22 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     this.addMessageTemplate(new MessageTemplate("getReferences",
       this.validateGetReferences.bind(this),
       this.authorizeGetReferences.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getReferences(payload.identity, payload.timestamp, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getReferences(payload.identity, payload.timestamp);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveReferences",
       this.validateSaveReferences.bind(this),
       this.authorizeSaveReferences.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveReferences(payload.identity, payload.references, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveReferences(payload.identity, payload.references);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteReference",
       this.validateDeleteReference.bind(this),
       this.authorizeDeleteReference.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteReference(payload.identity, payload.xId, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteReference(payload.identity, payload.xId);
       }));
   }
 
@@ -89,21 +89,19 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
     return canUser || canGroup;
   }
 
-  getReferences(identity: string, timestamp: number, callback: (data: { [key: string]: any }) => void): void {
-    this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForReference(identity), timestamp, (data) => {
-      this.sessionData.getHashMultiField(generateUserReferencesKey(identity), data.map((x) => generateReferencesKey(x)), (result) => {
-        callback(result.map(function(x) {
-          let obj = JSON.parse(x);
-          if (Reference.is(obj))
-            return new Reference(obj);
-          else
-            return new Voided(obj);
-        }));
-      });
+  async getReferences(identity: string, timestamp: number): Promise<{ [key: string]: any }> {
+    let data = await this.sessionData.getValuesGreaterThanTimestamp(generateTimestampForReference(identity), timestamp);
+    let result = await this.sessionData.getHashMultiField(generateUserReferencesKey(identity), data.map((x) => generateReferencesKey(x)));
+    return result.map(function(x) {
+      let obj = JSON.parse(x);
+      if (Reference.is(obj))
+        return new Reference(obj);
+      else
+        return new Voided(obj);
     });
   }
 
-  saveReferences(identity: string, references: Reference[], callback: ((success: boolean) => void)): void {
+  async saveReferences(identity: string, references: Reference[]): Promise<true> {
     let arr = [];
     let date = new Date();
     let notifs = [];
@@ -113,37 +111,31 @@ export class DefaultReferenceManager extends PeBLPlugin implements ReferenceMana
       let stmtStr = JSON.stringify(stmt);
       arr.push(generateReferencesKey(stmt.id));
       arr.push(stmtStr);
-      this.sessionData.queueForLrs(stmtStr);
-      this.sessionData.addTimestampValue(generateTimestampForReference(identity), date.getTime(), stmt.id);
-      this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
+      await this.sessionData.queueForLrs(stmtStr);
+      await this.sessionData.addTimestampValue(generateTimestampForReference(identity), date.getTime(), stmt.id);
+      await this.sessionData.broadcast(generateBroadcastQueueForUserId(identity), JSON.stringify(new ServiceMessage(identity, {
         requestType: "newReference",
         data: stmt
       })));
     }
     // this.notificationManager.saveNotifications(identity, notifs, (success) => { });
-    this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
-    callback(true);
+    await this.sessionData.setHashValues(generateUserReferencesKey(identity), arr);
+    return true;
   }
 
-  deleteReference(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserReferencesKey(identity), generateReferencesKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-        let voided = new Reference(JSON.parse(data)).toVoidRecord();
-        this.sessionData.addTimestampValue(generateTimestampForReference(identity), new Date(voided.stored).getTime(), voided.id);
-        this.sessionData.setHashValue(generateUserReferencesKey(identity), generateReferencesKey(voided.id), JSON.stringify(voided));
-      }
-      this.sessionData.deleteSortedTimestampMember(generateTimestampForReference(identity),
-        id,
-        (deleted: number) => {
-          this.sessionData.deleteHashValue(generateUserReferencesKey(identity),
-            generateReferencesKey(id), (result: boolean) => {
-              if (!result) {
-                auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelReferenceFail", identity, id);
-              }
-              callback(result);
-            });
-        });
-    });
+  async deleteReference(identity: string, id: string): Promise<boolean> {
+    let data = await this.sessionData.getHashValue(generateUserReferencesKey(identity), generateReferencesKey(id));
+    if (data) {
+      await this.sessionData.queueForLrsVoid(data);
+      let voided = new Reference(JSON.parse(data)).toVoidRecord();
+      await this.sessionData.addTimestampValue(generateTimestampForReference(identity), new Date(voided.stored).getTime(), voided.id);
+      await this.sessionData.setHashValue(generateUserReferencesKey(identity), generateReferencesKey(voided.id), JSON.stringify(voided));
+    }
+    let timeDelete = await this.sessionData.deleteSortedTimestampMember(generateTimestampForReference(identity), id) > 0;
+    let refDelete = await this.sessionData.deleteHashValue(generateUserReferencesKey(identity), generateReferencesKey(id));
+    if (!refDelete || !timeDelete) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelReferenceFail", identity, id);
+    }
+    return timeDelete && refDelete;
   }
 }

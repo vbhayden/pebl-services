@@ -21,69 +21,59 @@ export class DefaultAuthorizationManager {
     this.pluginManager = pluginManager;
   }
 
-  assemblePermissionSet(identity: string, session: Express.Session, callback: () => void): void {
-    this.userManager.getLastModifiedPermissions(identity, (lastModified: string) => {
+  assemblePermissionSet(identity: string, session: Express.Session): Promise<void> {
+    return new Promise(async (resolve) => {
+      let lastModified: string = await this.userManager.getLastModifiedPermissions(identity);
+
       if ((session.lastModifiedPermissions === undefined) || (lastModified != session.lastModifiedPermissions)) {
-        this.userManager.getUserRoles(identity, (roleIds: string[]) => {
-          this.groupManager.getUsersGroups(identity, (groupIds: string[]) => {
-            let userPermissions: { [permission: string]: boolean } = {};
-            let groupPermissions: { [groupName: string]: { [permission: string]: boolean } } = {};
+        let roleIds: string[] = await this.userManager.getUserRoles(identity);
+        let groupIds: string[] = await this.groupManager.getUsersGroups(identity);
+        let userPermissions: { [permission: string]: boolean } = {};
+        let groupPermissions: { [groupName: string]: { [permission: string]: boolean } } = {};
 
-            this.roleManager.getMultiRole(roleIds, (roles: Role[]) => {
-              for (let role of roles) {
-                for (let permission of Object.keys(role.permissions)) {
-                  userPermissions[permission] = true;
-                }
+        let roles: Role[] = await this.roleManager.getMultiRole(roleIds);
+        for (let role of roles) {
+          for (let permission of Object.keys(role.permissions)) {
+            userPermissions[permission] = true;
+          }
+        }
+
+        //TODO: Do this the right way
+        // Get permissions based on role from keycloak attributes
+        if (session.identity && session.identity.role) {
+          for (let groupId of session.identity.groups) {
+            if (!groupPermissions[groupId])
+              groupPermissions[groupId] = {};
+
+            if (session.identity.role === 'learner')
+              this.setGroupPermissionsLearner(groupPermissions[groupId]);
+            else if (session.identity.role === 'instructor')
+              this.setGroupPermissionsInstructor(groupPermissions[groupId]);
+            else if (session.identity.role === 'admin')
+              this.setGroupPermissionsAdmin(groupPermissions[groupId]);
+          }
+        }
+
+        for (let groupId of groupIds) {
+          //TODO implement nested group permission resolution
+          let roleIds: string[] = await this.groupManager.getGroupMemberUser(groupId, identity);
+          let roles: Role[] = await this.roleManager.getMultiRole(roleIds);
+          for (let role of roles) {
+            for (let permission of Object.keys(role.permissions)) {
+              if (groupId) {
+                groupPermissions[groupId][permission] = true;
               }
-
-              //TODO: Do this the right way
-              // Get permissions based on role from keycloak attributes
-              if (session.identity && session.identity.role) {
-                for (let groupId of session.identity.groups) {
-                  if (!groupPermissions[groupId])
-                    groupPermissions[groupId] = {};
-
-                  if (session.identity.role === 'learner')
-                    this.setGroupPermissionsLearner(groupPermissions[groupId]);
-                  else if (session.identity.role === 'instructor')
-                    this.setGroupPermissionsInstructor(groupPermissions[groupId]);
-                  else if (session.identity.role === 'admin')
-                    this.setGroupPermissionsAdmin(groupPermissions[groupId]);
-                }
-              }
-
-              //TODO implement nested group permission resolution
-              let getGroupRoles = (groupIds: string[]) => {
-                let groupId = groupIds.pop();
-                if (groupId !== undefined) {
-                  this.groupManager.getGroupMemberUser(groupId, identity, (roleIds: string[]) => {
-                    this.roleManager.getMultiRole(roleIds, (roles: Role[]) => {
-                      for (let role of roles) {
-                        for (let permission of Object.keys(role.permissions)) {
-                          if (groupId) {
-                            groupPermissions[groupId][permission] = true;
-                          }
-                        }
-                      }
-                      getGroupRoles(groupIds);
-                    });
-                  });
-                } else {
-                  session.lastModifiedPermissions = lastModified;
-                  session.permissions = new PermissionSet(userPermissions, groupPermissions);
-                  auditLogger.report(LogCategory.AUTH, Severity.INFO, "AssembledPermissions", session.id, roleIds);
-                  session.save(() => {
-                    callback();
-                  });
-                }
-              }
-
-              getGroupRoles(groupIds);
-            });
-          });
+            }
+          }
+        }
+        session.lastModifiedPermissions = lastModified;
+        session.permissions = new PermissionSet(userPermissions, groupPermissions);
+        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AssembledPermissions", session.id, roleIds);
+        session.save(() => {
+          resolve();
         });
       } else {
-        callback();
+        resolve();
       }
     });
   }

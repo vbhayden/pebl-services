@@ -41,7 +41,7 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "InsertReportedThMsgFail", e);
     } finally {
       client.release();
     }
@@ -56,25 +56,27 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "DelReportedThMsgFail", e);
     } finally {
       client.release();
     }
   }
 
-  async getReportedThreadedMessages(bookId: string, teamId: string, classId: string, callback: ((stmts: any) => void)) {
-    const text = 'SELECT messageId, prompt, identity, url, message, count FROM reportedmessages WHERE bookId = $1 AND teamId = $2 AND classId = $3;';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [bookId, teamId, classId]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  getReportedThreadedMessages(bookId: string, teamId: string, classId: string): Promise<any[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT messageId, prompt, identity, url, message, count FROM reportedmessages WHERE bookId = $1 AND teamId = $2 AND classId = $3;';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [bookId, teamId, classId]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetReportedThMsgFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
 
   async insertQuizAttempts(data: Question[]) {
@@ -87,25 +89,27 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "InsertQuizAttemptFail", e);
     } finally {
       client.release();
     }
   }
 
-  async getQuizAttempts(bookId: string, teamId: string, classId: string, callback: ((stmts: any) => void)) {
-    const text = 'SELECT quizId, question, response, correct, count, url FROM quizattempts WHERE bookId = $1 AND teamId = $2 AND classId = $3';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [bookId, teamId, classId]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  getQuizAttempts(bookId: string, teamId: string, classId: string): Promise<any[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT quizId, question, response, correct, count, url FROM quizattempts WHERE bookId = $1 AND teamId = $2 AND classId = $3';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [bookId, teamId, classId]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetQuizAttemptFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
 
   async insertDiscussions(data: Message[]) {
@@ -118,40 +122,44 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "InsertDiscussionFail", e);
     } finally {
       client.release();
     }
   }
 
-  async getMostAnsweredDiscussions(bookId: string, teamId: string, classId: string, callback: ((stmts: any) => void)) {
-    const text = 'SELECT prompt, count, url FROM discussions WHERE bookId = $1 AND teamId = $2 AND classId = $3 ORDER BY count DESC LIMIT 5';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [bookId, teamId, classId]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  getMostAnsweredDiscussions(bookId: string, teamId: string, classId: string): Promise<any[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT prompt, count, url FROM discussions WHERE bookId = $1 AND teamId = $2 AND classId = $3 ORDER BY count DESC LIMIT 5';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [bookId, teamId, classId]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetMostDiscussionFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
 
-  async getLeastAnsweredDiscussions(bookId: string, teamId: string, classId: string, callback: ((stmts: any) => void)) {
-    const text = 'SELECT prompt, count, url FROM discussions WHERE bookId = $1 AND teamId = $2 AND classId = $3 ORDER BY count ASC LIMIT 5';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [bookId, teamId, classId]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  async getLeastAnsweredDiscussions(bookId: string, teamId: string, classId: string): Promise<any[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT prompt, count, url FROM discussions WHERE bookId = $1 AND teamId = $2 AND classId = $3 ORDER BY count ASC LIMIT 5';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [bookId, teamId, classId]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetLeastDiscussionFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
 
   async insertLogins(data: Session[]) {
@@ -163,25 +171,27 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "InsertLoginFail", e);
     } finally {
       client.release();
     }
   }
 
-  async getLogins(teamId: string, classId: string, timestamp: number, callback: ((stmts: string[]) => void)) {
-    const text = 'SELECT DISTINCT identity FROM logins WHERE teamId = $1 AND classId = $2 AND timestamp > $3;';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [teamId, classId, timestamp]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  getLogins(teamId: string, classId: string, timestamp: number): Promise<string[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT DISTINCT identity FROM logins WHERE teamId = $1 AND classId = $2 AND timestamp > $3;';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [teamId, classId, timestamp]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetLoginFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
 
   async insertCompletions(data: Action[]) {
@@ -193,25 +203,26 @@ export class PgSqlDataStore implements SqlDataStore {
         client.query(text, values);
       }
     } catch (e) {
-      console.log(e);
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "InsertCompletionFail", e);
     } finally {
       client.release();
     }
   }
 
-  async getCompletions(bookId: string, teamId: string, classId: string, timestamp: number, callback: ((stmts: { [key: string]: string }[]) => void)) {
-    const text = 'SELECT DISTINCT chapter, identity FROM completions WHERE bookId = $1 AND teamId = $2 AND classId = $3 AND timestamp > $4;';
-    const client = await this.pool.connect();
-    try {
-      client.query(text, [bookId, teamId, classId, timestamp]).then((res) => {
-        callback(res.rows);
-      })
-    } catch (e) {
-      console.log(e);
-      callback([]);
-    } finally {
-      client.release();
-    }
+  getCompletions(bookId: string, teamId: string, classId: string, timestamp: number): Promise<{ [key: string]: string }[]> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT DISTINCT chapter, identity FROM completions WHERE bookId = $1 AND teamId = $2 AND classId = $3 AND timestamp > $4;';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [bookId, teamId, classId, timestamp]).then((res) => {
+          resolve(res.rows);
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "GetCompletionFail", e);
+        resolve([]);
+      } finally {
+        client.release();
+      }
+    });
   }
-
 }

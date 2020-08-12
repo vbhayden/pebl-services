@@ -89,104 +89,90 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
   // }
 
   // Add a user with the specified metadata
-  addUserProfile(id: string, userName: string, callback: (data: any) => void, userEmail?: string): void {
-    this.sessionData.setHashValue(SET_ALL_USERS,
+  async addUserProfile(id: string, userName: string, userEmail?: string): Promise<true> {
+    await this.sessionData.setHashValue(SET_ALL_USERS,
       id,
       JSON.stringify({
         name: userName,
         email: userEmail
       }));
-    callback(true);
+    return true;
   }
 
   // Delete a user with the specified id
-  deleteUserProfile(id: string, callback: (data: any) => void): void {
-    this.sessionData.deleteHashValue(SET_ALL_USERS, id, (deleted: boolean) => {
-      if (!deleted) {
-        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserProfileFail", id);
-      }
-      callback(deleted);
-    });
+  async deleteUserProfile(id: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteHashValue(SET_ALL_USERS, id);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserProfileFail", id);
+    }
+    return deleted;
   }
 
-  addUserRoles(userId: string, roleIds: string[], callback: (data: boolean) => void): void {
+  async addUserRoles(userId: string, roleIds: string[]): Promise<boolean> {
     auditLogger.report(LogCategory.PLUGIN, Severity.DEBUG, "AddUserRoles", userId, roleIds);
-    this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds, (added: number) => {
-      if (added > 0) {
-        this.setLastModifiedPermissions(userId, Date.now() + "");
-        for (let roleId of roleIds) {
-          this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
-        }
-        callback(true);
-      } else {
-        callback(false);
+    let added = await this.sessionData.addSetValue(generateUserToRolesKey(userId), roleIds);
+    if (added > 0) {
+      await this.setLastModifiedPermissions(userId, Date.now() + "");
+      for (let roleId of roleIds) {
+        await this.sessionData.addSetValue(generateRoleToUsersKey(roleId), userId);
       }
-    });
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  getUserRoles(userId: string, callback: (roleIds: string[]) => void): void {
-    this.sessionData.getSetValues(generateUserToRolesKey(userId), callback);
+  async getUserRoles(userId: string): Promise<string[]> {
+    return await this.sessionData.getSetValues(generateUserToRolesKey(userId));
   }
 
-  deleteUserRole(userId: string, roleId: string, callback: (deleted: boolean) => void): void {
-    this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId, (deleted: boolean) => {
-      if (!deleted) {
-        auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
-      }
+  async deleteUserRole(userId: string, roleId: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteSetValue(generateUserToRolesKey(userId), roleId);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
+    }
 
-      this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId, (deleted: boolean) => {
-        if (!deleted) {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
-        }
-        this.setLastModifiedPermissions(userId, Date.now() + "");
-        callback(deleted);
-      });
-    });
+    deleted = await this.sessionData.deleteSetValue(generateRoleToUsersKey(roleId), userId);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserRoleFail", userId, roleId);
+    }
+
+    await this.setLastModifiedPermissions(userId, Date.now() + "");
+    return deleted;
   }
 
   // Update user metadata
-  updateUserProfile(id: string, callback: (data: any) => void, userName?: string, userEmail?: string): void {
-    this.sessionData.setHashValue(SET_ALL_USERS,
+  async updateUserProfile(id: string, userName?: string, userEmail?: string): Promise<true> {
+    await this.sessionData.setHashValue(SET_ALL_USERS,
       id,
       JSON.stringify({
         name: userName,
         email: userEmail
       }));
-    callback(true);
+    return true;
   }
 
   //Get the specified users profile
-  getUserProfile(id: string, callback: ((user: UserProfile) => void)): void {
-    this.sessionData.getHashValue(SET_ALL_USERS,
-      id,
-      (data?: string) => {
-        if (data !== undefined) {
-          callback(new UserProfile(JSON.parse(data)));
-        }
-      });
+  async getUserProfile(id: string): Promise<UserProfile> {
+    let data: string | undefined = await this.sessionData.getHashValue(SET_ALL_USERS, id);
+    if (data === undefined) {
+      data = "{}";
+    }
+    return new UserProfile(JSON.parse(data));
   }
 
   // Get all users
-  getUsers(callback: ((users: UserProfile[]) => void)): void {
-    this.sessionData.getHashValues(SET_ALL_USERS,
-      (data: string[]) => {
-        callback(data.map((x) => new UserProfile(JSON.parse(x))));
-      });
+  async getUsers(): Promise<UserProfile[]> {
+    let data: string[] = await this.sessionData.getHashValues(SET_ALL_USERS);
+    return data.map((x) => new UserProfile(JSON.parse(x)));
   }
 
-  getLastModifiedPermissions(identity: string, callback: (lastModified: string) => void): void {
-    this.sessionData.getHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS,
-      identity,
-      (lastModified?: string) => {
-        if (lastModified !== undefined) {
-          callback(lastModified);
-        } else {
-          callback("");
-        }
-      });
+  async getLastModifiedPermissions(identity: string): Promise<string> {
+    let lastModified: string | undefined = await this.sessionData.getHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity);
+    return lastModified !== undefined ? lastModified : "";
   }
 
-  setLastModifiedPermissions(identity: string, lastModified: string): void {
-    this.sessionData.setHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity, lastModified);
+  async setLastModifiedPermissions(identity: string, lastModified: string): Promise<boolean> {
+    return (await this.sessionData.setHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity, lastModified)) > 0;
   }
 }
