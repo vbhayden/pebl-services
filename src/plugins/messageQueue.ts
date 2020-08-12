@@ -52,14 +52,14 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.subscriber = redis.createClient(redisConfig);
     this.subscriber.subscribe(QUEUE_ACTIVE_JOBS);
     this.subscriber.subscribe(QUEUE_ALL_USERS);
-    this.subscriber.on('message', (channel: string, message: string) => {
+    this.subscriber.on('message', async (channel: string, message: string) => {
       if (channel === QUEUE_INCOMING_MESSAGE) {
         this.receiveIncomingMessages();
       } else if (channel === QUEUE_ACTIVE_JOBS) {
         let job = JobMessage.parse(message);
         let startTime = this.runningJobs[job.jobType];
         if (!(startTime && (startTime == job.startTime) && !job.finished)) {
-          this.processActiveJob(job);
+          await this.processActiveJob(job);
         }
       } else if (channel.startsWith(QUEUE_REALTIME_BROADCAST_PREFIX)) {
         let userid = channel.substr(QUEUE_REALTIME_BROADCAST_PREFIX.length);
@@ -110,23 +110,23 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     return new Promise(async (resolve) => {
       jobMessage.startTime = Date.now();
 
-      let didSet = this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
+      let didSet = await this.sessionDataManager.setHashValueIfNotExisting(SET_ALL_ACTIVE_JOBS,
         jobMessage.jobType,
         JSON.stringify(jobMessage));
       if (didSet) {
         clearTimeout(this.timeouts[jobMessage.jobType]);
         auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobStarted', jobMessage);
         await this.sessionDataManager.broadcast(QUEUE_ACTIVE_JOBS, JSON.stringify(jobMessage));
-        this.dispatchJobMessage(jobMessage);
+        await this.dispatchJobMessage(jobMessage);
         resolve();
       } else {
         auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobAlreadyStarted', jobMessage);
         if (startup) {
           let data = await this.sessionDataManager.getHashValue(SET_ALL_ACTIVE_JOBS, jobMessage.jobType);
           if (data) {
-            this.processActiveJob(JobMessage.parse(data));
+            await this.processActiveJob(JobMessage.parse(data));
           } else {
-            this.processJob(jobMessage);
+            await this.processJob(jobMessage);
           }
         }
         resolve();
@@ -187,7 +187,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       let upgradeJob = new JobMessage(JOB_TYPE_UPGRADE, UPGRADE_REDIS_TIMEOUT);
       await this.processJob(upgradeJob, true);
     } else {
-      this.startProcessing();
+      await this.startProcessing();
     }
   }
 
@@ -207,18 +207,19 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  createOutgoingQueue(sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
-    this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
-      if (err) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateOutQueueFail", sessionId, err);
-        callback(false);
-      } else if (resp === 1) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateOutQueue", sessionId, err);
-        callback(true);
-      }
-      this.rsmq.setQueueAttributes({ qname: sessionId, maxsize: -1 }, () => {
-        this.sessionSocketMap[sessionId] = websocket;
-        this.subscriber.subscribe(generateOutgoingQueueForId(sessionId));
+  createOutgoingQueue(sessionId: string, websocket: WebSocket): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.rsmq.createQueue({ qname: sessionId, maxsize: -1 }, (err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "CreateOutQueueFail", sessionId, err);
+        } else if (resp === 1) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "CreateOutQueue", sessionId, err);
+        }
+        this.rsmq.setQueueAttributes({ qname: sessionId, maxsize: -1 }, async () => {
+          this.sessionSocketMap[sessionId] = websocket;
+          this.subscriber.subscribe(generateOutgoingQueueForId(sessionId));
+          resolve(!err && (resp === 1));
+        });
       });
     });
   }
@@ -242,10 +243,13 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     this.receiveIncomingMessages();
   }
 
-  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket, callback: ((success: boolean) => void)): void {
-    this.useridSocketMap[userid] = websocket;
-    this.subscriber.subscribe(generateBroadcastQueueForUserId(userid));
-    callback(true);
+  subscribeNotifications(userid: string, sessionId: string, websocket: WebSocket): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.useridSocketMap[userid] = websocket;
+      this.subscriber.subscribe(generateBroadcastQueueForUserId(userid), () => {
+        resolve(true);
+      });
+    });
   }
 
   removeOutgoingQueue(sessionId: string): void {
@@ -261,42 +265,43 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     delete this.useridSocketMap[userid];
   }
 
-  enqueueIncomingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
-    this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
-      if (err) {
-        auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err, message.sessionId);
-        return callback(false);
-      }
-      callback(true);
+  enqueueIncomingMessage(message: ServiceMessage): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.rsmq.sendMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, message: JSON.stringify(message) }, function(err, resp) {
+        if (err) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddInMsgFail", err, message.sessionId);
+        }
+        resolve(!err)
+      });
     });
   }
 
-  enqueueOutgoingMessage(message: ServiceMessage, callback: ((success: boolean) => void)): void {
-    if (message.sessionId) {
-      this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
-        if (err) {
-          auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
-          callback(false);
-        } else {
-           callback(true);
-        }
-      });
-    } else {
-      callback(false);
-    }
+  enqueueOutgoingMessage(message: ServiceMessage): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (message.sessionId) {
+        this.rsmq.sendMessage({ qname: message.sessionId, message: JSON.stringify(message) }, function(err, resp) {
+          if (err) {
+            auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "AddOutMsgFail", err, message.sessionId, message.messageId, message.getRequestType());
+          }
+          resolve(!err);
+        });
+      } else {
+        resolve(false);
+      }
+    });
   }
 
-  dispatchJobMessage(message: JobMessage): void {
+  async dispatchJobMessage(message: JobMessage): Promise<void> {
     if (this.terminating) {
-      this.clearActiveJob(message);
+      await this.clearActiveJob(message);
       return;
     }
     this.runningJobs[message.jobType] = message.startTime ? message.startTime : 0;
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobDispatch', message);
     if (message.jobType === 'cleanup') {
-      this.dispatchCleanup(message);
+      await this.dispatchCleanup(message);
     } else if (message.jobType === 'lrsSync') {
-      this.dispatchToLrs(message);
+      await this.dispatchToLrs(message);
     } else if (message.jobType === JOB_TYPE_UPGRADE) {
       this.dispatchUpgradeProtocol(message);
     } else {
@@ -306,10 +311,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   private dispatchUpgradeProtocol(message: JobMessage): void {
     let sp = this.startProcessing.bind(this);
-    upgradeRedis(this.sessionDataManager, this.version, () => {
+    upgradeRedis(this.sessionDataManager, this.version, async () => {
       sp();
       this.version = currentRedisVersion();
-      this.clearActiveJob(message);
+      await this.clearActiveJob(message);
       auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeSuccessful", this.version);
     });
   }
@@ -339,11 +344,11 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     if (values && !this.upgradeInProgress) {
       let vals = this.lrsManager.parseStatements(values);
       if (vals[0].length > 0) {
-        this.lrsManager.storeStatements(vals[0], () => {
-          this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
+        this.lrsManager.storeStatements(vals[0], async () => {
+          await this.sessionDataManager.trimForLrs(LRS_SYNC_LIMIT);
           auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'JobSuccess', message);
-          this.clearActiveJob(message);
-        }, (e) => {
+          await this.clearActiveJob(message);
+        }, async (e) => {
           auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, 'LRSPostFailed', e);
           if (!(e instanceof Error)) {
             let errJson;
@@ -356,7 +361,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
                     let stmt = vals[3][chunk]
                     if (stmt) {
                       auditLogger.report(LogCategory.SYSTEM, Severity.NOTICE, "LRSDelStmt", stmt);
-                      this.sessionDataManager.removeBadLRSStatement(stmt);
+                      await this.sessionDataManager.removeBadLRSStatement(stmt);
                     }
                   }
                 }
@@ -388,10 +393,10 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
               auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "LRSBadJsonParse", e);
             }
           }
-          this.clearActiveJob(message);
+          await this.clearActiveJob(message);
         });
       } else {
-        this.clearActiveJob(message);
+        await this.clearActiveJob(message);
       }
       if (vals[1].length > 0)
         for (let activity of vals[1])
@@ -401,9 +406,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
           this.lrsManager.storeProfile(profile, (success) => { });
     } else if (!this.upgradeInProgress) {
       auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchLRSUpgInPrg", message);
-      this.clearActiveJob(message);
+      await this.clearActiveJob(message);
     } else {
-      this.clearActiveJob(message);
+      await this.clearActiveJob(message);
     }
   }
 
@@ -427,7 +432,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         o,
         message.sessionId,
         message.messageId);
-      this.dispatchToClient(sm);
+      await this.dispatchToClient(sm);
     } else {
       auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "CacheBadMsgTemplate", message);
       if (message.messageId) {
@@ -437,31 +442,30 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     }
   }
 
-  private dispatchToClient(message: ServiceMessage): void {
-    this.enqueueOutgoingMessage(message, (success) => {
-      if (message.messageId) {
-        if (!success) {
-          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DroppingOutgoingMsg", message.messageId, message.sessionId, message.getRequestType());
-        }
-        this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
-          if (err) {
-            auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DelMsgInQueueFail", err);
-          }
-        });
+  private async dispatchToClient(message: ServiceMessage): Promise<void> {
+    if (message.messageId) {
+      let success = await this.enqueueOutgoingMessage(message);
+      if (!success) {
+        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DroppingOutgoingMsg", message.messageId, message.sessionId, message.getRequestType());
       }
-    });
+      this.rsmq.deleteMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES, id: message.messageId }, (err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DelMsgInQueueFail", err);
+        }
+      });
+    }
   }
 
   private receiveIncomingMessages(): void {
     if (!this.upgradeInProgress && !this.terminating) {
-      this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES }, (err, resp: RedisSMQ.QueueMessage | {}) => {
+      this.rsmq.receiveMessage({ qname: MESSAGE_QUEUE_INCOMING_MESSAGES }, async (err, resp: RedisSMQ.QueueMessage | {}) => {
         if (err) {
           auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "receiveIncomeMsgFailed");
         }
         if (this.isQueueMessage(resp)) {
           let serviceMessage = ServiceMessage.parse(resp.message);
           serviceMessage.messageId = resp.id;
-          this.dispatchToCache(serviceMessage);
+          await this.dispatchToCache(serviceMessage);
           //Call function again until no messages are received
           this.receiveIncomingMessages();
         }
@@ -535,7 +539,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "SessionCleanupFail", message);
         await this.clearActiveJob(message);
       } else {
-        scanAll('0', 'sess:*', [], (sessions: string[]) => {
+        scanAll('0', 'sess:*', [], async (sessions: string[]) => {
           let filtered = queues.filter((queue: string) => {
             if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
               return false;
@@ -550,7 +554,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
             auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "DispatchCleanUpgInPrg", message);
           }
 
-          this.clearActiveJob(message);
+          await this.clearActiveJob(message);
         });
       }
     });

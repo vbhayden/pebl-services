@@ -349,67 +349,62 @@ pluginManager.register(navigationManager);
     res.send('Hello World!, version ' + config.version).end();
   });
 
-  expressApp.get('/login', (req: Request, res: Response) => {
+  expressApp.get('/login', async (req: Request, res: Response) => {
     if (req.session) {
-      authenticationManager.isLoggedIn(req.session,
-        (isLoggedIn: boolean) => {
-          if (req.session) {
-            auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogin", req.session.id, isLoggedIn);
-            if (isLoggedIn) {
-              validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
-            } else {
-              authenticationManager.login(req, req.session, res);
-            }
-          } else {
-            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession", req.ip);
-            res.status(503).end();
-          }
-        });
+      let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+      if (req.session) {
+        auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogin", req.session.id, isLoggedIn);
+        if (isLoggedIn) {
+          validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
+        } else {
+          authenticationManager.login(req, req.session, res);
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession", req.ip);
+        res.status(503).end();
+      }
     } else {
       auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLoginNoSession", req.ip);
       res.status(503).end();
     }
   });
 
-  expressApp.get('/redirect', function(req: Request, res: Response) {
+  expressApp.get('/redirect', async (req: Request, res: Response) => {
     if (req.session) {
-      authenticationManager.isLoggedIn(req.session,
-        (isLoggedIn: boolean) => {
-          if (req.session) {
-            auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLRedirect", req.session.id, isLoggedIn);
-            if (isLoggedIn) {
-              auditLogger.report(LogCategory.NETWORK, Severity.INFO, "URLRedirectLoggedIn", req.session.id, req.session.ip);
-              res.status(200).end();
-            } else {
-              authenticationManager.redirect(req, req.session, res);
-            }
-          } else {
-            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession", req.ip);
-            res.status(503).end();
-          }
-        });
+      let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+      if (req.session) {
+        auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLRedirect", req.session.id, isLoggedIn);
+        if (isLoggedIn) {
+          auditLogger.report(LogCategory.NETWORK, Severity.INFO, "URLRedirectLoggedIn", req.session.id, req.session.ip);
+          res.status(200).end();
+        } else {
+          authenticationManager.redirect(req, req.session, res);
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession", req.ip);
+        res.status(503).end();
+      }
+
     } else {
       auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLRedirectNoSession", req.ip);
       res.status(503).end();
     }
   });
 
-  expressApp.get('/logout', function(req: Request, res: Response) {
+  expressApp.get('/logout', async (req: Request, res: Response) => {
     if (req.session) {
-      authenticationManager.isLoggedIn(req.session,
-        (isLoggedIn: boolean) => {
-          if (req.session) {
-            auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogout", req.session.id, isLoggedIn);
-            if (isLoggedIn) {
-              authenticationManager.logout(req, req.session, res);
-            } else {
-              validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
-            }
-          } else {
-            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
-            res.status(503).end();
-          }
-        });
+      let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+      if (req.session) {
+        auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLLogout", req.session.id, isLoggedIn);
+        if (isLoggedIn) {
+          authenticationManager.logout(req, req.session, res);
+        } else {
+          validateAndRedirectUrl(validRedirectDomainLookup, req.session, res, req.query["redirectUrl"] as string);
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
+        res.status(503).end();
+      }
     } else {
       auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLLogoutNoSession", req.ip);
       res.status(503).end();
@@ -418,27 +413,25 @@ pluginManager.register(navigationManager);
 
   expressApp.get('/user/profile', async (req: Request, res: Response) => {
     if (req.session) {
-      authenticationManager.isLoggedIn(req.session,
-        async (isLoggedIn: boolean) => {
-          if (req.session) {
-            auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLGetProfile", req.session.id, isLoggedIn);
-            if (isLoggedIn) {
-              let profile = await authenticationManager.getProfile(req.session);
-              if (profile) {
-                res.send(profile).end();
-              } else {
-                auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileNotFound", req.session.id, req.session.ip);
-                res.status(401).end();
-              }
-            } else {
-              auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileAuthFail", req.session.id, req.session.ip);
-              res.status(401).end();
-            }
+      let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+      if (req.session) {
+        auditLogger.report(LogCategory.NETWORK, Severity.DEBUG, "URLGetProfile", req.session.id, isLoggedIn);
+        if (isLoggedIn) {
+          let profile = await authenticationManager.getProfile(req.session);
+          if (profile) {
+            res.send(profile).end();
           } else {
-            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession", req.ip);
-            res.status(503).end();
+            auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileNotFound", req.session.id, req.session.ip);
+            res.status(401).end();
           }
-        });
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.ERROR, "URLProfileAuthFail", req.session.id, req.session.ip);
+          res.status(401).end();
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession", req.ip);
+        res.status(503).end();
+      }
     } else {
       auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "URLProfileNoSession", req.ip);
       res.status(503).end();
@@ -454,7 +447,7 @@ pluginManager.register(navigationManager);
       let username = req.session.identity.preferred_username;
       authorizationManager.assemblePermissionSet(username,
         req.session,
-        () => {
+        async () => {
           if (req.session) {
             let authorized = authorizationManager.authorize(username,
               req.session.permissions,
@@ -468,7 +461,7 @@ pluginManager.register(navigationManager);
 
             if (authorized) {
               let serviceMessage = new ServiceMessage(username, payload, req.session.id);
-              messageQueue.enqueueIncomingMessage(serviceMessage, function(success: boolean) { });
+              await messageQueue.enqueueIncomingMessage(serviceMessage);
             } else if (ws.readyState == 1) {
               ws.send(JSON.stringify({
                 identity: username,
@@ -488,7 +481,7 @@ pluginManager.register(navigationManager);
     }
   };
 
-  expressApp.ws('/', function(ws: WebSocket, req: Request) {
+  expressApp.ws('/', async (ws: WebSocket, req: Request) => {
     let originUrl = <string>req.headers["origin"];
 
     let origin;
@@ -513,155 +506,152 @@ pluginManager.register(navigationManager);
         return;
       }
       if (req.session) {
-        authenticationManager.isLoggedIn(req.session,
-          (isLoggedIn: boolean) => {
-            if (isLoggedIn && req.session) {
-              let sessionId = req.session.id
-              let username = req.session.identity.preferred_username;
+        let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+        if (isLoggedIn && req.session) {
+          let sessionId = req.session.id
+          let username = req.session.identity.preferred_username;
 
-              messageQueue.createOutgoingQueue(sessionId, ws, (success: boolean) => { });
-              messageQueue.subscribeNotifications(username, sessionId, ws, (success: boolean) => { });
+          await messageQueue.createOutgoingQueue(sessionId, ws);
+          await messageQueue.subscribeNotifications(username, sessionId, ws);
 
-              let processMessages = (messages: { [key: string]: any }[]) => {
-                let payload = messages.pop();
-                if (payload) {
-                  if (!validationManager.validate(payload)) {
-                    auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip, payload.requestType);
-                    if (ws.readyState === 1) {
-                      ws.send(JSON.stringify({
-                        identity: username,
-                        requestType: "error",
-                        payload: {
-                          description: "Invalid Message",
-                          payload: payload
-                        }
-                      }));
-                    }
-                    processMessages(messages);
-                  } else if (req.session) {
-                    authenticationManager.isLoggedIn(req.session, (isLoggedIn: boolean): void => {
-                      if (isLoggedIn && payload) {
-                        processMessage(ws, req, payload);
-                        processMessages(messages);
-                      } else {
-                        auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId, req.ip);
-                        if (ws.readyState === 1) {
-                          ws.send(JSON.stringify({
-                            identity: username,
-                            requestType: "loggedOut"
-                          }));
-                          ws.close();
-                        }
-                      }
-                    });
-                  }
-                }
-              };
-
-              let messageHandler = async () => {
-                let clearedNotificationTimestamp = await redisCache.getAllHashPairs(generateUserClearedTimestamps(username));
-                let clearedNotifications = await redisCache.getSetValues(generateUserClearedNotificationsKey(username));
+          let processMessages = async (messages: { [key: string]: any }[]) => {
+            let payload = messages.pop();
+            if (payload) {
+              if (!validationManager.validate(payload)) {
+                auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalid", sessionId, req.ip, payload.requestType);
                 if (ws.readyState === 1) {
                   ws.send(JSON.stringify({
                     identity: username,
-                    requestType: "serverReady"
-                  }));
-                  ws.send(JSON.stringify({
-                    identity: username,
-                    requestType: "setLastNotifiedDates",
-                    clearedTimestamps: clearedNotificationTimestamp,
-                    clearedNotifications: clearedNotifications
-                  }));
-
-                  ws.on('message', (msg) => {
-                    if (req.session) {
-                      if (typeof msg === 'string') {
-                        let payload: any;
-                        try {
-                          payload = JSON.parse(msg);
-                        } catch (e) {
-                          auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
-                          if (ws.readyState === 1) {
-                            ws.send(JSON.stringify({
-                              identity: username,
-                              requestType: "error",
-                              payload: {
-                                description: "Bad Message",
-                                target: msg
-                              }
-                            }));
-                          }
-                          return;
-                        }
-
-                        if (!validationManager.isMessageFormat(payload)) {
-                          auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
-                          if (ws.readyState === 1) {
-                            ws.send(JSON.stringify({
-                              identity: username,
-                              requestType: "error",
-                              payload: {
-                                description: "Invalid Message Format",
-                                target: payload.id,
-                                payload: payload
-                              }
-                            }));
-                          }
-                        }
-
-                        let messages;
-                        if (payload.requestType == "bulkPush") {
-                          messages = payload.data;
-                        } else {
-                          messages = [payload];
-                        }
-
-                        req.session.touch();
-                        processMessages(messages);
-                      }
-                    } else {
-                      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
-                      if (ws.readyState === 1) {
-                        ws.close();
-                      }
+                    requestType: "error",
+                    payload: {
+                      description: "Invalid Message",
+                      payload: payload
                     }
-                  });
+                  }));
+                }
+                processMessages(messages);
+              } else if (req.session) {
+                let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+                if (isLoggedIn && payload) {
+                  processMessage(ws, req, payload);
+                  processMessages(messages);
                 } else {
-                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "SocketClosedMain", username, sessionId, req.ip);
+                  auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId, req.ip);
+                  if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({
+                      identity: username,
+                      requestType: "loggedOut"
+                    }));
+                    ws.close();
+                  }
                 }
               }
-
-              archiveManager.isUserArchived(username,
-                (isArchived: boolean) => {
-                  if (!isArchived) {
-                    messageHandler();
-                  } else {
-                    // retrieve archive data
-                    archiveManager.setUserArchived(username,
-                      false,
-                      () => {
-                        messageHandler();
-                      });
-                  }
-                });
-
-              if (ws.readyState === 1) {
-                ws.on('close', function() {
-                  messageQueue.removeOutgoingQueue(sessionId);
-                  messageQueue.unsubscribeNotifications(username);
-                });
-              }
-            } else {
-              auditLogger.report(LogCategory.AUTH, Severity.WARNING, "ProcessMsgInvalidAuth", req.ip);
-              if (ws.readyState === 1) {
-                ws.send(JSON.stringify({
-                  identity: "guest",
-                  requestType: "loggedOut"
-                }));
-                ws.close();
-              }
             }
-          });
+          };
+
+          let messageHandler = async () => {
+            let clearedNotificationTimestamp = await redisCache.getAllHashPairs(generateUserClearedTimestamps(username));
+            let clearedNotifications = await redisCache.getSetValues(generateUserClearedNotificationsKey(username));
+            if (ws.readyState === 1) {
+              ws.send(JSON.stringify({
+                identity: username,
+                requestType: "serverReady"
+              }));
+              ws.send(JSON.stringify({
+                identity: username,
+                requestType: "setLastNotifiedDates",
+                clearedTimestamps: clearedNotificationTimestamp,
+                clearedNotifications: clearedNotifications
+              }));
+
+              ws.on('message', (msg) => {
+                if (req.session) {
+                  if (typeof msg === 'string') {
+                    let payload: any;
+                    try {
+                      payload = JSON.parse(msg);
+                    } catch (e) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "BadMessageFormat", req.session.id, req.ip, e);
+                      if (ws.readyState === 1) {
+                        ws.send(JSON.stringify({
+                          identity: username,
+                          requestType: "error",
+                          payload: {
+                            description: "Bad Message",
+                            target: msg
+                          }
+                        }));
+                      }
+                      return;
+                    }
+
+                    if (!validationManager.isMessageFormat(payload)) {
+                      auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "InvalidMessageFormat", req.session.id, req.ip);
+                      if (ws.readyState === 1) {
+                        ws.send(JSON.stringify({
+                          identity: username,
+                          requestType: "error",
+                          payload: {
+                            description: "Invalid Message Format",
+                            target: payload.id,
+                            payload: payload
+                          }
+                        }));
+                      }
+                    }
+
+                    let messages;
+                    if (payload.requestType == "bulkPush") {
+                      messages = payload.data;
+                    } else {
+                      messages = [payload];
+                    }
+
+                    req.session.touch();
+                    processMessages(messages);
+                  }
+                } else {
+                  auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession", username, sessionId, req.ip);
+                  if (ws.readyState === 1) {
+                    ws.close();
+                  }
+                }
+              });
+            } else {
+              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "SocketClosedMain", username, sessionId, req.ip);
+            }
+          }
+
+          archiveManager.isUserArchived(username,
+            (isArchived: boolean) => {
+              if (!isArchived) {
+                messageHandler();
+              } else {
+                // retrieve archive data
+                archiveManager.setUserArchived(username,
+                  false,
+                  () => {
+                    messageHandler();
+                  });
+              }
+            });
+
+          if (ws.readyState === 1) {
+            ws.on('close', function() {
+              messageQueue.removeOutgoingQueue(sessionId);
+              messageQueue.unsubscribeNotifications(username);
+            });
+          }
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.WARNING, "ProcessMsgInvalidAuth", req.ip);
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              identity: "guest",
+              requestType: "loggedOut"
+            }));
+            ws.close();
+          }
+        }
       } else {
         auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSNoSession", req.ip);
         if (ws.readyState === 1) {

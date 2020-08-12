@@ -53,6 +53,7 @@ export class LinkedInAuthentication implements AuthenticationManager {
         }
       } else {
         auditLogger.report(LogCategory.AUTH, Severity.EMERGENCY, "RefreshNoAuthClient", session.id, session.ip);
+        resolve(false);
       }
     });
   }
@@ -189,16 +190,18 @@ export class LinkedInAuthentication implements AuthenticationManager {
     });
   }
 
-  isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void {
-    if (session.activeTokens) {
-      if (this.isAccessTokenExpired(session)) {
-        this.clearActiveTokens(session);
+  isLoggedIn(session: Express.Session): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (session.activeTokens) {
+        if (this.isAccessTokenExpired(session)) {
+          this.clearActiveTokens(session);
+        } else {
+          resolve(true);
+        }
       } else {
-        callback(true);
+        resolve(false);
       }
-    } else {
-      callback(false);
-    }
+    });
   }
 
   private isAccessTokenExpired(session: Express.Session): boolean {

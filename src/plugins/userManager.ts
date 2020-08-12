@@ -101,7 +101,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   // Delete a user with the specified id
   async deleteUserProfile(id: string): Promise<boolean> {
-    let deleted = this.sessionData.deleteHashValue(SET_ALL_USERS, id);
+    let deleted = await this.sessionData.deleteHashValue(SET_ALL_USERS, id);
     if (!deleted) {
       auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelUserProfileFail", id);
     }

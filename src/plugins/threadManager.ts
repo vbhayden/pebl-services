@@ -651,7 +651,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         reports.push(message);
     }
     if (reports.length > 0)
-      this.sqlData.insertReportedThreadedMessages(reports);
+      await this.sqlData.insertReportedThreadedMessages(reports);
 
     return true;
   }
@@ -842,7 +842,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
       messageIds.push(messageId);
     }
     if (messageIds.length > 0) {
-      this.sqlData.deleteReportedThreadedMessage(messageIds)
+      await this.sqlData.deleteReportedThreadedMessage(messageIds)
     }
     return true;
   }

@@ -238,7 +238,7 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
   }
 
   async deleteGroupMemberUser(groupId: string, memberUserId: string): Promise<boolean> {
-    let deleted = this.sessionData.deleteHashValue(generateGroupToUserMembersKey(groupId), memberUserId);
+    let deleted = await this.sessionData.deleteHashValue(generateGroupToUserMembersKey(groupId), memberUserId);
     if (!deleted) {
       auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelGroupMemUserFail", groupId, memberUserId);
     }

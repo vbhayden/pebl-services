@@ -8,7 +8,7 @@ export interface AuthenticationManager {
   getProfile(session: Express.Session): Promise<{ [key: string]: any } | null>;
   redirect(req: Request, session: Express.Session, res: Response): void;
 
-  isLoggedIn(session: Express.Session, callback: (isLoggedIn: boolean) => void): void;
+  isLoggedIn(session: Express.Session): Promise<boolean>;
 
   // isRefreshTokenExpired(session: Express.Session): boolean;
   // isAccessTokenExpired(session: Express.Session): boolean

@@ -171,7 +171,7 @@ export class DefaultActionManager extends PeBLPlugin implements ActionManager {
     }
     await this.sessionData.queueForLrs(arr);
     if (completions.length > 0) {
-      this.sqlData.insertCompletions(completions);
+      await this.sqlData.insertCompletions(completions);
     }
     return true;
   }

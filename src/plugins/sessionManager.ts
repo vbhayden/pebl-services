@@ -97,13 +97,15 @@ export class DefaultSessionManager extends PeBLPlugin implements SessionManager 
 
   async saveSessions(identity: string, sessions: Session[]): Promise<true> {
     let logins = [];
+    let arr = [];
     for (let session of sessions) {
-      await this.sessionData.queueForLrs(JSON.stringify(session));
+      arr.push(JSON.stringify(session));
       if (Session.isLogin(session))
         logins.push(session);
     }
+    await this.sessionData.queueForLrs(arr);
     if (logins.length > 0)
-      this.sqlData.insertLogins(logins);
+      await this.sqlData.insertLogins(logins);
 
     return true;
   }

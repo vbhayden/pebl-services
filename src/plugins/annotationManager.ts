@@ -426,7 +426,7 @@ export class DefaultAnnotationManager extends PeBLPlugin implements AnnotationMa
       let users = await this.getSubscribedUsers(stmt.groupId);
       for (let user of users) {
         if (user !== identity) { //Don't send the message to the sender
-          this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
+          await this.sessionData.broadcast(generateBroadcastQueueForUserId(user), JSON.stringify(new ServiceMessage(user, {
             requestType: "newSharedAnnotation",
             data: [stmt]
           })));
