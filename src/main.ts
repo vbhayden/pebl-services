@@ -76,6 +76,8 @@ let express = require('express');
 
 let expressApp = express();
 
+let shuttingDown = false;
+
 if (process.argv.length < 3) {
   console.error("command should include a path to the server configuration json", process.argv);
   console.error("node <pathToScript> <pathToConfigurationJson>");
@@ -442,40 +444,34 @@ pluginManager.register(navigationManager);
     authenticationManager.validate(req.body.token, req, res);
   });
 
-  let processMessage = (ws: WebSocket, req: Request, payload: { [key: string]: any }): void => {
+  let processMessage = async (ws: WebSocket, req: Request, payload: { [key: string]: any }): Promise<void> => {
     if (req && req.session) {
       let username = req.session.identity.preferred_username;
-      authorizationManager.assemblePermissionSet(username,
-        req.session,
-        async () => {
-          if (req.session) {
-            let authorized = authorizationManager.authorize(username,
-              req.session.permissions,
-              payload);
+      await authorizationManager.assemblePermissionSet(username, req.session);
+      if (req.session) {
+        let authorized = authorizationManager.authorize(username, req.session.permissions, payload);
+        if (authorized) {
+          auditLogger.report(LogCategory.MESSAGE, Severity.INFO, "MsgAuthorized", req.session.id, req.session.ip, username, payload.requestType);
+        } else {
+          auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, payload.requestType);
+        }
 
-            if (authorized) {
-              auditLogger.report(LogCategory.MESSAGE, Severity.INFO, "MsgAuthorized", req.session.id, req.session.ip, username, payload.requestType);
-            } else {
-              auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, payload.requestType);
+        if (authorized) {
+          let serviceMessage = new ServiceMessage(username, payload, req.session.id);
+          await messageQueue.enqueueIncomingMessage(serviceMessage);
+        } else if (ws.readyState == 1) {
+          ws.send(JSON.stringify({
+            identity: username,
+            requestType: "error",
+            payload: {
+              description: "Unauthorized message",
+              target: payload
             }
-
-            if (authorized) {
-              let serviceMessage = new ServiceMessage(username, payload, req.session.id);
-              await messageQueue.enqueueIncomingMessage(serviceMessage);
-            } else if (ws.readyState == 1) {
-              ws.send(JSON.stringify({
-                identity: username,
-                requestType: "error",
-                payload: {
-                  description: "Unauthorized message",
-                  target: payload
-                }
-              }));
-            }
-          } else {
-            auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
-          }
-        });
+          }));
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
+      }
     } else {
       auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
     }
@@ -498,11 +494,16 @@ pluginManager.register(navigationManager);
       auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "WSBadOrigin", req.session?.id, req.ip, originUrl);
       return;
     } else {
-      if (messageQueue.isUpgradeInProgress()) {
+      if (messageQueue.isUpgradeInProgress() || shuttingDown) {
         if (ws.readyState === 1) {
           ws.close();
         }
-        auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "UpgradeInProgress", req.session?.id, req.ip, originUrl);
+        auditLogger.report(LogCategory.SYSTEM,
+          Severity.INFO,
+          shuttingDown ? "ShuttingDown" : "UpgradeInProgress",
+          req.session?.id,
+          req.ip,
+          originUrl);
         return;
       }
       if (req.session) {
@@ -533,7 +534,7 @@ pluginManager.register(navigationManager);
               } else if (req.session) {
                 let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
                 if (isLoggedIn && payload) {
-                  processMessage(ws, req, payload);
+                  await processMessage(ws, req, payload);
                   processMessages(messages);
                 } else {
                   auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "ProcessMsgInvalidAuth", sessionId, req.ip);
@@ -662,26 +663,44 @@ pluginManager.register(navigationManager);
   });
 
   terminateServices = (cb?: () => void) => {
+    if (shuttingDown)
+      return;
+    shuttingDown = true;
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShuttingServicesDown");
     let termSet = [];
     if (redisClient)
       termSet.push("redis");
     if (pgPool)
       termSet.push("pg");
-    if (messageQueue)
-      termSet.push("msg");
     if (httpsServer)
       termSet.push("http");
     popThroughArray<string>(termSet,
       (method, next) => {
         if (method === "redis")
-          setTimeout(() => { redisClient.quit(next); }, 2000);
+          setTimeout(() => {
+            redisClient.quit(() => {
+              auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutDownRedis");
+              next();
+            });
+          }, 2000);
         else if (method === "pg")
-          setTimeout(() => { pgPool.end(next); }, 2000);
-        else if (method === "msg")
-          messageQueue.terminate(next);
-        else if ((method === "http") && httpsServer.listening)
-          httpsServer.close(next);
+          setTimeout(() => {
+            pgPool.end(() => {
+              auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutDownPostgres");
+              next();
+            });
+          }, 2000);
+        else if ((method === "http") && httpsServer.listening) {
+          if (messageQueue)
+            messageQueue.terminate(() => {
+              auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutDownMsgQueue");
+              httpsServer.close(() => {
+                auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutDownHttps");
+                next();
+              });
+            });
+        } else
+          next();
       },
       () => {
         auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "ShutdownServices");

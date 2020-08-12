@@ -91,6 +91,9 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
 
   terminate(done: () => void): void {
     this.terminating = true;
+    this.terminateConnections();
+    for (let timeout in this.timeouts)
+      clearTimeout(this.timeouts[timeout]);
     let termSet = [];
     if (this.rsmq)
       termSet.push("rsmq");
