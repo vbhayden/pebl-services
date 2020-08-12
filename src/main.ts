@@ -624,15 +624,15 @@ pluginManager.register(navigationManager);
           }
 
           archiveManager.isUserArchived(username,
-            (isArchived: boolean) => {
+            async (isArchived: boolean) => {
               if (!isArchived) {
-                messageHandler();
+                await messageHandler();
               } else {
                 // retrieve archive data
                 archiveManager.setUserArchived(username,
                   false,
-                  () => {
-                    messageHandler();
+                  async () => {
+                    await messageHandler();
                   });
               }
             });

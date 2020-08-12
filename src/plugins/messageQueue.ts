@@ -236,13 +236,15 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       new JobMessage("archiveUsersJob", ARCHIVE_USER_TIMEOUT)
     ];
 
-    jobSet.map(async (job) => {
+    for (let job of jobSet) {
       await this.sessionDataManager.addSetValue(SET_ALL_JOBS, JSON.stringify(job));
-    });
+    }
 
     let jobs: string[] = await this.sessionDataManager.getSetValues(SET_ALL_JOBS);
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "AvailableJobs", jobs);
-    jobs.map(async (job) => await this.processJob(JobMessage.parse(job), true));
+    for (let job of jobs) {
+      await this.processJob(JobMessage.parse(job), true)
+    }
     this.receiveIncomingMessages();
   }
 

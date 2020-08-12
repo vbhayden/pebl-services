@@ -162,14 +162,14 @@ export class DefaultGroupManager extends PeBLPlugin implements GroupManager {
     let userIds: string[] = await this.getGroupMemberUsers(id);
     let groupIds: string[] = await this.getGroupMemberGroups(id);
 
-    userIds.map(async (userId) => {
+    for (let userId of userIds) {
       await this.userManager.setLastModifiedPermissions(userId, modified);
       await this.deleteGroupMemberUser(id, userId);
-    });
+    }
 
-    groupIds.map(async (groupId) => {
+    for (let groupId of groupIds) {
       await this.deleteGroupMemberGroup(id, groupId);
-    });
+    }
 
     let userSetDeleted = await this.sessionData.deleteValue(generateGroupToUserMembersKey(id));
     if (!userSetDeleted) {

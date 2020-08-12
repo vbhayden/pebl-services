@@ -12,7 +12,7 @@ let upgrades = [
     "fn": async (redis: SessionDataManager, completedUpgrade: () => void) => {
       await redis.deleteValue(SET_ALL_NOTIFICATIONS_REFS);
       let ids = await redis.keys("user:*:notifications");
-      ids.map(async (id) => {
+      for (let id of ids) {
         let notificationSet: { [key: string]: string } = await redis.getAllHashPairs(id);
         let pairs: string[] = [];
         let incPairs = [];
@@ -24,7 +24,7 @@ let upgrades = [
         }
         await redis.incHashKeys(SET_ALL_NOTIFICATIONS_REFS, incPairs, 1);
         await redis.setHashValues(SET_ALL_NOTIFICATIONS, pairs)
-      });
+      }
       await redis.deleteValues(ids);
       completedUpgrade();
     }
@@ -36,7 +36,7 @@ let upgrades = [
       let prefixForUsernameLength = "timestamp:notifications:".length
       let allNotificationSet = await redis.getAllHashPairs(SET_ALL_NOTIFICATIONS);
       let userNotificationSets: string[] = await redis.keys("timestamp:notifications:*");
-      userNotificationSets.map(async (userNotificationSet) => {
+      for (let userNotificationSet of userNotificationSets) {
         let username = userNotificationSet.substring(prefixForUsernameLength);
         let userNotifications: string[] = await redis.getValuesGreaterThanTimestamp(userNotificationSet, 1);
         let voided: string[] = [];
@@ -109,7 +109,7 @@ let upgrades = [
           await redis.addSetValue(generateUserClearedNotificationsKey(username), voided);
         }
         await redis.deleteValue(userNotificationSet);
-      });
+      }
       await redis.deleteValue(SET_ALL_NOTIFICATIONS);
       await redis.deleteValue(SET_ALL_NOTIFICATIONS_REFS);
       completedUpgrade();
@@ -120,12 +120,12 @@ let upgrades = [
     "version": 7,
     "fn": async (redis: SessionDataManager, completedUpgrade: () => void) => {
       let userThreadsSet: string[] = await redis.keys("user:*:threads");
-      userThreadsSet.map(async (userThreads) => {
+      for (let userThreads of userThreadsSet) {
         let username = userThreads.substring("user:".length, userThreads.length - ":threads".length);
         let toVoidIds: string[] = [];
         let threads: string[] = await redis.getHashValues(userThreads);
         let clearedUsername = generateUserClearedTimestamps(username);
-        threads.map(async (thread) => {
+        for (let thread of threads) {
           let timestampString = await redis.getHashValue(clearedUsername, thread);
           let timestamp = 0;
           if (timestampString) {
@@ -139,8 +139,8 @@ let upgrades = [
             }
           }
           await redis.addSetValue(generateUserClearedNotificationsKey(username), toVoidIds);
-        });
-      });
+        }
+      }
       completedUpgrade();
     }
   },
@@ -194,7 +194,7 @@ export function upgradeRedis(sessionCache: SessionDataManager, version: number, 
     let upgrade = upgradesToApply.pop();
     if (upgrade) {
       auditLogger.report(LogCategory.SYSTEM, Severity.INFO, "RedisUpgradeStarted", upgrade.version);
-      upgrade.fn(sessionCache,
+      await upgrade.fn(sessionCache,
         () => {
           if (upgrade) {
             setVersion(sessionCache, upgrade.version, fn);

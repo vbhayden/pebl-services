@@ -257,7 +257,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
 
     let allRemovedIds: string[] = [];
     let newestRecords = Object.values(newestClearedPerLocation);
-    newestRecords.map(async (record) => {
+    for (let record of newestRecords) {
       let mainSet;
       if (record.type === "message") {
         mainSet = generateTimestampForThread(record.location);
@@ -276,7 +276,7 @@ export class DefaultNotificationManager extends PeBLPlugin implements Notificati
       } else {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "ClearNoificationMissingType", record);
       }
-    });
+    }
 
     let timestampSet: string[] = [];
     for (let key in locationTimestampLookup) {

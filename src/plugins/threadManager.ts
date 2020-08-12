@@ -768,7 +768,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
     }
 
     if (discussions.length > 0)
-      this.sqlData.insertDiscussions(discussions);
+      await this.sqlData.insertDiscussions(discussions);
 
     return true;
   }
@@ -776,7 +776,7 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
   async getMessages(userId: string, threadRequests: { [key: string]: any }[]): Promise<{ [key: string]: any }[]> {
     let results: { [key: string]: any }[] = [];
 
-    threadRequests.map(async (threadRequest: { [key: string]: any }) => {
+    for (let threadRequest of threadRequests) {
       let baseThread = threadRequest.thread;
       let timestamp = threadRequest.timestamp;
       let options = threadRequest.options;
@@ -799,7 +799,8 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
         thread: baseThread,
         options: options
       });
-    });
+    }
+
     return results;
   }
 

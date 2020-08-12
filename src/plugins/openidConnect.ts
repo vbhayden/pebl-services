@@ -284,17 +284,17 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         }
 
         auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
-        roleIds.map(async (roleId) => {
+        for (let roleId of rolesToRemove) {
           await this.userManager.deleteUserRole(userId, roleId);
-        });
+        }
         if (rolesToAdd.length > 0) {
           await this.userManager.addUserRoles(userId, rolesToAdd);
         }
       } else {
         auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
-        roleIds.map(async (roleId) => {
+        for (let roleId of roleIds) {
           await this.userManager.deleteUserRole(userId, roleId);
-        });
+        }
       }
     }
     return true;

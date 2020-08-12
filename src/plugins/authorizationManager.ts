@@ -54,7 +54,7 @@ export class DefaultAuthorizationManager {
           }
         }
 
-        groupIds.map(async (groupId) => {
+        for (let groupId of groupIds) {
           //TODO implement nested group permission resolution
           let roleIds: string[] = await this.groupManager.getGroupMemberUser(groupId, identity);
           let roles: Role[] = await this.roleManager.getMultiRole(roleIds);
@@ -65,7 +65,7 @@ export class DefaultAuthorizationManager {
               }
             }
           }
-        });
+        }
         session.lastModifiedPermissions = lastModified;
         session.permissions = new PermissionSet(userPermissions, groupPermissions);
         auditLogger.report(LogCategory.AUTH, Severity.INFO, "AssembledPermissions", session.id, roleIds);
