@@ -42,8 +42,10 @@ export interface SessionDataManager {
 
   dumpKey(key: string): Promise<string>;
   dumpKeys(key: string[]): Promise<{ [key: string]: string }>;
-  // restoreKey(key: string, ttl: number, data: string, callback?: (restored: boolean) => void): void;
+  restoreKey(key: string, ttl: number, data: string): Promise<true>;
   // restoreKeys(data: { [key: string]: string }, ttl: number, callback?: (restored: { [key: string]: boolean }) => void): void;
+
+  removeKeys(key: string[]): Promise<true>;
 
   scan10(cursor: string, pattern: string): Promise<[string, string[]]>;
   keys(pattern: string): Promise<string[]>;

@@ -67,6 +67,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
                   if (profile) {
                     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
                     await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
+                    await this.userManager.setLastActivity(session.identity.preferred_username, Date.now() + "");
                   } else {
                     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "NoRefreshTokens", session.id, session.ip);
                   }
@@ -316,6 +317,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
               let found = await this.getProfile(session);
               if (found) {
                 await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
+                await this.userManager.setLastActivity(session.identity.preferred_username, Date.now() + "");
                 auditLogger.report(LogCategory.AUTH, Severity.INFO, "LoggedIn", session.id, session.ip, session.identity.preferred_username);
                 res.redirect(session.redirectUrl);
               } else {

@@ -2,7 +2,7 @@ import { UserManager } from "../interfaces/userManager";
 import { UserProfile } from "../models/userProfile";
 import { PeBLPlugin } from "../models/peblPlugin";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, Severity, LogCategory } from "../utils/constants";
+import { SET_ALL_USERS, generateUserToRolesKey, generateRoleToUsersKey, SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, SET_ALL_USERS_LAST_ACTIVITY, Severity, LogCategory } from "../utils/constants";
 import { auditLogger } from "../main";
 
 export class DefaultUserManager extends PeBLPlugin implements UserManager {
@@ -174,5 +174,14 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
 
   async setLastModifiedPermissions(identity: string, lastModified: string): Promise<boolean> {
     return (await this.sessionData.setHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity, lastModified)) > 0;
+  }
+
+  async getLastActivity(identity: string): Promise<string> {
+    let lastActivity: string | undefined = await this.sessionData.getHashValue(SET_ALL_USERS_LAST_ACTIVITY, identity);
+    return lastActivity !== undefined ? lastActivity : "";
+  }
+
+  async setLastActivity(identity: string, lastActivity: string): Promise<boolean> {
+    return (await this.sessionData.setHashValue(SET_ALL_USERS_LAST_ACTIVITY, identity, lastActivity)) > 0;
   }
 }
