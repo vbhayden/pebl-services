@@ -4,7 +4,7 @@ services:
   haproxy:
     image: git.eduworks.us:5050/pebl/pebl-services/proxy:1.0.0
     ports:
-      - "443:443"
+      # - "443:443"
       - "8080:8080"
     restart: always
     volumes:
@@ -22,9 +22,9 @@ services:
       - SERVER_AUTH_REDIRECT_URL=https://localhost/redirect
       - AUTH_RESPONSE_TYPES=code
       - AUTH_SCOPE=openid email profile
-      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg1:5432/services
+      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg:5432/services
       - AUTH_METHOD=openid
-      - REDIS_HOST=redis1
+      - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_AUTH=testing
       - SESSION_SECRET=<sessionSecret>
@@ -45,9 +45,9 @@ services:
       - SERVER_AUTH_REDIRECT_URL=https://localhost/redirect
       - AUTH_RESPONSE_TYPES=code
       - AUTH_SCOPE=openid email profile
-      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg2:5432/services
+      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg:5432/services
       - AUTH_METHOD=openid
-      - REDIS_HOST=redis2
+      - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_AUTH=testing
       - SESSION_SECRET=<sessionSecret>
@@ -68,9 +68,9 @@ services:
       - SERVER_AUTH_REDIRECT_URL=https://localhost/redirect
       - AUTH_RESPONSE_TYPES=code
       - AUTH_SCOPE=openid email profile
-      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg3:5432/services
+      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg:5432/services
       - AUTH_METHOD=openid
-      - REDIS_HOST=redis3
+      - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_AUTH=testing
       - SESSION_SECRET=<sessionSecret>
@@ -79,46 +79,77 @@ services:
       - LRS_URL=https://lrs.peblproject.com/data/xapi
       - LRS_BASIC_AUTH=<basic token>
 
-  redis1:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
+  redis:
+    image: git.eduworks.us:5050/pebl/pebl-services/redis:1.0.0
+    environment:
+      - "REDIS_AUTH=testing"
+    sysctls:
+      net.core.somaxconn: 512
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
+      - "redisData:/var/lib/redis/"
+      # - "/mnt/factory/eduworks/PEBL/QADump.rdb:/var/lib/redis/dump.rdb"
 
-  pg1:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  pg:
+    image: postgres:latest
     restart: always
+    environment:
+      - "POSTGRES_USER=pebl"
+      - "POSTGRES_PASSWORD=Tacotrucked"
+      - "POSTGRES_DB=services"
+      - "POSTGRES_HOST_AUTH_METHOD=scram-sha-256"
+      - "POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256"
+    shm_size: "256M"
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
+      - pgData:/var/lib/postgresql/data
+      
+  # redis1:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
+
+  # pg1:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
 
 
-  redis2:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
-    volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
+  # redis2:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
 
-  pg2:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
-    volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
+  # pg2:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
 
 
-  redis3:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
-    volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
+  # redis3:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]
 
-  pg3:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
-    volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
+  # pg3:
+  #   image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
+  #   restart: always
+  #   volumes:
+  #     - /home/veden/Desktop/taco:/ssl/privkey.pem
+  #   command: ["./setupTunnel.sh", "taco", "34.222.38.192", "5432"]
+
+volumes:
+  redisData:
+  pgData:

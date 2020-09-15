@@ -22,6 +22,8 @@ export class PgSqlDataStore implements SqlDataStore {
         return client.query('CREATE TABLE IF NOT EXISTS quizattempts (id SERIAL PRIMARY KEY, bookId VARCHAR ( 255 ), quizId VARCHAR ( 255 ), question TEXT, response TEXT, correct BOOL, teamId VARCHAR ( 255 ), classId VARCHAR ( 255 ), count INTEGER, url TEXT, UNIQUE (quizId, question, response, teamId, classId));');
       }).then(() => {
         return client.query('CREATE TABLE IF NOT EXISTS reportedmessages (id SERIAL PRIMARY KEY, messageId uuid, bookId VARCHAR ( 255 ), prompt TEXT, teamId VARCHAR ( 255 ), classId VARCHAR ( 255 ), identity VARCHAR ( 255 ), url TEXT, message TEXT, timestamp BIGINT, count INTEGER, UNIQUE (messageId, teamId, classId));');
+      }).then(() => {
+        return client.query('CREATE TABLE IF NOT EXISTS archived ( id VARCHAR ( 255 ) PRIMARY KEY, data JSON, UNIQUE (id));');
       }).finally(() => {
         client.release();
       })
@@ -224,5 +226,43 @@ export class PgSqlDataStore implements SqlDataStore {
         client.release();
       }
     });
+  }
+
+  archiveData(id: string, data: { [key: string]: string }): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const insertText = 'INSERT INTO archived(id, data) VALUES($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2;';
+      const client = await this.pool.connect();
+      try {
+        const values = [id, data];
+        client.query(insertText, values).then((res) => {
+          resolve();
+        });
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ArchiveDataFail", e);
+        reject(e);
+      } finally {
+        client.release();
+      }
+    })
+  }
+
+  getArchivedData(id: string): Promise<{ [key: string]: string }> {
+    return new Promise(async (resolve) => {
+      const text = 'SELECT data FROM archived WHERE id = $1;';
+      const client = await this.pool.connect();
+      try {
+        client.query(text, [id]).then((res) => {
+          if (res.rows && res.rows.length === 1)
+            resolve(res.rows[0].data);
+          else
+            resolve({});
+        })
+      } catch (e) {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "getArchivedDataFail", e);
+        resolve({});
+      } finally {
+        client.release();
+      }
+    })
   }
 }

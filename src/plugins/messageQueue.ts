@@ -3,7 +3,7 @@ import { SessionDataManager } from '../interfaces/sessionDataManager';
 import { ServiceMessage } from '../models/serviceMessage';
 import { LRS } from '../interfaces/lrsManager';
 
-import { generateOutgoingQueueForId, UPGRADE_REDIS_TIMEOUT, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity, SET_ALL_PEBL_CONFIG, DB_VERSION, JOB_TYPE_UPGRADE, ARCHIVE_USER_TIMEOUT } from '../utils/constants';
+import { generateOutgoingQueueForId, INACTIVE_USER_THRESHOLD, UPGRADE_REDIS_TIMEOUT, MESSAGE_QUEUE_INCOMING_MESSAGES, QUEUE_CLEANUP_TIMEOUT, LRS_SYNC_TIMEOUT, LRS_SYNC_LIMIT, JOB_BUFFER_TIMEOUT, QUEUE_REALTIME_BROADCAST_PREFIX, generateBroadcastQueueForUserId, QUEUE_OUTGOING_MESSAGE_PREFIX, QUEUE_INCOMING_MESSAGE, QUEUE_ACTIVE_JOBS, SET_ALL_ACTIVE_JOBS, SET_ALL_JOBS, QUEUE_ALL_USERS, LogCategory, Severity, SET_ALL_PEBL_CONFIG, DB_VERSION, JOB_TYPE_UPGRADE, ARCHIVE_USER_TIMEOUT, SET_ALL_USERS_LAST_ACTIVITY } from '../utils/constants';
 
 import * as redis from 'redis';
 import * as WebSocket from 'ws';
@@ -309,6 +309,8 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
       await this.dispatchToLrs(message);
     } else if (message.jobType === JOB_TYPE_UPGRADE) {
       this.dispatchUpgradeProtocol(message);
+    } else if (message.jobType === 'archiveUsersJob') {
+      this.archiveUsersJob(message);
     } else {
       auditLogger.report(LogCategory.SYSTEM, Severity.CRITICAL, "UnknownJobTarget", message);
     }
@@ -494,36 +496,27 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
     });
   }
 
-  archiveUsersJob(): void {
-    this.archiveManager.isUserArchived("s", () => { });
-    // let scanAll = (cursor: string, pattern: string, accumulator: string[], callback: ((result: string[]) => void)) => {
-    //   this.redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', '10', function(err: Error | null, result: [string, string[]]) {
-    //     cursor = result[0];
-    //     accumulator.push(...result[1]);
-    //     if (cursor !== '0') {
-    //       scanAll(cursor, pattern, accumulator, callback);
-    //     } else {
-    //       callback(accumulator);
-    //     }
-    //   });
-    // }
+  private async archiveUsersJob(message: JobMessage): Promise<void> {
+    let currentTime = Date.now();
 
-    // scanAll('0',
-    //   'sess:*',
-    //   [],
-    //   (sessions: string[]) => {
-    //     let filtered = queues.filter((queue: string) => {
-    //       if (queue === MESSAGE_QUEUE_INCOMING_MESSAGES)
-    //         return false;
-    //       return !(sessions.includes('sess:' + queue));
-    //     });
+    this.sessionDataManager.getValuesGreaterThanTimestamp(SET_ALL_USERS_LAST_ACTIVITY, currentTime - INACTIVE_USER_THRESHOLD).then((res) => {
+      let promises = [];
+      for (let userId of res) {
+        promises.push(this.archiveManager.isUserArchived(userId).then((archived) => {
+          if (!archived) {
+            return this.archiveManager.setUserArchived(userId, false)
+          } else {
+            return;
+          }
+        }))
+      }
 
-    //     for (let queue of filtered) {
-    //       this.removeOutgoingQueue(queue);
-    //     }
-
-    //     this.clearActiveJob(message);
-    //   });
+      Promise.all(promises).finally(async () => {
+        await this.clearActiveJob(message);
+      }).catch((e) => {
+        auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "ArchiveUsersJobFail", e);
+      })
+    })
   }
 
   private async dispatchCleanup(message: JobMessage): Promise<void> {

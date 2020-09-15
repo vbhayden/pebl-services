@@ -32,4 +32,6 @@ export interface UserManager extends PeBLPlugin {
 
   setLastModifiedPermissions(identity: string, lastModified: string): Promise<boolean>;
   getLastModifiedPermissions(identity: string): Promise<string>;
+
+  setLastActivity(identity: string, setLastActivity: number): Promise<boolean>;
 }

@@ -1,6 +1,6 @@
 
 export interface ArchiveManager {
-  setUserArchived(userId: string, isArchived: boolean, callback: () => void): void;
+  setUserArchived(userId: string, isArchived: boolean): Promise<true>;
 
-  isUserArchived(userId: string, callback: ((isArchived: boolean) => void)): void;
+  isUserArchived(userId: string): Promise<boolean>;
 }

@@ -129,7 +129,8 @@ let RedisSessionStore = require('connect-redis')(expressSession);
 let redisConfig = {
   port: (config.redisPort || 6379),
   host: (config.redisHost || "127.0.0.1"),
-  password: config.redisAuth
+  password: config.redisAuth,
+  detect_buffers: true
 };
 
 const redisClient = redis.createClient(redisConfig);
@@ -143,7 +144,7 @@ const pgPool = new Pool({
 const pluginManager: PluginManager = new DefaultPluginManager();
 const sqlManager: SqlDataStore = new PgSqlDataStore(pgPool);
 const redisCache: SessionDataManager = new RedisSessionDataCache(redisClient);
-const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, config);
+const archiveManager: ArchiveManager = new DefaultArchiveManager(redisCache, sqlManager, config);
 const notificationManager: NotificationManager = new DefaultNotificationManager(redisCache);
 const userManager: UserManager = new DefaultUserManager(redisCache);
 const groupManager: GroupManager = new DefaultGroupManager(redisCache, userManager);
@@ -617,19 +618,18 @@ pluginManager.register(navigationManager);
             }
           }
 
-          archiveManager.isUserArchived(username,
-            async (isArchived: boolean) => {
-              if (!isArchived) {
+          archiveManager.isUserArchived(username).then(async (isArchived: boolean) => {
+            if (!isArchived) {
+              await messageHandler();
+            } else {
+              // retrieve archive data
+              archiveManager.setUserArchived(username, true).then(async () => {
                 await messageHandler();
-              } else {
-                // retrieve archive data
-                archiveManager.setUserArchived(username,
-                  false,
-                  async () => {
-                    await messageHandler();
-                  });
-              }
-            });
+              }).catch((e) => {
+                auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RestoreArchivedDataFail", username, sessionId, e);
+              })
+            }
+          })
 
           if (ws.readyState === 1) {
             ws.on('close', function() {
@@ -718,7 +718,7 @@ pluginManager.register(navigationManager);
     auditLogger.report(LogCategory.SYSTEM, Severity.INFO, 'ListeningPort', config.port, config.version);
   });
 
-})().catch((err)=>{
+})().catch((err) => {
   auditLogger.report(LogCategory.SYSTEM, Severity.EMERGENCY, "uncaughtExceptionP", err);
   auditLogger.flush();
   if (terminateServices) {

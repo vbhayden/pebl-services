@@ -20,4 +20,6 @@ export interface SqlDataStore {
   insertQuizAttempts(data: Question[]): Promise<void>;
   getQuizAttempts(bookId: string, teamId: string, classId: string): Promise<any[]>;
 
+  archiveData(id: string, data: { [key: string]: string }): Promise<void>;
+  getArchivedData(id: string): Promise<{ [key: string]: string }>;
 }

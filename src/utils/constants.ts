@@ -22,6 +22,7 @@ export const SET_ALL_ROLES = "roles:all";
 export const SET_ALL_USERS = "users:all";
 export const SET_ALL_USER_ROLES = "userRoles:all"
 export const SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS = "users:lastModified:permissions";
+export const SET_ALL_USERS_LAST_ACTIVITY = "users:lastActivitySet";
 export const SET_ALL_ACTIVE_JOBS = "activeJobs:all";
 export const SET_ALL_JOBS = "jobs:all";
 
@@ -52,10 +53,11 @@ export const KEY_CACHED_QUERIES = 'cachedQueries';
 
 export const LRS_SYNC_TIMEOUT = 1500;
 // export const LRS_SYNC_TIMEOUT = 300000;
-export const ARCHIVE_USER_TIMEOUT = 10000;
+export const ARCHIVE_USER_TIMEOUT = 60000;
 export const QUEUE_CLEANUP_TIMEOUT = 3600000;
 export const UPGRADE_REDIS_TIMEOUT = 240000;
 export const JOB_BUFFER_TIMEOUT = 60000;
+export const INACTIVE_USER_THRESHOLD = 7200000;
 
 export const LRS_SYNC_LIMIT = 75;
 

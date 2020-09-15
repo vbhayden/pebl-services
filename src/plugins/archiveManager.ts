@@ -1,15 +1,15 @@
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-// import { auditLogger } from "../main";
-// import { Severity, LogCategory, SET_ALL_ARCHIVE_USERS } from "../utils/constants";
-// const { Sequelize, Model, DataTypes } = require('sequelize');
+import { SqlDataStore } from '../interfaces/sqlDataStore';
+import { auditLogger } from "../main";
+import * as CONSTS from "../utils/constants";
 
 export class DefaultArchiveManager {
-  // private sessionData: SessionDataManager;
-  // private postgres: Sequelize;
+  private sessionData: SessionDataManager;
+  private sqlData: SqlDataStore;
 
-  constructor(sessionData: SessionDataManager, config: { [key: string]: any }) {
-    // this.postgres = postgres;
-    // this.sessionData = sessionData;
+  constructor(sessionData: SessionDataManager, sqlData: SqlDataStore, config: { [key: string]: any }) {
+    this.sqlData = sqlData;
+    this.sessionData = sessionData;
   }
 
   // archiveUserAnnotations(userId: string): void {
@@ -36,48 +36,101 @@ export class DefaultArchiveManager {
 
   // }
 
-  // private storeUserRecords(userId: string, records: { [key: string]: string }, callback: (stored: boolean) => void): void {
+  private storeUserRecords(userId: string, records: { [key: string]: string }, callback: (stored: boolean) => void): void {
+    this.sqlData.archiveData(userId, records).then(() => {
+      callback(true);
+    }, () => {
+      callback(false);
+    })
+  }
 
-  // }
-
-  // private retrieveUserRecords(userId: string, callback: (records: { [key: string]: string }) => void): void {
-
-  // }
+  private retrieveUserRecords(userId: string, callback: (records: { [key: string]: string }) => void): void {
+    this.sqlData.getArchivedData(userId).then((data) => {
+      callback(data);
+    })
+  }
 
   // private clearUserRecords(records: { [key: string]: string }): void {
 
   // }
 
-  setUserArchived(userId: string, isArchived: boolean, callback: () => void): void {
-    // let keys: string[] = [
+  setUserArchived(userId: string, isArchived: boolean): Promise<true> {
+    return new Promise((resolve, reject) => {
+      let keys: string[] = [
+        CONSTS.generateUserAnnotationsKey(userId),
+        CONSTS.generateUserSharedAnnotationsKey(userId),
+        CONSTS.generateUserEventsKey(userId),
+        CONSTS.generateUserMessagesKey(userId),
+        CONSTS.generateUserClearedNotificationsKey(userId),
+        CONSTS.generateUserClearedTimestamps(userId),
+        CONSTS.generateUserActivitiesKey(userId),
+        CONSTS.generateUserActivityEventsKey(userId),
+        CONSTS.generateUserModuleEventsKey(userId),
+        CONSTS.generateUserAssetKey(userId),
+        CONSTS.generateUserMembershipKey(userId),
+        CONSTS.generateUserReferencesKey(userId),
+        CONSTS.generateUserActionsKey(userId),
+        CONSTS.generateUserSessionsKey(userId),
+        CONSTS.generateUserToGroupMembershipKey(userId),
+        CONSTS.generateUserNavigationsKey(userId),
+        CONSTS.generateUserQuizesKey(userId),
+        CONSTS.generateUserQuestionsKey(userId),
+        CONSTS.generateTimestampForUserId(userId),
+        CONSTS.generateUserThreadsKey(userId),
+        CONSTS.generateUserPrivateThreadsKey(userId)
+      ];
 
-    // ];
-
-    // if (isArchived) {
-    //   this.sessionData.dumpKeys(keys, (data?: { [key: string]: string }) => {
-    //     this.storeUserRecords(userId, data, (stored: boolean) => {
-    //       if (stored) {
-    //         this.sessionData.removeKeys(keys, () => {
-    //           this.sessionData.setHashValue(SET_ALL_ARCHIVE_USERS,
-    //             userId,
-    //             "t");
-    //         });
-    //       } else {
-    //         auditLogger.report(LogCategory.STORAGE, Severity.ALERT, "ArchiveUserFail", userId);
-    //       }
-    //     });
-    //   });
-    // } else {
-
-    // }
+      if (!isArchived) {
+        this.sessionData.dumpKeys(keys).then((data?: { [key: string]: string }) => {
+          if (data) {
+            this.storeUserRecords(userId, data, (stored: boolean) => {
+              if (stored) {
+                this.sessionData.removeKeys(keys).then(() => {
+                  this.sessionData.setHashValue(CONSTS.SET_ALL_ARCHIVE_USERS, userId, "t").then(() => {
+                    return this.sessionData.deleteSortedTimestampMember(CONSTS.SET_ALL_USERS_LAST_ACTIVITY, userId);
+                  }).then(() => {
+                    resolve();
+                  })
+                })
+              } else {
+                auditLogger.report(CONSTS.LogCategory.STORAGE, CONSTS.Severity.ALERT, "ArchiveUserFail", userId);
+                reject();
+              }
+            });
+          }
+        })
+      } else {
+        this.retrieveUserRecords(userId, (records) => {
+          let promises = [];
+          for (let key in records) {
+            if (records[key] !== null)
+              promises.push(this.sessionData.restoreKey(key, 0, <any>Buffer.from(records[key])));
+          }
+          Promise.all(promises).then(() => {
+            this.sessionData.deleteHashValue(CONSTS.SET_ALL_ARCHIVE_USERS,
+              userId).then(() => {
+                resolve();
+              })
+          }, () => {
+            auditLogger.report(CONSTS.LogCategory.STORAGE, CONSTS.Severity.CRITICAL, "RestoreUsersFail", userId);
+            reject();
+          })
+        })
+      }
+    })
   }
 
-  isUserArchived(userId: string, callback: ((isArchived: boolean) => void)): void {
-    // this.sessionData.getHashValue(SET_ALL_ARCHIVE_USERS,
-    //   userId,
-    //   (data?: string) => {
-    //     callback("t" === data);
-    //   });
-    callback(false);
+  isUserArchived(userId: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.sessionData.getHashValue(CONSTS.SET_ALL_ARCHIVE_USERS, userId).then((data?: string) => {
+        if (!data)
+          resolve(false);
+        else {
+          resolve("t" === data);
+        }
+      }).catch((e) => {
+        reject(e);
+      })
+    })
   }
 }

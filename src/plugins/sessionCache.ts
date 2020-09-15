@@ -572,7 +572,7 @@ export class RedisSessionDataCache implements SessionDataManager {
 
   dumpKey(key: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      this.redis.dump(key, (err, data) => {
+      this.redis.dump(<any>new Buffer(key), (err, data) => {
         if (err) {
           auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
           reject();
@@ -589,12 +589,13 @@ export class RedisSessionDataCache implements SessionDataManager {
         let obj = {} as { [key: string]: string };
         let multi = this.redis.multi();
         for (let key of keys) {
-          multi.dump(key, (err, resp) => {
+          multi.dump(<any>new Buffer(key), (err, resp) => {
             if (err) {
               auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKeys", err);
               reject();
             } else {
-              obj[key] = resp;
+              if (resp)
+                obj[key] = resp;
             }
           });
         }
@@ -616,13 +617,26 @@ export class RedisSessionDataCache implements SessionDataManager {
     return new Promise((resolve, reject) => {
       this.redis.restore(key, ttl, data, (err) => {
         if (err) {
-          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDumpKey", err);
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisRestoreKey", err);
           reject();
         } else {
           resolve(true);
         }
       });
     });
+  }
+
+  removeKeys(keys: string[]): Promise<true> {
+    return new Promise((resolve, reject) => {
+      this.redis.del(keys, (err) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisDelKey", err);
+          reject();
+        } else {
+          resolve(true);
+        }
+      })
+    })
   }
 
   scoreSortedSet(key: string, id: string): Promise<number | null> {
