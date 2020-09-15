@@ -1,0 +1,19 @@
+version: '3'
+services:
+  pg:
+    image: postgres:latest
+    restart: always
+    environment:
+      - "POSTGRES_USER=pebl"
+      - "POSTGRES_PASSWORD=Tacotruck"
+      - "POSTGRES_DB=services"
+      - "POSTGRES_HOST_AUTH_METHOD=scram-sha-256"
+      - "POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256"
+    shm_size: "256M"
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dbData:/var/lib/postgresql/data
+
+volumes:
+  dbData:

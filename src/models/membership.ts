@@ -5,10 +5,10 @@ import { ActivityObject } from "./xapiStatement";
 export class Membership extends XApiStatement {
 
   readonly thread: string;
-  readonly membershipId: string;
-  readonly activityType: string;
+  readonly membershipId?: string;
+  readonly activityType?: string;
   readonly description?: string;
-  readonly role: string;
+  readonly role?: string;
   readonly organization?: string;
   readonly organizationName?: string;
 
@@ -20,21 +20,20 @@ export class Membership extends XApiStatement {
     if (this.thread.indexOf(PREFIX_PEBL_THREAD) != -1)
       this.thread = this.thread.substring(PREFIX_PEBL_THREAD.length);
 
-    if (!object.definition)
-      object.definition = {};
-    if (!object.definition.name)
-      object.definition.name = {};
-    this.membershipId = object.definition.name["en-US"];
-    this.description = object.definition.description && object.definition.description["en-US"];
+    if (object.definition && object.definition.name)
+      this.membershipId = object.definition.name["en-US"];
+    if (object.definition)
+      this.description = object.definition.description && object.definition.description["en-US"];
 
-    if (!object.definition.extensions)
-      object.definition.extensions = {};
-    let extensions = object.definition.extensions;
+    if (object.definition && object.definition.extensions) {
+      let extensions = object.definition.extensions;
 
-    this.role = extensions[PREFIX_PEBL_EXTENSION + "role"];
-    this.activityType = extensions[PREFIX_PEBL_EXTENSION + "activityType"];
-    this.organization = extensions[PREFIX_PEBL_EXTENSION + "organization"];
-    this.organizationName = extensions[PREFIX_PEBL_EXTENSION + "organizationName"];
+      this.role = extensions[PREFIX_PEBL_EXTENSION + "role"];
+      this.activityType = extensions[PREFIX_PEBL_EXTENSION + "activityType"];
+      this.organization = extensions[PREFIX_PEBL_EXTENSION + "organization"];
+      this.organizationName = extensions[PREFIX_PEBL_EXTENSION + "organizationName"];
+    }
+
   }
 
   static is(x: XApiStatement): boolean {

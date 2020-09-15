@@ -11,6 +11,8 @@ export class Action extends XApiStatement {
   readonly name?: string;
   readonly description?: string;
   readonly action: string;
+  readonly currentTeam?: string;
+  readonly currentClass?: string;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -39,6 +41,9 @@ export class Action extends XApiStatement {
         this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
         if (extensions[PREFIX_PEBL_EXTENSION + "bookId"])
           this.book = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
+
+        this.currentTeam = extensions[PREFIX_PEBL_EXTENSION + "currentTeam"];
+        this.currentClass = extensions[PREFIX_PEBL_EXTENSION + "currentClass"];
       }
     }
   }
@@ -52,5 +57,16 @@ export class Action extends XApiStatement {
       (verb == "liked") || (verb == "accessed") || (verb == "hid") || (verb == "showed") || (verb == "displayed") || (verb == "undisplayed") ||
       (verb == "searched") || (verb == "selected") || (verb == "unbookmarked") || (verb == "discarded") || (verb == "unshared") || (verb == "unannotated") ||
       (verb == "submitted");
+  }
+
+  static isCompletion(x: any): boolean {
+    let verb = x.verb.display["en-US"];
+    let type = x.object.definition.type;
+    let chapter = x.object.definition.name;
+
+    if (verb === 'experienced' && type === 'http://www.peblproject.com/activities/chapter' && chapter)
+      return true;
+
+    return false;
   }
 }

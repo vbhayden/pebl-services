@@ -20,29 +20,29 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
     this.addMessageTemplate(new MessageTemplate("addRole",
       this.validateAddRole.bind(this),
       this.authorizeAddRole.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.addRole(payload.id, payload.name, payload.permissions, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.addRole(payload.id, payload.name, payload.permissions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteRole",
       this.validateDeleteRole.bind(this),
       this.authorizeDeleteRole.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteRole(payload.id, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteRole(payload.id);
       }));
 
     this.addMessageTemplate(new MessageTemplate("updateRole",
       this.validateUpdateRole.bind(this),
       this.authorizeUpdateRole.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.updateRole(payload.id, dispatchCallback, payload.name, payload.permissions);
+      (payload: { [key: string]: any }) => {
+        return this.updateRole(payload.id, payload.name, payload.permissions);
       }));
 
     this.addMessageTemplate(new MessageTemplate("getRoles",
       this.validateGetRole.bind(this),
       this.authorizeGetRoles.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getRoles(dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getRoles();
       }));
   }
 
@@ -95,86 +95,75 @@ export class DefaultRoleManager extends PeBLPlugin implements RoleManager {
   // }
 
   //Add a role based on a set of permissions
-  addRole(id: string, name: string, permissions: string[], callback: (data: any) => void): void {
+  async addRole(id: string, name: string, permissions: string[]): Promise<true> {
     let p: { [key: string]: boolean } = {};
     for (let permission of permissions) {
       p[permission] = true;
     }
-    this.sessionData.setHashValue(SET_ALL_ROLES,
+    await this.sessionData.setHashValue(SET_ALL_ROLES,
       id,
       JSON.stringify({
         name: name,
         permissions: p
       }));
-    callback(true);
+    return true;
   }
 
   //Remove a role    
-  deleteRole(id: string, callback: (data: any) => void): void {
-    this.sessionData.deleteHashValue(SET_ALL_ROLES,
-      id,
-      (deleted: boolean) => {
-        if (!deleted) {
-          auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelRoleFail", id);
-        }
-        callback(deleted);
-      });
+  async deleteRole(id: string): Promise<boolean> {
+    let deleted = await this.sessionData.deleteHashValue(SET_ALL_ROLES, id);
+    if (!deleted) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelRoleFail", id);
+    }
     let modified = Date.now() + "";
-    this.sessionData.getHashValues(generateRoleToUsersKey(id),
-      (userIds: string[]) => {
-        for (let userId of userIds) {
-          this.userManager.setLastModifiedPermissions(userId, modified);
-        }
-        this.sessionData.deleteValue(generateRoleToUsersKey(id));
-      });
+    let userIds: string[] = await this.sessionData.getHashValues(generateRoleToUsersKey(id));
+    for (let userId of userIds) {
+      await this.userManager.setLastModifiedPermissions(userId, modified);
+    }
+    await this.sessionData.deleteValue(generateRoleToUsersKey(id));
+    return deleted;
   }
 
   //Updates the permission set and/or name of a role    
-  updateRole(id: string, callback: (data: any) => void, name?: string, permissions?: string[]): void {
-    this.sessionData.setHashValue(SET_ALL_ROLES,
+  async updateRole(id: string, name?: string, permissions?: string[]): Promise<true> {
+    await this.sessionData.setHashValue(SET_ALL_ROLES,
       id,
       JSON.stringify({
         name: name,
         permissions: permissions
       }));
     let modified = Date.now() + "";
-    this.sessionData.getHashValues(generateRoleToUsersKey(id),
-      (userIds: string[]) => {
-        for (let userId of userIds) {
-          this.userManager.setLastModifiedPermissions(userId, modified);
-        }
-      });
-    callback(true);
+    let userIds: string[] = await this.sessionData.getHashValues(generateRoleToUsersKey(id));
+    for (let userId of userIds) {
+      await this.userManager.setLastModifiedPermissions(userId, modified);
+    }
+    return true;
   }
 
-  getMultiRole(ids: string[], callback: ((roles: Role[]) => void)): void {
-    this.sessionData.getHashMultiField(SET_ALL_ROLES,
-      ids,
-      (data: string[]) => {
-        callback(data.map((role) => Role.convert(role)));
-      });
+  async getMultiRole(ids: string[]): Promise<Role[]> {
+    let data: string[] = await this.sessionData.getHashMultiField(SET_ALL_ROLES, ids);
+    return (data.map((role) => Role.convert(role)));
   }
 
   //Get a role with the specified id
-  getRole(id: string, callback: ((role: Role) => void)): void {
-    this.sessionData.getHashValue(SET_ALL_ROLES,
-      id,
-      (data?: string) => {
-        if (data !== undefined) {
-          callback(Role.convert(data));
-        }
-      });
+  async getRole(id: string): Promise<Role> {
+    let rawData: string | undefined = await this.sessionData.getHashValue(SET_ALL_ROLES, id);
+    let data: string;
+    if (rawData === undefined) {
+      data = "{}";
+    } else {
+      data = rawData;
+    }
+    return Role.convert(data);
   }
 
   //Get all the roles in the system    
-  getRoles(callback: ((roles: Role[]) => void)): void {
-    this.sessionData.getHashValues(SET_ALL_ROLES,
-      (data: string[]) => {
-        callback(data.map((x) => Role.convert(x)));
-      });
+  async getRoles(): Promise<Role[]> {
+    let data: string[] = await this.sessionData.getHashValues(SET_ALL_ROLES);
+    return data.map((x) => Role.convert(x));
   }
 
-  getUsersByRole(roleId: string, callback: (userIds: string[]) => void): void {
-    this.sessionData.getSetValues(generateRoleToUsersKey(roleId), callback);
+  async getUsersByRole(roleId: string): Promise<string[]> {
+    return await this.sessionData.getSetValues(generateRoleToUsersKey(roleId));
   }
 }

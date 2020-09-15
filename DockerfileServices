@@ -1,0 +1,19 @@
+FROM node:14.7.0
+
+COPY package.json /srv/
+COPY package-lock.json /srv/
+COPY localhost.crt /ssl/fullchain.pem
+COPY localhost.key /ssl/privkey.pem
+COPY ca.pem /ssl/ca.pem
+
+WORKDIR /srv/
+
+RUN npm install --production
+
+COPY dockerConfig/startServices.sh /srv/startServices.sh
+RUN chmod 755 /srv/startServices.sh
+
+COPY dist /srv/dist/
+COPY src/serverConfig.json /srv/dist/serverConfig.json
+
+ENTRYPOINT ["/srv/startServices.sh"]
