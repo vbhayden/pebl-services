@@ -22,7 +22,7 @@ export const SET_ALL_ROLES = "roles:all";
 export const SET_ALL_USERS = "users:all";
 export const SET_ALL_USER_ROLES = "userRoles:all"
 export const SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS = "users:lastModified:permissions";
-export const SET_ALL_USERS_LAST_ACTIVITY = "users:lastActivity";
+export const SET_ALL_USERS_LAST_ACTIVITY = "users:lastActivitySet";
 export const SET_ALL_ACTIVE_JOBS = "activeJobs:all";
 export const SET_ALL_JOBS = "jobs:all";
 

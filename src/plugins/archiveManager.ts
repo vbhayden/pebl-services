@@ -86,11 +86,11 @@ export class DefaultArchiveManager {
             this.storeUserRecords(userId, data, (stored: boolean) => {
               if (stored) {
                 this.sessionData.removeKeys(keys).then(() => {
-                  this.sessionData.setHashValue(CONSTS.SET_ALL_ARCHIVE_USERS,
-                    userId,
-                    "t").then(() => {
-                      resolve();
-                    });
+                  this.sessionData.setHashValue(CONSTS.SET_ALL_ARCHIVE_USERS, userId, "t").then(() => {
+                    return this.sessionData.deleteSortedTimestampMember(CONSTS.SET_ALL_USERS_LAST_ACTIVITY, userId);
+                  }).then(() => {
+                    resolve();
+                  })
                 })
               } else {
                 auditLogger.report(CONSTS.LogCategory.STORAGE, CONSTS.Severity.ALERT, "ArchiveUserFail", userId);

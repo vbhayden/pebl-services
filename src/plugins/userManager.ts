@@ -176,12 +176,7 @@ export class DefaultUserManager extends PeBLPlugin implements UserManager {
     return (await this.sessionData.setHashValue(SET_ALL_USERS_LAST_MODIFIED_PERMISSIONS, identity, lastModified)) > 0;
   }
 
-  async getLastActivity(identity: string): Promise<string> {
-    let lastActivity: string | undefined = await this.sessionData.getHashValue(SET_ALL_USERS_LAST_ACTIVITY, identity);
-    return lastActivity !== undefined ? lastActivity : "";
-  }
-
-  async setLastActivity(identity: string, lastActivity: string): Promise<boolean> {
-    return (await this.sessionData.setHashValue(SET_ALL_USERS_LAST_ACTIVITY, identity, lastActivity)) > 0;
+  async setLastActivity(identity: string, lastActivity: number): Promise<boolean> {
+    return (await this.sessionData.addTimestampValue(SET_ALL_USERS_LAST_ACTIVITY, lastActivity, identity)) > 0;
   }
 }

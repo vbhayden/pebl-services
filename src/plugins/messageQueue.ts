@@ -499,18 +499,16 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private async archiveUsersJob(message: JobMessage): Promise<void> {
     let currentTime = Date.now();
 
-    this.sessionDataManager.getAllHashPairs(SET_ALL_USERS_LAST_ACTIVITY).then((res) => {
+    this.sessionDataManager.getValuesGreaterThanTimestamp(SET_ALL_USERS_LAST_ACTIVITY, currentTime - INACTIVE_USER_THRESHOLD).then((res) => {
       let promises = [];
-      for (let userId in res) {
-        if ((currentTime - parseInt(res[userId])) > INACTIVE_USER_THRESHOLD) {
-          promises.push(this.archiveManager.isUserArchived(userId).then((archived) => {
-            if (!archived) {
-              return this.archiveManager.setUserArchived(userId, false)
-            } else {
-              return;
-            }
-          }))
-        }
+      for (let userId of res) {
+        promises.push(this.archiveManager.isUserArchived(userId).then((archived) => {
+          if (!archived) {
+            return this.archiveManager.setUserArchived(userId, false)
+          } else {
+            return;
+          }
+        }))
       }
 
       Promise.all(promises).finally(async () => {
@@ -519,7 +517,6 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "ArchiveUsersJobFail", e);
       })
     })
-
   }
 
   private async dispatchCleanup(message: JobMessage): Promise<void> {
