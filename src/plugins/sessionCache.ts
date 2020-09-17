@@ -447,6 +447,18 @@ export class RedisSessionDataCache implements SessionDataManager {
     });
   }
 
+  getValuesLessThanTimestamp(key: string, timestamp: number): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      this.redis.zrangebyscore(key, '-inf', timestamp, (err, resp) => {
+        if (err) {
+          auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "RedisGetValsLessThanTime", err);
+          reject();
+        } else
+          resolve(resp);
+      })
+    })
+  }
+
   rankSortedSetMember(key: string, id: string): Promise<number | null> {
     return new Promise((resolve, reject) => {
       this.redis.zrank(key,

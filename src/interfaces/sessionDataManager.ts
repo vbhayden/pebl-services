@@ -28,6 +28,7 @@ export interface SessionDataManager {
   addTimestampValues(key: string, timestampPairs: (number | string)[]): Promise<number>;
 
   getValuesGreaterThanTimestamp(key: string, timestamp: number): Promise<string[]>;
+  getValuesLessThanTimestamp(key: string, timestamp: number): Promise<string[]>;
   deleteSortedTimestampMember(key: string, memberId: (string | string[])): Promise<number>;
   rankSortedSetMember(key: string, id: string): Promise<number | null>;
   scoreSortedSet(key: string, id: string): Promise<number | null>;

@@ -137,9 +137,9 @@ const redisClient = redis.createClient(redisConfig);
 
 const { Pool } = require('pg')
 
-const pgPool = new Pool({
+const pgPool = config.sqlConnectionString ? new Pool({
   connectionString: config.sqlConnectionString
-})
+}) : undefined;
 
 const pluginManager: PluginManager = new DefaultPluginManager();
 const sqlManager: SqlDataStore = new PgSqlDataStore(pgPool);
