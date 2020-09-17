@@ -499,7 +499,7 @@ export class RedisMessageQueuePlugin implements MessageQueueManager {
   private async archiveUsersJob(message: JobMessage): Promise<void> {
     let currentTime = Date.now();
 
-    this.sessionDataManager.getValuesGreaterThanTimestamp(SET_ALL_USERS_LAST_ACTIVITY, currentTime - INACTIVE_USER_THRESHOLD).then((res) => {
+    this.sessionDataManager.getValuesLessThanTimestamp(SET_ALL_USERS_LAST_ACTIVITY, currentTime - INACTIVE_USER_THRESHOLD).then((res) => {
       let promises = [];
       for (let userId of res) {
         promises.push(this.archiveManager.isUserArchived(userId).then((archived) => {
