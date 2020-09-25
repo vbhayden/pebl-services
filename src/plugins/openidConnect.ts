@@ -186,6 +186,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           this.activeClient.userinfo(session.activeTokens.access_token)
             .then((userInfo) => {
               session.identity = userInfo;
+
+              if (!userInfo.preferred_username) {
+                if (userInfo.id)
+                  userInfo.preferred_username = userInfo.id as string;
+                else if (userInfo.sub)
+                  userInfo.preferred_username = userInfo.sub as string;
+                else {
+                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "ProfileNoId", session.id, session.ip);
+                  resolve(null);
+                }
+              }
+
               auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username, userInfo);
               resolve(userInfo);
             }).catch(async (err) => {
