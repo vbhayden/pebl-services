@@ -1,0 +1,9 @@
+FROM alpine:latest
+
+COPY dockerConfig/setupTunnel.sh ./setupTunnel.sh
+
+RUN chmod 700 ./setupTunnel.sh
+
+RUN apk add --no-cache openssh
+
+CMD ["./setupTunnel"]

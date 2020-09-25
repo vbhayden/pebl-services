@@ -35,7 +35,7 @@ export class XApiQuery {
     let self = this;
     let queryString = Object.keys(this).reduce(function(result: string[], key) {
       if ((<any>self)[key] !== undefined) {
-        result.push(key + '=' + (<any>self)[key]);
+        result.push(key + '=' + encodeURIComponent((<any>self)[key]));
       }
       return result;
     }, []).join('&');

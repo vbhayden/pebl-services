@@ -17,22 +17,22 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     this.addMessageTemplate(new MessageTemplate("getModuleEvents",
       this.validateGetModuleEvents.bind(this),
       this.authorizeGetModuleEvents.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getModuleEvents(payload.identity, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.getModuleEvents(payload.identity);
       }));
 
     this.addMessageTemplate(new MessageTemplate("saveModuleEvents",
       this.validateSaveModuleEvents.bind(this),
       this.authorizeSaveModuleEvents.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveModuleEvents(payload.identity, payload.events, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveModuleEvents(payload.identity, payload.events);
       }));
 
     this.addMessageTemplate(new MessageTemplate("deleteModuleEvent",
       this.validateDeleteModuleEvent.bind(this),
       this.authorizeDeleteModuleEvent.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteModuleEvent(payload.identity, payload.xId, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.deleteModuleEvent(payload.identity, payload.xId);
       }));
   }
 
@@ -90,35 +90,31 @@ export class DefaultModuleEventsManager extends PeBLPlugin implements ModuleEven
     return canUser || canGroup;
   }
 
-  getModuleEvents(identity: string, callback: ((events: ModuleEvent[]) => void)): void {
-    this.sessionData.getHashValues(generateUserModuleEventsKey(identity),
-      (result: string[]) => {
-        callback(result.map(function(x) {
-          return new ModuleEvent(JSON.parse(x));
-        }));
-      });
-  }
-
-  saveModuleEvents(identity: string, events: ModuleEvent[], callback: ((success: boolean) => void)): void {
-    for (let stmt of events) {
-      let stmtStr = JSON.stringify(stmt);
-      this.sessionData.queueForLrs(stmtStr);
-    }
-    callback(true);
-  }
-
-  deleteModuleEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserModuleEventsKey(identity), generateModuleEventsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-      }
-      this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity),
-        generateModuleEventsKey(id), (result: boolean) => {
-          if (!result) {
-            auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelModuleEvent", identity, id);
-          }
-          callback(result);
-        });
+  async getModuleEvents(identity: string): Promise<ModuleEvent[]> {
+    let result: string[] = await this.sessionData.getHashValues(generateUserModuleEventsKey(identity));
+    return result.map(function(x) {
+      return new ModuleEvent(JSON.parse(x));
     });
+  }
+
+  async saveModuleEvents(identity: string, events: ModuleEvent[]): Promise<true> {
+    let arr = [];
+    for (let stmt of events) {
+      arr.push(JSON.stringify(stmt));
+    }
+    await this.sessionData.queueForLrs(arr);
+    return true;
+  }
+
+  async deleteModuleEvent(identity: string, id: string): Promise<boolean> {
+    let data = await this.sessionData.getHashValue(generateUserModuleEventsKey(identity), generateModuleEventsKey(id));
+    if (data) {
+      await this.sessionData.queueForLrsVoid(data);
+    }
+    let result = await this.sessionData.deleteHashValue(generateUserModuleEventsKey(identity), generateModuleEventsKey(id));
+    if (!result) {
+      auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelModuleEvent", identity, id);
+    }
+    return result;
   }
 }

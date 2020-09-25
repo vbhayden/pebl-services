@@ -15,16 +15,31 @@ export class LRSPlugin implements LRS {
     this.endpoint = endpoint;
   }
 
+  private cleanXApiStatement(xapi: { [key: string]: any }): { [key: string]: any } {
+    if (xapi.object.definition) {
+      if (xapi.object.definition.name && Object.keys(xapi.object.definition.name).length == 0) {
+        delete xapi.object.definition.name;
+      }
+      if (xapi.object.definition.description && Object.keys(xapi.object.definition.description).length == 0) {
+        delete xapi.object.definition.description;
+      }
+    }
+
+    return xapi;
+  }
+
   storeStatements(stmts: XApiStatement[], successCb: ((string: string) => void), failureCb: ((e: Error | { [key: string]: any }) => void)): void {
 
-    let stmtSet: { [key: string]: XApiStatement } = {};
-    stmts.forEach(function(rec) {
+    let stmtSet: { [key: string]: { [key: string]: any } } = {};
+    stmts.forEach((rec) => {
       delete rec.identity;
       rec = rec.toXAPI();
       if (rec.id && stmtSet[rec.id]) {
         auditLogger.report(LogCategory.SYSTEM, Severity.ERROR, "DupedxAPIID", rec.id);
       }
-      stmtSet[rec.id] = rec;
+      let r = this.cleanXApiStatement(rec);
+      if (r)
+        stmtSet[rec.id] = r;
     });
 
     let path = this.endpoint.path + "statements";
@@ -142,7 +157,7 @@ export class LRSPlugin implements LRS {
     });
   }
 
-  getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string, ): void {
+  getProfile(profileType: string, callback: ((profile?: Profile) => void), profileId?: string): void {
     let path = this.endpoint.path + "agents/profile?agent=" + encodeURIComponent(PREFIX_PEBL_THREAD + profileType + "s") + (profileId ? ("&profileId=" + encodeURIComponent(profileId)) : '') + "&t=" + Date.now();
 
     network.getData(this.endpoint.host, path, this.endpoint.headers, function(incomingData) {

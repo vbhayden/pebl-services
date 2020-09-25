@@ -12,17 +12,17 @@ export class DefaultCompetencyManager extends PeBLPlugin implements CompetencyMa
 
   }
 
-  validateGetCompetencies(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateGetCompetencies(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateSaveCompetencies(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateSaveCompetencies(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
-  validateDeleteCompetencies(payload: { [key: string]: any }): boolean {
-    return false;
-  }
+  // validateDeleteCompetencies(payload: { [key: string]: any }): boolean {
+  //   return false;
+  // }
 
   // getCompetencies(userProfile: UserProfile, callback: ((competencies: Competency[]) => void)): void {
   // 	this.redis.hvals(this.getUserKey(userProfile.identity) + ':' + competenciesKey, function(err, result) {

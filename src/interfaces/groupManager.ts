@@ -23,28 +23,28 @@ export interface GroupManager extends PeBLPlugin {
   authorizeUpdateGroupMemberUser(username: string, permissions: any, payload: { [key: string]: any }): boolean;
   authorizeGetGroups(username: string, permissions: any, payload: { [key: string]: any }): boolean;
 
-  addGroup(groupId: string, groupName: string, groupDescription: string, callback: (data: any) => void, groupAvatar?: string): void; //Add a group with the specified data to the system
-  deleteGroup(groupId: string, callback: (data: any) => void): void; //Delete the group with the specified Id
-  updateGroup(groupId: string, callback: (data: any) => void, groupName?: string, groupDescription?: string, groupAvatar?: string): void; //Update group metadata for group with specified Id
+  addGroup(groupId: string, groupName: string, groupDescription: string, groupAvatar?: string): Promise<true>; //Add a group with the specified data to the system
+  deleteGroup(groupId: string): Promise<boolean>; //Delete the group with the specified Id
+  updateGroup(groupId: string, groupName?: string, groupDescription?: string, groupAvatar?: string): Promise<true>; //Update group metadata for group with specified Id
 
 
-  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void
-  addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void
+  addGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): Promise<true>;
+  addGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): Promise<true>;
 
-  getGroupMemberUser(groupId: string, memberUserId: string, callback: (roleIds: string[]) => void): void
-  getGroupMemberUsers(groupId: string, callback: (userIds: string[]) => void): void
+  getGroupMemberUser(groupId: string, memberUserId: string): Promise<string[]>;
+  getGroupMemberUsers(groupId: string): Promise<string[]>;
 
-  getGroupMemberGroup(groupId: string, memberGroupId: string, callback: (roleIds: string[]) => void): void
-  getGroupMemberGroups(groupId: string, callback: (groupIds: string[]) => void): void;
+  getGroupMemberGroup(groupId: string, memberGroupId: string): Promise<string[]>;
+  getGroupMemberGroups(groupId: string): Promise<string[]>;
 
-  deleteGroupMemberUser(groupId: string, memberUserId: string, callback: (data: any) => void): void; //Remove the specified userId from the specified group
-  deleteGroupMemberGroup(groupId: string, memberGroupId: string, callback: (data: any) => void): void
+  deleteGroupMemberUser(groupId: string, memberUserId: string): Promise<boolean>; //Remove the specified userId from the specified group
+  deleteGroupMemberGroup(groupId: string, memberGroupId: string): Promise<boolean>;
 
-  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[], callback: (data: any) => void): void;
-  updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): void;
+  updateGroupMemberUser(groupId: string, memberUserId: string, roleIds: string[]): Promise<true>;
+  updateGroupMemberGroup(groupId: string, memberGroupId: string, roleIds: string[]): Promise<true>;
 
-  getGroups(callback: ((groups: Group[]) => void)): void; //Get all existing groups
-  getGroupsGroups(groupId: string, callback: ((groupIds: string[]) => void)): void;
+  getGroups(): Promise<Group[]>; //Get all existing groups
+  getGroupsGroups(groupId: string): Promise<string[]>;
 
-  getUsersGroups(userId: string, callback: ((groupIds: string[]) => void)): void;
+  getUsersGroups(userId: string): Promise<string[]>;
 }
