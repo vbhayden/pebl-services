@@ -254,6 +254,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
   private async adjustUserPermissions(session: Express.Session, userId: string, accessToken: string): Promise<true> {
 
     let roleIds = await this.userManager.getUserRoles(userId);
+    auditLogger.report(LogCategory.AUTH, Severity.INFO, "AccessTokenInfo", accessToken);
     let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
 
     if (accessTokenObject.resource_access) {
