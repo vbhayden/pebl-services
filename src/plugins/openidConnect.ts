@@ -186,7 +186,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           this.activeClient.userinfo(session.activeTokens.access_token)
             .then((userInfo) => {
               session.identity = userInfo;
-              auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
+              auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username, userInfo);
               resolve(userInfo);
             }).catch(async (err) => {
               auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "GetAuthProfileFail", session.id, session.ip, err);
