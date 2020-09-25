@@ -59,10 +59,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             .then(async (tokenSet) => {
               if (Object.keys(tokenSet).length != 0) {
                 session.activeTokens = tokenSet;
-                if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+                if (tokenSet.expires_at) {
                   session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-                  let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-                  session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                  if (tokenSet.refresh_expires_in) {
+                    let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                    session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                  }
                   let profile = await this.getProfile(session);
                   if (profile) {
                     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
@@ -246,7 +248,7 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (session.refreshTokenExpiration) {
       return ((session.refreshTokenExpiration - Date.now()) <= 0);
     }
-    return true;
+    return false;
   }
 
   private async adjustUserPermissions(session: Express.Session, userId: string, accessToken: string): Promise<true> {
@@ -310,10 +312,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then(async (tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
-            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+            if (tokenSet.expires_at) {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-              session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              if (tokenSet.refresh_expires_in) {
+                let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              }
               let found = await this.getProfile(session);
               if (found) {
                 await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
