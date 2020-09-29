@@ -59,10 +59,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
             .then(async (tokenSet) => {
               if (Object.keys(tokenSet).length != 0) {
                 session.activeTokens = tokenSet;
-                if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+                if (tokenSet.expires_at) {
                   session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-                  let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-                  session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                  if (tokenSet.refresh_expires_in) {
+                    let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                    session.refreshTokenExpiration = Date.now() + refreshExpiration;
+                  }
                   let profile = await this.getProfile(session);
                   if (profile) {
                     auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "RefreshedTokens", session.id, session.ip, session.identity.preferred_username);
@@ -184,6 +186,18 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
           this.activeClient.userinfo(session.activeTokens.access_token)
             .then((userInfo) => {
               session.identity = userInfo;
+
+              if (!userInfo.preferred_username) {
+                if (userInfo.id)
+                  userInfo.preferred_username = userInfo.id as string;
+                else if (userInfo.sub)
+                  userInfo.preferred_username = userInfo.sub as string;
+                else {
+                  auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "ProfileNoId", session.id, session.ip);
+                  resolve(null);
+                }
+              }
+
               auditLogger.report(LogCategory.AUTH, Severity.INFO, "GetAuthProfile", session.id, session.ip, session.identity.preferred_username);
               resolve(userInfo);
             }).catch(async (err) => {
@@ -246,58 +260,64 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
     if (session.refreshTokenExpiration) {
       return ((session.refreshTokenExpiration - Date.now()) <= 0);
     }
-    return true;
+    return false;
   }
 
   private async adjustUserPermissions(session: Express.Session, userId: string, accessToken: string): Promise<true> {
 
-    let roleIds = await this.userManager.getUserRoles(userId);
-    let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
+    try {
+      let roleIds = await this.userManager.getUserRoles(userId);
+      let accessTokenObject = JSON.parse(Buffer.from((accessToken.split('.')[1]), 'base64').toString('utf8'));
 
-    if (accessTokenObject.resource_access) {
-      let rolesToRemove: string[] = [];
-      let rolesToAdd: string[] = [];
-      let ps = accessTokenObject.resource_access["PeBL-Services"];
-      if (ps && ps.roles) {
-        for (let incomingRole of ps.roles) {
-          let found = false;
-          for (let roleId of roleIds) {
-            if (roleId === incomingRole) {
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            rolesToAdd.push(incomingRole);
-          }
-        }
-        for (let roleId of roleIds) {
-          let found = false;
+      if (accessTokenObject.resource_access) {
+        let rolesToRemove: string[] = [];
+        let rolesToAdd: string[] = [];
+        let ps = accessTokenObject.resource_access["PeBL-Services"];
+        if (ps && ps.roles) {
           for (let incomingRole of ps.roles) {
-            if (roleId === incomingRole) {
-              found = true;
-              break;
+            let found = false;
+            for (let roleId of roleIds) {
+              if (roleId === incomingRole) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              rolesToAdd.push(incomingRole);
             }
           }
-          if (!found) {
-            rolesToRemove.push(roleId);
+          for (let roleId of roleIds) {
+            let found = false;
+            for (let incomingRole of ps.roles) {
+              if (roleId === incomingRole) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              rolesToRemove.push(roleId);
+            }
           }
-        }
 
-        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
-        for (let roleId of rolesToRemove) {
-          await this.userManager.deleteUserRole(userId, roleId);
-        }
-        if (rolesToAdd.length > 0) {
-          await this.userManager.addUserRoles(userId, rolesToAdd);
-        }
-      } else {
-        auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
-        for (let roleId of roleIds) {
-          await this.userManager.deleteUserRole(userId, roleId);
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustingRoles", session.id, session.ip, userId, rolesToRemove, rolesToAdd);
+          for (let roleId of rolesToRemove) {
+            await this.userManager.deleteUserRole(userId, roleId);
+          }
+          if (rolesToAdd.length > 0) {
+            await this.userManager.addUserRoles(userId, rolesToAdd);
+          }
+        } else {
+          auditLogger.report(LogCategory.AUTH, Severity.INFO, "AdjustRolesRemoveAll", session.id, session.ip, roleIds);
+          for (let roleId of roleIds) {
+            await this.userManager.deleteUserRole(userId, roleId);
+          }
         }
       }
+    } catch (e) {
+      auditLogger.report(LogCategory.AUTH, Severity.CRITICAL, "AdjustUserPermissionsFail", session.id, session.ip);
     }
+
+
     return true;
   }
 
@@ -310,10 +330,12 @@ export class OpenIDConnectAuthentication implements AuthenticationManager {
         .then(async (tokenSet: TokenSet) => {
           if (Object.keys(tokenSet).length != 0) {
             session.activeTokens = tokenSet;
-            if (tokenSet.expires_at && tokenSet.refresh_expires_in) {
+            if (tokenSet.expires_at) {
               session.accessTokenExpiration = tokenSet["expires_at"] * 1000;
-              let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
-              session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              if (tokenSet.refresh_expires_in) {
+                let refreshExpiration = (<any>tokenSet)["refresh_expires_in"] * 1000;
+                session.refreshTokenExpiration = Date.now() + refreshExpiration;
+              }
               let found = await this.getProfile(session);
               if (found) {
                 await this.adjustUserPermissions(session, session.identity.preferred_username, session.activeTokens.access_token);
