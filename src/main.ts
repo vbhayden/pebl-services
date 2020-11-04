@@ -306,7 +306,7 @@ pluginManager.register(navigationManager);
         store: new RedisSessionStore({ client: redisClient, ttl: config.sessionTTL }),
         secret: config.sessionSecret,
         cookie: {
-          secure: config.useSSL,
+          secure: true,
           httpOnly: true,
           maxAge: (config.sessionTTL * 1000), //wants time in milliseconds
           sameSite: config.cookieSameSite
