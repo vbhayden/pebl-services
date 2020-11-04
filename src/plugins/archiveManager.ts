@@ -104,7 +104,9 @@ export class DefaultArchiveManager {
           let promises = [];
           for (let key in records) {
             if (records[key] !== null)
-              promises.push(this.sessionData.restoreKey(key, 0, <any>Buffer.from(records[key])));
+              promises.push(this.sessionData.removeKeys([key]).then(() => {
+                return this.sessionData.restoreKey(key, 0, <any>Buffer.from(records[key]))
+              }));
           }
           Promise.all(promises).then(() => {
             this.sessionData.deleteHashValue(CONSTS.SET_ALL_ARCHIVE_USERS,
