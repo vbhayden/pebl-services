@@ -486,7 +486,8 @@ pluginManager.register(epubManager);
       await authorizationManager.assemblePermissionSet(username, req.session);
       if (req.session) {
         let authorized = authorizationManager.authorize(username, req.session.permissions, {
-          requestType: 'uploadEpub'
+          requestType: 'uploadEpub',
+          identity: username
         });
         if (authorized) {
           epubUploadHandler(req, res, function(err: any) {
@@ -529,7 +530,8 @@ pluginManager.register(epubManager);
       await authorizationManager.assemblePermissionSet(username, req.session);
       if (req.session) {
         let authorized = authorizationManager.authorize(username, req.session.permissions, {
-          requestType: 'deleteEpub'
+          requestType: 'deleteEpub',
+          identity: username
         });
         if (authorized) {
           epubManager.deleteEpub(req.query.id as string).then((result) => {
