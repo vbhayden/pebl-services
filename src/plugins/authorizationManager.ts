@@ -52,6 +52,12 @@ export class DefaultAuthorizationManager {
             else if (session.identity.role === 'admin')
               this.setGroupPermissionsAdmin(groupPermissions[groupId]);
           }
+
+          //TODO: HARD CODING ADMIN USER PERMISSION
+          if (session.identity.role === 'admin') {
+            userPermissions['uploadEpub'] = true;
+            userPermissions['deleteEpub'] = true;
+          }
         }
 
         for (let groupId of groupIds) {

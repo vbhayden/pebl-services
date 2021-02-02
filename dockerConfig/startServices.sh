@@ -29,6 +29,9 @@ sed -i "s|__LRS_URL__|$LRS_URL|g" /srv/dist/serverConfigLive.json
 sed -i "s|__LRS_BASIC_AUTH__|$LRS_BASIC_AUTH|g" /srv/dist/serverConfigLive.json
 #sed -i "s|__USE_PROXY__|$USE_PROXY|g" /srv/dist/serverConfigLive.json
 sed -i "s|__USE_PROXY__|false|g" /srv/dist/serverConfigLive.json
+sed -i "s|__PUBLISHING_SERVICE_URL__|$PUBLISHING_SERVICE_URL|g" /srv/dist/serverConfigLive.json
+sed -i "s|__PUBLISHING_SERVICE_SECRET__|$PUBLISHING_SERVICE_SECRET|g" /srv/dist/serverConfigLive.json
+sed -i "s|__EPUB_TEMP_UPLOAD_PATH__|$EPUB_TEMP_UPLOAD_PATH|g" /srv/dist/serverConfigLive.json
 
 cd /srv/dist/
 

@@ -42,5 +42,9 @@
     "lrsHeaders": {
     	"X-Experience-API-Version": "1.0.3",
     	"Authorization": "Basic __LRS_BASIC_AUTH__"
-    }
+    },
+    
+    "epubTempUploadPath": "__EPUB_TEMP_UPLOAD_PATH__",
+    "publishingServiceUrl": "__PUBLISHING_SERVICE_URL__",
+    "publishingServiceSecret": "__PUBLISHING_SERVICE_SECRET__"
 }
