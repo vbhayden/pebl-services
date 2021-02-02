@@ -170,6 +170,7 @@ deployDev:
    - scp -P22 -r dist $USERNAME@$DEV_SERVER_IP:/srv/devNode/
    - scp -P22 -r package.json $USERNAME@$DEV_SERVER_IP:/srv/devNode/
    - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && npm install --production"
+   - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && mkdir epubTempUpload"
    - ssh -p22 $USERNAME@$DEV_SERVER_IP "date > /srv/devNodeUpdated"
 
 ########################
@@ -213,6 +214,7 @@ deployQa:
    - scp -P22 -r dist $USERNAME@$QA_SERVER_IP:/srv/qaNode/
    - scp -P22 -r package.json $USERNAME@$QA_SERVER_IP:/srv/qaNode/
    - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && npm install --production"
+   - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && mkdir epubTempUpload"
    - ssh -p22 $USERNAME@$QA_SERVER_IP "date > /srv/qaNodeUpdated"
 
 
