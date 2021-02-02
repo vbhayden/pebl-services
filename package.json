@@ -4,18 +4,27 @@
     "main": "main.js",
     "dependencies": {
         "@types/pg": "^7.14.4",
+        "@types/unzipper": "^0.10.3",
+        "axios": "^0.21.1",
         "body-parser": "^1.19.0",
         "connect-redis": "^5.0.0",
+        "etl": "^0.6.12",
         "express": "^4.17.1",
         "express-session": "^1.17.1",
         "express-ws": "^4.0.0",
+        "form-data": "^3.0.0",
+        "md5-file": "^5.0.0",
+        "multer": "^1.4.2",
         "openid-client": "^3.15.6",
         "pako": "^1.0.11",
         "pg": "^8.3.0",
         "pg-hstore": "^2.3.3",
         "redis": "^3.0.2",
         "rsmq": "^0.12.2",
-        "sequelize": "^6.3.3"
+        "sequelize": "^6.3.3",
+        "tmp-promise": "^3.0.2",
+        "unzipper": "^0.10.11",
+        "xml2js": "^0.4.23"
     },
     "scripts": {
         "compile": "tsfmt -r && tsc",

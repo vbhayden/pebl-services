@@ -4,6 +4,7 @@ import * as redis from 'redis'
 import * as fs from 'fs';
 import * as https from 'https';
 import * as http from 'http';
+import * as path from 'path';
 
 import { Request, Response } from 'express';
 import * as WebSocket from 'ws';
@@ -69,10 +70,14 @@ import { Severity, LogCategory, generateUserClearedTimestamps, generateUserClear
 import { ConsoleAuditLogManager } from "./plugins/ConsoleAuditLogManager";
 import { LinkedInAuthentication } from "./plugins/linkedInAuth";
 import { DefaultArchiveManager } from "./plugins/archiveManager";
+import { EpubManager } from "./interfaces/epubManager";
+import { DefaultEpubManager } from "./plugins/epubManager";
 import { ArchiveManager } from "./interfaces/archiveManager";
 import { popThroughArray } from "./utils/utils";
 
 let express = require('express');
+var multer = require('multer');
+
 
 let expressApp = express();
 
@@ -90,6 +95,21 @@ try {
   console.error("Invalid config file", e);
   process.exit(2);
 }
+
+var epubUpload = multer({
+  storage: multer.diskStorage({
+    destination: function(req: any, file: any, cb: any) {
+      console.log(config.epubTempUploadPath);
+      cb(null, config.epubTempUploadPath);
+    },
+    filename: function(req: any, file: any, cb: any) {
+      console.log(file.originalname);
+      cb(null, file.originalname);
+    }
+  })
+})
+
+var epubUploadHandler = epubUpload.single('epub');
 
 let terminateServices: (cb?: () => void) => void;
 
@@ -163,7 +183,7 @@ const actionManager: ActionManager = new DefaultActionManager(redisCache, sqlMan
 const quizManager: QuizManager = new DefaultQuizManager(redisCache, sqlManager);
 const sessionManager: SessionManager = new DefaultSessionManager(redisCache, sqlManager);
 const navigationManager: NavigationManager = new DefaultNavigationManager(redisCache);
-
+const epubManager: EpubManager = new DefaultEpubManager(config);
 let e;
 try {
   let url = new URL(config.lrsUrl);
@@ -200,6 +220,7 @@ pluginManager.register(actionManager);
 pluginManager.register(quizManager);
 pluginManager.register(sessionManager);
 pluginManager.register(navigationManager);
+pluginManager.register(epubManager);
 
 (async () => {
 
@@ -265,6 +286,26 @@ pluginManager.register(navigationManager);
   }
 
   expressApp = require('express-ws')(expressApp, httpsServer).app;
+
+  var authenticateSession = async (req: Request, res: Response, next: Function) => {
+    if (!config.bypassAuthoringAuth) {
+      if (req.session) {
+        let isLoggedIn = await authenticationManager.isLoggedIn(req.session);
+        if (isLoggedIn)
+          next();
+        else {
+          res.status(401);
+          res.statusMessage = 'Not logged in';
+          res.send();
+        }
+      } else {
+        res.status(503).end();
+      }
+    } else {
+      next();
+    }
+  }
+
 
   // Potentially needed for CORS
   var allowCrossDomain = (req: Request, res: Response, next: Function) => {
@@ -438,6 +479,82 @@ pluginManager.register(navigationManager);
   expressApp.post('/validate', function(req: Request, res: Response) {
     authenticationManager.validate(req.body.token, req, res);
   });
+
+  expressApp.post('/upload-epub', authenticateSession, async function(req: Request, res: Response) {
+    if (req && req.session) {
+      let username = req.session.identity.preferred_username;
+      await authorizationManager.assemblePermissionSet(username, req.session);
+      if (req.session) {
+        let authorized = authorizationManager.authorize(username, req.session.permissions, {
+          requestType: 'uploadEpub',
+          identity: username
+        });
+        if (authorized) {
+          epubUploadHandler(req, res, function(err: any) {
+            if (err)
+              res.sendStatus(500);
+
+            console.log(req);
+
+            let uploadPath = path.join((req as any).file.destination, (req as any).file.filename);
+            epubManager.uploadEpub(uploadPath).then((result) => {
+              console.log(result);
+              if (result)
+                res.sendStatus(201);
+              else
+                res.sendStatus(500);
+            }).catch((e) => {
+              console.log(e);
+              res.sendStatus(500);
+            }).finally(() => {
+              fs.unlink(uploadPath, () => { });
+            })
+          })
+        } else {
+          auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, 'uploadEpub');
+          res.sendStatus(401);
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
+        res.sendStatus(401);
+      }
+    } else {
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
+      res.sendStatus(401);
+    }
+  })
+
+  expressApp.delete('/delete-epub', authenticateSession, async function(req: Request, res: Response) {
+    if (req && req.session) {
+      let username = req.session.identity.preferred_username;
+      await authorizationManager.assemblePermissionSet(username, req.session);
+      if (req.session) {
+        let authorized = authorizationManager.authorize(username, req.session.permissions, {
+          requestType: 'deleteEpub',
+          identity: username
+        });
+        if (authorized) {
+          epubManager.deleteEpub(req.query.id as string).then((result) => {
+            if (result)
+              res.sendStatus(200);
+            else
+              res.sendStatus(500);
+          }).catch(() => {
+            res.sendStatus(500);
+          })
+        } else {
+          auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, 'deleteEpub');
+          res.sendStatus(401);
+        }
+      } else {
+        auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
+        res.sendStatus(401);
+      }
+    } else {
+      auditLogger.report(LogCategory.STORAGE, Severity.CRITICAL, "ProcessMsgNoSession");
+      res.sendStatus(401);
+    }
+  })
 
   let processMessage = async (ws: WebSocket, req: Request, payload: { [key: string]: any }): Promise<void> => {
     if (req && req.session) {
