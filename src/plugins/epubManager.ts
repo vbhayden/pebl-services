@@ -97,10 +97,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
 
   async extractEpubCoverImage(epubFilePath: string, coverHref: string): Promise<Buffer | null> {
     let image = null;
-    let filename = coverHref.replace('image/', '');
     const zip = fs.createReadStream(epubFilePath).pipe(unzipper.Parse({ forceStream: true }));
     for await (const entry of zip) {
-      if (entry.path == 'OEBPS/image/' + filename) {
+      if (entry.path == 'OEBPS/' + coverHref) {
         image = await entry.buffer();
       } else {
         entry.autodrain();
@@ -118,7 +117,7 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
     try {
       let metadata = await this.extractEpubMetadata(epubFilePath);
       console.log(metadata);
-      if (metadata.title && metadata.author && metadata.id && metadata.coverHref) {
+      if (metadata.title && metadata.id && metadata.coverHref) {
         let coverImage = await this.extractEpubCoverImage(epubFilePath, metadata.coverHref);
         console.log(coverImage);
         if (coverImage) {
