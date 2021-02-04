@@ -110,9 +110,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
 
 
 
-  async uploadEpub(epubFilePath: string): Promise<boolean> {
+  async uploadEpub(epubFilePath: string): Promise<{status: number, message: string}> {
     if (!this.config.publishingServiceUrl)
-      return false;
+      return {status: 500, message: 'No Publishing Service URL'};
 
     try {
       let metadata = await this.extractEpubMetadata(epubFilePath);
@@ -148,23 +148,23 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
             maxBodyLength: Infinity,
           })
 
-          return true;
+          return {status: 201, message: 'Created'};
 
         } else {
-          return false;
+          return {status: 500, message: 'No cover image'};
         }
       } else {
-        return false;
+        return {status: 500, message: 'Missing metadata'};
       }
     } catch (e) {
       console.log(e);
-      return false;
+      return {status: 500, message: e.toString()};
     }
   }
 
-  async deleteEpub(id: string): Promise<boolean> {
+  async deleteEpub(id: string): Promise<{status: number, message: string}> {
     if (!this.config.publishingServiceUrl)
-      return false;
+      return {status: 500, message: 'No Publishing Service URL'};
 
     try {
       await axios.delete(this.config.publishingServiceUrl + '/deleteEpub?id=' + id, {
@@ -173,9 +173,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
         }
       })
 
-      return true;
+      return {status: 200, message: 'Ok'};
     } catch (e) {
-      return false;
+      return {status: 500, message: e.toString()};
     }
   }
 }
