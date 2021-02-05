@@ -66,9 +66,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
         try {
           const content = await entry.buffer();
           xml2js.parseStringPromise(content.toString()).then((result: any) => {
-            let title = result.package.metadata[0]['dc:title'][0];
-            let author = result.package.metadata[0]['dc:creator'][0];
-            let id = result.package.metadata[0]['dc:identifier'][0]._;
+            let title = result.package.metadata[0]['dc:title'] ? result.package.metadata[0]['dc:title'][0] : undefined;
+            let author = result.package.metadata[0]['dc:creator'] ? result.package.metadata[0]['dc:creator'][0] : undefined;
+            let id = result.package.metadata[0]['dc:identifier'] ? result.package.metadata[0]['dc:identifier'][0]._ : undefined;
             let coverHref;
             for (let i = 0; i < result.package.manifest[0].item.length; i++) {
               if (result.package.manifest[0].item[i].$.properties && result.package.manifest[0].item[i].$.properties === 'cover-image') {
