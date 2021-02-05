@@ -117,13 +117,12 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
     try {
       let metadata = await this.extractEpubMetadata(epubFilePath);
       console.log(metadata);
-      if (metadata.title && metadata.id && metadata.coverHref) {
-        let coverImage = await this.extractEpubCoverImage(epubFilePath, metadata.coverHref);
-        console.log(coverImage);
+      if (metadata.id) {
+        let coverImage = metadata.coverHref ? await this.extractEpubCoverImage(epubFilePath, metadata.coverHref) : null;
         if (coverImage) {
           let formData = new FormData();
-          formData.append('title', metadata.title);
-          formData.append('author', metadata.author);
+          formData.append('title', metadata.title ? metadata.title : "Untitled");
+          formData.append('author', metadata.author ? metadata.author : "No Author Listed");
           formData.append('libraryState', 'published');
           formData.append('hidden', 'shown');
           formData.append('id', metadata.id);
@@ -154,7 +153,7 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
           return {status: 500, message: 'No cover image'};
         }
       } else {
-        return {status: 500, message: 'Missing metadata'};
+        return {status: 500, message: 'Missing book ID'};
       }
     } catch (e) {
       console.log(e);
