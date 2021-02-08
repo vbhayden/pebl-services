@@ -66,9 +66,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
         try {
           const content = await entry.buffer();
           xml2js.parseStringPromise(content.toString()).then((result: any) => {
-            let title = result.package.metadata[0]['dc:title'][0];
-            let author = result.package.metadata[0]['dc:creator'][0];
-            let id = result.package.metadata[0]['dc:identifier'][0]._;
+            let title = result.package.metadata[0]['dc:title'] ? result.package.metadata[0]['dc:title'][0] : undefined;
+            let author = result.package.metadata[0]['dc:creator'] ? result.package.metadata[0]['dc:creator'][0] : undefined;
+            let id = result.package.metadata[0]['dc:identifier'] ? result.package.metadata[0]['dc:identifier'][0]._ : undefined;
             let coverHref;
             for (let i = 0; i < result.package.manifest[0].item.length; i++) {
               if (result.package.manifest[0].item[i].$.properties && result.package.manifest[0].item[i].$.properties === 'cover-image') {
@@ -110,20 +110,19 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
 
 
 
-  async uploadEpub(epubFilePath: string): Promise<boolean> {
+  async uploadEpub(epubFilePath: string): Promise<{ status: number, message: string }> {
     if (!this.config.publishingServiceUrl)
-      return false;
+      return { status: 500, message: 'No Publishing Service URL' };
 
     try {
       let metadata = await this.extractEpubMetadata(epubFilePath);
       console.log(metadata);
-      if (metadata.title && metadata.id && metadata.coverHref) {
-        let coverImage = await this.extractEpubCoverImage(epubFilePath, metadata.coverHref);
-        console.log(coverImage);
+      if (metadata.id) {
+        let coverImage = metadata.coverHref ? await this.extractEpubCoverImage(epubFilePath, metadata.coverHref) : null;
         if (coverImage) {
           let formData = new FormData();
-          formData.append('title', metadata.title);
-          formData.append('author', metadata.author);
+          formData.append('title', metadata.title ? metadata.title : "Untitled");
+          formData.append('author', metadata.author ? metadata.author : "No Author Listed");
           formData.append('libraryState', 'published');
           formData.append('hidden', 'shown');
           formData.append('id', metadata.id);
@@ -148,23 +147,23 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
             maxBodyLength: Infinity,
           })
 
-          return true;
+          return { status: 201, message: 'Created' };
 
         } else {
-          return false;
+          return { status: 500, message: 'No cover image' };
         }
       } else {
-        return false;
+        return { status: 500, message: 'Missing book ID' };
       }
     } catch (e) {
       console.log(e);
-      return false;
+      return { status: 500, message: e.toString() };
     }
   }
 
-  async deleteEpub(id: string): Promise<boolean> {
+  async deleteEpub(id: string): Promise<{ status: number, message: string }> {
     if (!this.config.publishingServiceUrl)
-      return false;
+      return { status: 500, message: 'No Publishing Service URL' };
 
     try {
       await axios.delete(this.config.publishingServiceUrl + '/deleteEpub?id=' + id, {
@@ -173,9 +172,9 @@ export class DefaultEpubManager extends PeBLPlugin implements EpubManager {
         }
       })
 
-      return true;
+      return { status: 200, message: 'Ok' };
     } catch (e) {
-      return false;
+      return { status: 500, message: e.toString() };
     }
   }
 }

@@ -491,21 +491,24 @@ pluginManager.register(epubManager);
         });
         if (authorized) {
           epubUploadHandler(req, res, function(err: any) {
-            if (err)
-              res.sendStatus(500);
-
-            console.log(req);
+            if (err) {
+              res.status(500);
+              res.send(err.toString());
+            }
 
             let uploadPath = path.join((req as any).file.destination, (req as any).file.filename);
             epubManager.uploadEpub(uploadPath).then((result) => {
               console.log(result);
-              if (result)
+              if (result.status === 201)
                 res.sendStatus(201);
-              else
-                res.sendStatus(500);
+              else {
+                res.status(result.status);
+                res.send(result.message);
+              }
             }).catch((e) => {
               console.log(e);
-              res.sendStatus(500);
+              res.status(500);
+              res.send(e.toString());
             }).finally(() => {
               fs.unlink(uploadPath, () => { });
             })
@@ -535,12 +538,15 @@ pluginManager.register(epubManager);
         });
         if (authorized) {
           epubManager.deleteEpub(req.query.id as string).then((result) => {
-            if (result)
+            if (result.status === 200)
               res.sendStatus(200);
-            else
-              res.sendStatus(500);
-          }).catch(() => {
-            res.sendStatus(500);
+            else {
+              res.status(result.status);
+              res.send(result.message);
+            }
+          }).catch((e) => {
+            res.status(500);
+            res.send(e.toString());
           })
         } else {
           auditLogger.report(LogCategory.MESSAGE, Severity.ERROR, "MsgNotAuthorized", req.session.id, req.session.ip, username, 'deleteEpub');
