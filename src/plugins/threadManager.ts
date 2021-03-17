@@ -742,9 +742,21 @@ export class DefaultThreadManager extends PeBLPlugin implements ThreadManager {
 
       message.stored = timestampString;
 
+      let messageCopy = JSON.parse(JSON.stringify(message));
+
+      try {
+        if (messageCopy.result && messageCopy.result.response) {
+          let jsonMessage = JSON.parse(messageCopy.result.response);
+          let stringResponse = jsonMessage.map((x: any) => {return x.text}).join();
+          messageCopy.result.response = stringResponse;
+        }
+      } catch (e) {
+        //TODO
+      }
+
       let messageStr = JSON.stringify(message);
 
-      await this.sessionData.queueForLrs(messageStr);
+      await this.sessionData.queueForLrs(JSON.stringify(messageCopy));
 
       if (Message.isDiscussion(message))
         discussions.push(message);
