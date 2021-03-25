@@ -2,7 +2,6 @@ import { PeBLPlugin } from "../models/peblPlugin";
 import { XApiStatement } from "../models/xapiStatement";
 import { EventManager } from "../interfaces/eventManager";
 import { SessionDataManager } from "../interfaces/sessionDataManager";
-import { generateUserEventsKey, generateEventsKey } from "../utils/constants";
 import { MessageTemplate } from "../models/messageTemplate";
 import { PermissionSet } from "../models/permission";
 
@@ -13,38 +12,38 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
   constructor(sessionData: SessionDataManager) {
     super();
     this.sessionData = sessionData;
-    this.addMessageTemplate(new MessageTemplate("getEvents",
-      this.validateGetEvents.bind(this),
-      this.authorizeGetEvents.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.getEvents(payload.identity, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("getEvents",
+    //   this.validateGetEvents.bind(this),
+    //   this.authorizeGetEvents.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.getEvents(payload.identity, dispatchCallback);
+    //   }));
 
     this.addMessageTemplate(new MessageTemplate("saveEvents",
       this.validateSaveEvents.bind(this),
       this.authorizeSaveEvents.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.saveEvents(payload.identity, payload.stmts, dispatchCallback);
+      (payload: { [key: string]: any }) => {
+        return this.saveEvents(payload.identity, payload.stmts);
       }));
 
-    this.addMessageTemplate(new MessageTemplate("deleteEvent",
-      this.validateDeleteEvent.bind(this),
-      this.authorizeDeleteEvent.bind(this),
-      (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
-        this.deleteEvent(payload.identity, payload.xId, dispatchCallback);
-      }));
+    // this.addMessageTemplate(new MessageTemplate("deleteEvent",
+    //   this.validateDeleteEvent.bind(this),
+    //   this.authorizeDeleteEvent.bind(this),
+    //   (payload: { [key: string]: any }, dispatchCallback: (data: any) => void) => {
+    //     this.deleteEvent(payload.identity, payload.xId, dispatchCallback);
+    //   }));
   }
 
-  validateGetEvents(payload: { [key: string]: any }): boolean {
-    return true;
-  }
+  // validateGetEvents(payload: { [key: string]: any }): boolean {
+  //   return true;
+  // }
 
-  authorizeGetEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+  // authorizeGetEvents(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+  //   let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
 
-    return canUser || canGroup;
-  }
+  //   return canUser || canGroup;
+  // }
 
   validateSaveEvents(payload: { [key: string]: any }): boolean {
     if (payload.smts && Array.isArray(payload.smts) && payload.smts.length > 0) {
@@ -66,59 +65,56 @@ export class DefaultEventManager extends PeBLPlugin implements EventManager {
     return canUser || canGroup;
   }
 
-  validateDeleteEvent(payload: { [key: string]: any }): boolean {
-    if (payload.xId && typeof payload.xId == "string")
-      return true;
-    return false;
-  }
+  // validateDeleteEvent(payload: { [key: string]: any }): boolean {
+  //   if (payload.xId && typeof payload.xId == "string")
+  //     return true;
+  //   return false;
+  // }
 
-  authorizeDeleteEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
-    let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
-    let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
+  // authorizeDeleteEvent(username: string, permissions: PermissionSet, payload: { [key: string]: any }): boolean {
+  //   let canUser = (username == payload.identity) && (permissions.user[payload.requestType])
+  //   let canGroup = permissions.group[payload.identity] && permissions.group[payload.identity][payload.requestType]
 
-    return canUser || canGroup;
-  }
+  //   return canUser || canGroup;
+  // }
 
   // getEventsForBook(identity: string, book: string): XApiStatement[]; //Retrieve all events for this user made within the specific book
 
   //Retrieve all events for this user
-  getEvents(identity: string, callback: ((stmts: XApiStatement[]) => void)): void {
-    this.sessionData.getHashValues(generateUserEventsKey(identity),
-      (result: string[]) => {
-        callback(result.map(function(x) {
-          return new XApiStatement(JSON.parse(x));
-        }));
-      });
-  }
+  // getEvents(identity: string, callback: ((stmts: XApiStatement[]) => void)): void {
+  //   this.sessionData.getHashValues(generateUserEventsKey(identity),
+  //     (result: string[]) => {
+  //       callback(result.map(function(x) {
+  //         return new XApiStatement(JSON.parse(x));
+  //       }));
+  //     });
+  // }
 
   // saveEventsForBook(identity: string, book: string, events: XApiStatement[]): void; // Store the events for this user made within the specific book
 
   // Store the events for this user
-  saveEvents(identity: string, stmts: XApiStatement[], callback: ((success: boolean) => void)): void {
+  async saveEvents(identity: string, stmts: XApiStatement[]): Promise<true> {
     let arr = [];
     for (let stmt of stmts) {
-      let stmtStr = JSON.stringify(stmt);
-      arr.push(generateEventsKey(stmt.id));
-      arr.push(stmtStr);
-      this.sessionData.queueForLrs(stmtStr);
+      arr.push(JSON.stringify(stmt));
     }
-    this.sessionData.setHashValues(generateUserEventsKey(identity), arr);
-    callback(true);
+    this.sessionData.queueForLrs(arr);
+    return true;
   }
 
   //Removes the event with the specified id
-  deleteEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
-    this.sessionData.getHashValue(generateUserEventsKey(identity), generateEventsKey(id), (data) => {
-      if (data) {
-        this.sessionData.queueForLrsVoid(data);
-      }
-      this.sessionData.deleteHashValue(generateUserEventsKey(identity),
-        generateEventsKey(id), (result: boolean) => {
-          if (!result) {
-            console.log("failed to remove event", id);
-          }
-          callback(result);
-        });
-    });
-  }
+  // deleteEvent(identity: string, id: string, callback: ((success: boolean) => void)): void {
+  //   this.sessionData.getHashValue(generateUserEventsKey(identity), generateEventsKey(id), (data) => {
+  //     if (data) {
+  //       this.sessionData.queueForLrsVoid(data);
+  //     }
+  //     this.sessionData.deleteHashValue(generateUserEventsKey(identity),
+  //       generateEventsKey(id), (result: boolean) => {
+  //         if (!result) {
+  //           auditLogger.report(LogCategory.PLUGIN, Severity.ERROR, "DelEventFail", identity, id);
+  //         }
+  //         callback(result);
+  //       });
+  //   });
+  // }
 }

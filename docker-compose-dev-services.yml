@@ -1,0 +1,59 @@
+version: '3'
+services:
+  pebl-services:
+    image: pebl-services:1.0.16
+    ports:
+      - "443:443"
+    restart: always
+    environment:
+      - SERVER_NAME=<domain>
+      - CONSUMING_DOMAINS=<consumingDomain>
+      - AUTH_PROVIDER_URL=https://<auth_domain>/auth/realms/<realm>
+      - AUTH_CLIENT_SECRET=
+      - AUTH_CLIENT_ID=
+      - SERVER_AUTH_REDIRECT_URL=https://<domain>/redirect
+      - AUTH_RESPONSE_TYPES=code
+      - AUTH_SCOPE=openid email profile
+      - POSTGRES_SQL_URL=postgres://pebl:Tacotrucked@pg:5432/services
+      - AUTH_METHOD=openid
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_AUTH=testing
+      - SESSION_SECRET=<sessionSecret>
+      - SERVER_PORT=443
+      - USE_SSL=true
+      - LRS_URL=https://lrs.peblproject.com/data/xapi
+      - LRS_BASIC_AUTH=<basic token>
+#    volumes:
+#      - /etc/letsencrypt/live/<site>/fullchain.pem:/ssl/fullchain.pem
+#      - /etc/letsencrypt/live/<site>/privkey.pem:/ssl/privkey.pem
+
+  redis:
+    image: git.eduworks.us:5050/pebl/pebl-services/redis:1.0.0
+    environment:
+      - "REDIS_AUTH=testing"
+    sysctls:
+      net.core.somaxconn: 512
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - "redisData:/var/lib/redis/"
+
+  pg:
+    image: postgres:latest
+    restart: always
+    environment:
+      - "POSTGRES_USER=pebl"
+      - "POSTGRES_PASSWORD=Tacotrucked"
+      - "POSTGRES_DB=services"
+      - "POSTGRES_HOST_AUTH_METHOD=scram-sha-256"
+      - "POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256"
+    shm_size: "256M"
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dbData:/var/lib/postgresql/data
+
+volumes:
+  dbData:
+  redisData:

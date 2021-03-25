@@ -4,15 +4,25 @@ import { ActivityObject } from "./xapiStatement";
 
 export class Message extends XApiStatement {
   readonly thread: string;
-  readonly text: string;
-  readonly prompt: string;
+  readonly text?: string;
+  readonly prompt?: string;
   readonly name: string;
   readonly direct: boolean;
+  readonly book?: string;
+  readonly bookId?: string;
   readonly groupId?: string;
   readonly isPrivate?: boolean;
   readonly access?: "private" | "team" | "class" | "all";
   readonly type?: "written" | "table" | "checkboxes" | "radioboxes" | "buttons";
   readonly replyThread?: string;
+  readonly cfi?: string;
+  readonly idRef?: string;
+  readonly peblAction?: string;
+  pinned?: boolean;
+  pinMessage?: string;
+  readonly currentTeam?: string;
+  readonly currentClass?: string;
+  readonly contextUrl?: string;
 
   constructor(raw: { [key: string]: any }) {
     super(raw);
@@ -22,30 +32,54 @@ export class Message extends XApiStatement {
     if (this.thread.indexOf(PREFIX_PEBL_THREAD) != -1)
       this.thread = this.thread.substring(PREFIX_PEBL_THREAD.length);
 
-    if (!object.definition)
-      object.definition = {};
-    if (!object.definition.name)
-      object.definition.name = {};
-    if (!object.definition.description)
-      object.definition.description = {};
 
-    this.prompt = object.definition.name["en-US"];
+    if (object.definition && object.definition.name)
+      this.prompt = object.definition.name["en-US"];
     this.name = this.actor.name || "";
     this.direct = this.thread == (NAMESPACE_USER_MESSAGES + this.getActorId());
-    this.text = object.definition.description["en-US"];
 
-    let extensions = object.definition.extensions;
-    if (extensions) {
-      this.access = extensions[PREFIX_PEBL_EXTENSION + "access"];
-      this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
-      this.replyThread = extensions[PREFIX_PEBL_EXTENSION + "replyThread"];
-      this.groupId = extensions[PREFIX_PEBL_EXTENSION + "groupId"];
-      this.isPrivate = extensions[PREFIX_PEBL_EXTENSION + "isPrivate"];
+    if (object.definition && object.definition.description)
+      this.text = object.definition.description["en-US"];
+
+    if (object.definition && object.definition.extensions) {
+      let extensions = object.definition.extensions;
+      if (extensions) {
+        this.access = extensions[PREFIX_PEBL_EXTENSION + "access"];
+        this.type = extensions[PREFIX_PEBL_EXTENSION + "type"];
+        this.replyThread = extensions[PREFIX_PEBL_EXTENSION + "replyThread"];
+        this.groupId = extensions[PREFIX_PEBL_EXTENSION + "groupId"];
+        this.isPrivate = extensions[PREFIX_PEBL_EXTENSION + "isPrivate"];
+        this.book = extensions[PREFIX_PEBL_EXTENSION + "book"];
+        this.bookId = extensions[PREFIX_PEBL_EXTENSION + "bookId"];
+        this.cfi = extensions[PREFIX_PEBL_EXTENSION + "cfi"];
+        this.idRef = extensions[PREFIX_PEBL_EXTENSION + "idRef"];
+        this.peblAction = extensions[PREFIX_PEBL_EXTENSION + "peblAction"];
+
+        if (extensions[PREFIX_PEBL_EXTENSION + "thread"])
+          this.thread = extensions[PREFIX_PEBL_EXTENSION + "thread"];
+
+        this.currentTeam = extensions[PREFIX_PEBL_EXTENSION + "currentTeam"];
+        this.currentClass = extensions[PREFIX_PEBL_EXTENSION + "currentClass"];
+        this.contextUrl = extensions[PREFIX_PEBL_EXTENSION + "contextUrl"];
+      }
     }
+
+    this.pinned = raw.pinned;
+    this.pinMessage = raw.pinMessage;
   }
 
   static is(x: XApiStatement): boolean {
+    if (!XApiStatement.is(x))
+      return false;
+
     let verb = x.verb.display["en-US"];
     return (verb == "responded") || (verb == "noted");
+  }
+
+  static isDiscussion(x: any): boolean {
+    let type = x.object.definition.type;
+    if (type === 'http://www.peblproject.com/activities/discussion')
+      return true;
+    return false;
   }
 }
