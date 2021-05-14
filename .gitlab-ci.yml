@@ -144,195 +144,195 @@ buildProdExtension:
 ### DEPLOYMENTS
 ########################
 
-deployDev:
-  stage: deploy
-  only:
-    - dev
-  environment:
-    name: dev
-    url: https://dev.services.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
+# deployDev:
+#   stage: deploy
+#   only:
+#     - dev
+#   environment:
+#     name: dev
+#     url: https://dev.services.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
 
-   - eval $(ssh-agent -s)
+#    - eval $(ssh-agent -s)
 
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
 
-   - echo "$DEV_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
+#    - echo "$DEV_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
 
-   - chmod 600 "$DEV_PRIVATE_KEY"
-   - ssh-add "$DEV_PRIVATE_KEY" > /dev/null
+#    - chmod 600 "$DEV_PRIVATE_KEY"
+#    - ssh-add "$DEV_PRIVATE_KEY" > /dev/null
 
-   - ssh -p22 $USERNAME@$DEV_SERVER_IP "rm -rf /srv/devNode/*"
-   - scp -P22 -r dist $USERNAME@$DEV_SERVER_IP:/srv/devNode/
-   - scp -P22 -r package.json $USERNAME@$DEV_SERVER_IP:/srv/devNode/
-   - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && npm install --production"
-   - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && mkdir epubTempUpload"
-   - ssh -p22 $USERNAME@$DEV_SERVER_IP "date > /srv/devNodeUpdated"
-
-########################
-
-deployDocker:
-  stage: deploy
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
-  script:
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/DockerfileServices --destination $CI_REGISTRY_IMAGE/services:$CI_COMMIT_TAG
-  only:
-    - tags
+#    - ssh -p22 $USERNAME@$DEV_SERVER_IP "rm -rf /srv/devNode/*"
+#    - scp -P22 -r dist $USERNAME@$DEV_SERVER_IP:/srv/devNode/
+#    - scp -P22 -r package.json $USERNAME@$DEV_SERVER_IP:/srv/devNode/
+#    - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && npm install --production"
+#    - ssh -p22 $USERNAME@$DEV_SERVER_IP "cd /srv/devNode && mkdir epubTempUpload"
+#    - ssh -p22 $USERNAME@$DEV_SERVER_IP "date > /srv/devNodeUpdated"
 
 ########################
 
-deployQa:
-  stage: deploy
-  only:
-    - qa
-  environment:
-    name: qa
-    url: https://qa.services.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
+# deployDocker:
+#   stage: deploy
+#   image:
+#     name: gcr.io/kaniko-project/executor:debug
+#     entrypoint: [""]
+#   script:
+#     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+#     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/DockerfileServices --destination $CI_REGISTRY_IMAGE/services:$CI_COMMIT_TAG
+#   only:
+#     - tags
 
-   - eval $(ssh-agent -s)
+########################
 
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
+# deployQa:
+#   stage: deploy
+#   only:
+#     - qa
+#   environment:
+#     name: qa
+#     url: https://qa.services.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
 
-   - echo "$QA_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
+#    - eval $(ssh-agent -s)
 
-   - chmod 600 "$QA_PRIVATE_KEY"
-   - ssh-add "$QA_PRIVATE_KEY" > /dev/null
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
 
-   - ssh -p22 $USERNAME@$QA_SERVER_IP "rm -rf /srv/qaNode/*"
-   - scp -P22 -r dist $USERNAME@$QA_SERVER_IP:/srv/qaNode/
-   - scp -P22 -r package.json $USERNAME@$QA_SERVER_IP:/srv/qaNode/
-   - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && npm install --production"
-   - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && mkdir epubTempUpload"
-   - ssh -p22 $USERNAME@$QA_SERVER_IP "date > /srv/qaNodeUpdated"
+#    - echo "$QA_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
+
+#    - chmod 600 "$QA_PRIVATE_KEY"
+#    - ssh-add "$QA_PRIVATE_KEY" > /dev/null
+
+#    - ssh -p22 $USERNAME@$QA_SERVER_IP "rm -rf /srv/qaNode/*"
+#    - scp -P22 -r dist $USERNAME@$QA_SERVER_IP:/srv/qaNode/
+#    - scp -P22 -r package.json $USERNAME@$QA_SERVER_IP:/srv/qaNode/
+#    - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && npm install --production"
+#    - ssh -p22 $USERNAME@$QA_SERVER_IP "cd /srv/qaNode && mkdir epubTempUpload"
+#    - ssh -p22 $USERNAME@$QA_SERVER_IP "date > /srv/qaNodeUpdated"
 
 
 ########################
 
-deployExtensionQA:
-  stage: deploy
-  only:
-    - extensionQA
-  environment:
-    name: extensionQA
-    url: https://qa.services.extension.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
+# deployExtensionQA:
+#   stage: deploy
+#   only:
+#     - extensionQA
+#   environment:
+#     name: extensionQA
+#     url: https://qa.services.extension.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
 
-   - eval $(ssh-agent -s)
+#    - eval $(ssh-agent -s)
 
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
 
-   - echo "$QA_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
+#    - echo "$QA_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
 
-   - chmod 600 "$QA_EXTENSION_PRIVATE_KEY"
-   - ssh-add "$QA_EXTENSION_PRIVATE_KEY" > /dev/null
+#    - chmod 600 "$QA_EXTENSION_PRIVATE_KEY"
+#    - ssh-add "$QA_EXTENSION_PRIVATE_KEY" > /dev/null
 
-   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "rm -rf /srv/qaNode/*"
-   - scp -P22 -r dist $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
-   - scp -P22 -r package.json $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
-   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "cd /srv/qaNode && npm install --production"
-   - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "date > /srv/qaNodeUpdated"
-
-########################
-
-deployProdMC:
-  stage: deploy
-  only:
-    - usmc
-  environment:
-    name: usmc
-    url: https://tecom.services.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
-
-   - eval $(ssh-agent -s)
-
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
-
-   - echo "$USMC_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
-
-   - chmod 600 "$USMC_PRIVATE_KEY"
-   - ssh-add "$USMC_PRIVATE_KEY" > /dev/null
-
-   - ssh -p22 $USERNAME@$USMC_SERVER_IP "rm -rf /srv/prodNode/*"
-   - scp -P22 -r dist $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
-   - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
-   - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
-   - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"
+#    - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "rm -rf /srv/qaNode/*"
+#    - scp -P22 -r dist $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
+#    - scp -P22 -r package.json $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP:/srv/qaNode/
+#    - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "cd /srv/qaNode && npm install --production"
+#    - ssh -p22 $EXTENSION_USERNAME@$QA_EXTENSION_SERVER_IP "date > /srv/qaNodeUpdated"
 
 ########################
 
-deployProdADL:
-  stage: deploy
-  only:
-    - adl
-  environment:
-    name: adl
-    url: https://adl.services.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
+# deployProdMC:
+#   stage: deploy
+#   only:
+#     - usmc
+#   environment:
+#     name: usmc
+#     url: https://tecom.services.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
 
-   - eval $(ssh-agent -s)
+#    - eval $(ssh-agent -s)
 
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
 
-   - echo "$ADL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
+#    - echo "$USMC_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
 
-   - chmod 600 "$ADL_PRIVATE_KEY"
+#    - chmod 600 "$USMC_PRIVATE_KEY"
+#    - ssh-add "$USMC_PRIVATE_KEY" > /dev/null
 
-   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "rm -rf /srv/prodNode/*"
-   - scp -i "$ADL_PRIVATE_KEY" -P22 -r dist $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
-   - scp -i "$ADL_PRIVATE_KEY" -P22 -r package.json $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
-   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "cd /srv/prodNode && npm install --production"
-   - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "date > /srv/prodNodeUpdated"
+#    - ssh -p22 $USERNAME@$USMC_SERVER_IP "rm -rf /srv/prodNode/*"
+#    - scp -P22 -r dist $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
+#    - scp -P22 -r package.json $USERNAME@$USMC_SERVER_IP:/srv/prodNode/
+#    - ssh -p22 $USERNAME@$USMC_SERVER_IP "cd /srv/prodNode && npm install --production"
+#    - ssh -p22 $USERNAME@$USMC_SERVER_IP "date > /srv/prodNodeUpdated"
 
 ########################
 
-deployProdExtension:
-  stage: deploy
-  only:
-    - extensionProd
-  environment:
-    name: extensionProd
-    url: https://services.extension.peblproject.org
-  script:
-   - apt-get update -y
-   - apt-get install openssh-client -y
+# deployProdADL:
+#   stage: deploy
+#   only:
+#     - adl
+#   environment:
+#     name: adl
+#     url: https://adl.services.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
 
-   - eval $(ssh-agent -s)
+#    - eval $(ssh-agent -s)
 
-   - mkdir -p ~/.ssh
-   - chmod 700 ~/.ssh
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
 
-   - echo "$PROD_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-   - chmod 644 ~/.ssh/known_hosts
+#    - echo "$ADL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
 
-   - chmod 600 "$PROD_EXTENSION_PRIVATE_KEY"
-   - ssh-add "$PROD_EXTENSION_PRIVATE_KEY" > /dev/null
+#    - chmod 600 "$ADL_PRIVATE_KEY"
 
-   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "rm -rf /srv/prodNode/*"
-   - scp -P22 -r dist $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
-   - scp -P22 -r package.json $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
-   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "cd /srv/prodNode && npm install --production"
-   - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "date > /srv/prodNodeUpdated"
+#    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "rm -rf /srv/prodNode/*"
+#    - scp -i "$ADL_PRIVATE_KEY" -P22 -r dist $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
+#    - scp -i "$ADL_PRIVATE_KEY" -P22 -r package.json $ADL_USERNAME@$ADL_SERVER_IP:/srv/prodNode/
+#    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "cd /srv/prodNode && npm install --production"
+#    - ssh -i "$ADL_PRIVATE_KEY" -p22 $ADL_USERNAME@$ADL_SERVER_IP "date > /srv/prodNodeUpdated"
+
+########################
+
+# deployProdExtension:
+#   stage: deploy
+#   only:
+#     - extensionProd
+#   environment:
+#     name: extensionProd
+#     url: https://services.extension.peblproject.org
+#   script:
+#    - apt-get update -y
+#    - apt-get install openssh-client -y
+
+#    - eval $(ssh-agent -s)
+
+#    - mkdir -p ~/.ssh
+#    - chmod 700 ~/.ssh
+
+#    - echo "$PROD_EXTENSION_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+#    - chmod 644 ~/.ssh/known_hosts
+
+#    - chmod 600 "$PROD_EXTENSION_PRIVATE_KEY"
+#    - ssh-add "$PROD_EXTENSION_PRIVATE_KEY" > /dev/null
+
+#    - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "rm -rf /srv/prodNode/*"
+#    - scp -P22 -r dist $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
+#    - scp -P22 -r package.json $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP:/srv/prodNode/
+#    - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "cd /srv/prodNode && npm install --production"
+#    - ssh -p22 $EXTENSION_USERNAME@$PROD_EXTENSION_SERVER_IP "date > /srv/prodNodeUpdated"
