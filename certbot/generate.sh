@@ -7,7 +7,6 @@ rm -rf ./certbot/etc
 ## spin up an Nginx container to handle the acme challenge
 docker-compose run certbot \
 	certonly --webroot \
-	--file docker-compose-certbot.yml \
 	--register-unsafely-without-email --agree-tos \
 	--webroot-path=/data/letsencrypt \
 	-d $1
