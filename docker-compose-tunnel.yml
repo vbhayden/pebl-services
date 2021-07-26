@@ -1,8 +1,0 @@
-version: '3'
-services:
-  ssh-tunnel:
-    image: git.eduworks.us:5050/pebl/pebl-services/ssh-tunnel:1.0.0
-    restart: always
-    volumes:
-      - /home/veden/Desktop/taco:/ssl/privkey.pem
-    command: ["./setupTunnel.sh", "taco", "34.222.38.192", "6379"]

@@ -1,6 +1,0 @@
-FROM haproxy:2.2.2
-
-COPY ./fullchainAndKey.pem /ssl/fullchainAndKey.crt
-
-COPY dockerConfig/haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
-
