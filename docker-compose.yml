@@ -2,19 +2,6 @@ version: '3'
 
 services:
 
-  certbot:
-    image: certbot/certbot
-    container_name: 'docker_certbot'
-    volumes:
-      - ./keys:/var/lib/letsencrypt
-      - ./data/letsencrypt:/data/letsencrypt
-      - ./certbot/etc:/etc/letsencrypt
-      - ./certbot/log:/var/log/letsencrypt
-    depends_on:
-      - pebl-reader-nginx
-    networks:
-      - public
-
   pebl-services:
     build:
       context: .
