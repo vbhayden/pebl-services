@@ -8,6 +8,7 @@ docker-compose down
 
 ## Run Certbot to generate SSL certs for PeBL, this will also
 ## spin up an Nginx container to handle the acme challenge
+docker-compose up -d --build --file docker-compose-certbot.yml
 docker-compose run certbot \
 	certonly --webroot \
 	--file docker-compose-certbot.yml \
