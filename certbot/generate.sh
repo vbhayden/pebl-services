@@ -8,7 +8,6 @@ docker-compose down
 
 ## Run Certbot to generate SSL certs for PeBL, this will also
 ## spin up an Nginx container to handle the acme challenge
-docker-compose up -d --build --file docker-compose-certbot.yml
 docker-compose run certbot \
 	certonly --webroot \
 	--file docker-compose-certbot.yml \
@@ -17,7 +16,7 @@ docker-compose run certbot \
 	-d $1
 
 ## Take the placeholder Nginx container down
-docker-compose down --file docker-compose-certbot.yml
+docker-compose rm nginx
 
 ## Bring the PeBL Services stuff back up
 docker-compose up -d

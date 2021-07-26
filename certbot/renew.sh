@@ -13,7 +13,7 @@ docker-compose run certbot \
 	--webroot-path=/data/letsencrypt
 
 ## Take the placeholder Nginx container down
-docker-compose down --file docker-compose-certbot.yml
+docker-compose rm nginx
 
 ## Bring the PeBL Services stuff back up
 docker-compose up -d
